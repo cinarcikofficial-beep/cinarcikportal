@@ -1,0 +1,650 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Yönetim Merkezi' %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-7xl mx-auto px-4 py-6">
+
+    <!-- Header -->
+<div class="flex items-center justify-between mb-6">
+       <div>
+         <h1 class="text-3xl font-bold text-white">Yönetim Merkezi</h1>
+         <p class="text-zinc-400 mt-1">Sitenizin tüm içeriklerini buradan yönetin</p>
+       </div>
+     </div>
+
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- 1. ÜST İSTATİSTİK KARTLARI -->
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="text-lg font-bold text-white">📊 Genel Bakış</h2>
+      <span class="text-xs text-zinc-500">Sitenizin güncel durumu ve hızlı erişim</span>
+      <div class="flex-1 h-px bg-gradient-to-r from-zinc-800 to-transparent"></div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('news')">
+        <span class="absolute inset-x-0 top-0 h-1 bg-emerald-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl">📰</div>
+          <a href="/admin/haber-ekle" class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg transition-colors" onclick="event.stopPropagation()">+ Yeni Ekle</a>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2"><%= typeof newsCount === 'number' ? newsCount : 0 %></p>
+        <p class="text-sm font-bold text-zinc-100">Toplam Haber</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Sitede yayınlanan tüm haberler</p>
+      </div>
+
+      <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-amber-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('announcements')">
+        <span class="absolute inset-x-0 top-0 h-1 bg-amber-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl">📢</div>
+          <a href="/admin/duyuru-ekle" class="text-[11px] font-bold text-amber-400 hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 rounded-lg transition-colors" onclick="event.stopPropagation()">+ Yeni Ekle</a>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2"><%= announcements.length %></p>
+        <p class="text-sm font-bold text-zinc-100">Aktif Duyuru</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Şu anda yayında olan duyurular</p>
+      </div>
+
+      <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-sky-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('places')">
+        <span class="absolute inset-x-0 top-0 h-1 bg-sky-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-2xl">📍</div>
+          <a href="/admin/mekan-ekle" class="text-[11px] font-bold text-sky-400 hover:text-sky-300 border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 rounded-lg transition-colors" onclick="event.stopPropagation()">+ Yeni Ekle</a>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2"><%= places.length %></p>
+        <p class="text-sm font-bold text-zinc-100">Kayıtlı Mekan</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Rehberdeki kafe, restoran vb. mekanlar</p>
+      </div>
+
+      <a href="/admin/comments" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-rose-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
+        <span class="absolute inset-x-0 top-0 h-1 bg-rose-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-2xl">💬</div>
+          <% if (typeof pendingCommentsCount !== 'undefined' && pendingCommentsCount > 0) { %>
+            <span class="bg-red-600 text-white text-[11px] font-black px-2.5 py-1.5 rounded-full shadow-lg shadow-red-600/30 animate-pulse"><%= pendingCommentsCount %> yeni</span>
+          <% } else { %>
+            <span class="text-[11px] font-bold text-rose-400 border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 rounded-lg">Yönet →</span>
+          <% } %>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2">
+          <%= typeof pendingCommentsCount !== 'undefined' ? pendingCommentsCount : 0 %>
+          <span class="text-sm font-semibold text-zinc-500 ml-1">bekleyen</span>
+        </p>
+        <p class="text-sm font-bold text-zinc-100">Onay Bekleyen Yorum</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Moderasyon sırasındaki yorumlar · Toplam <%= typeof totalCommentsCount !== 'undefined' ? totalCommentsCount : 0 %></p>
+      </a>
+
+      <a href="/admin/iletisim" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-cyan-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
+        <span class="absolute inset-x-0 top-0 h-1 bg-cyan-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-2xl">📨</div>
+          <% if (typeof unreadMessagesCount !== 'undefined' && unreadMessagesCount > 0) { %>
+            <span class="bg-cyan-500 text-white text-[11px] font-black px-2.5 py-1.5 rounded-full shadow-lg shadow-cyan-500/30 animate-pulse"><%= unreadMessagesCount %> yeni</span>
+          <% } else { %>
+            <span class="text-[11px] font-bold text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 rounded-lg">Gelen Kutusu →</span>
+          <% } %>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2">
+          <%= typeof unreadMessagesCount !== 'undefined' ? unreadMessagesCount : 0 %>
+          <span class="text-sm font-semibold text-zinc-500 ml-1">okunmamış</span>
+        </p>
+        <p class="text-sm font-bold text-zinc-100">Gelen Mesajlar</p>
+        <p class="text-xs text-zinc-500 mt-0.5">İletişim formundan gelen mesajlar</p>
+      </a>
+
+      <a href="/admin/gezilecek-yerler" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-orange-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
+        <span class="absolute inset-x-0 top-0 h-1 bg-orange-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-2xl">🧳</div>
+          <span class="text-[11px] font-bold text-orange-400 border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 rounded-lg">Yerler →</span>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2">
+          <%= typeof sightseeingCount !== 'undefined' ? sightseeingCount : 0 %>
+          <span class="text-sm font-semibold text-zinc-500 ml-1">kayıt</span>
+        </p>
+        <p class="text-sm font-bold text-zinc-100">Gezilecek Yerler</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Gezi rehberi tanıtım içerikleri</p>
+      </a>
+
+      <a href="/admin/hakkinda" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-teal-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
+        <span class="absolute inset-x-0 top-0 h-1 bg-teal-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-2xl">ℹ️</div>
+          <span class="text-[11px] font-bold text-teal-400 border border-teal-500/30 bg-teal-500/10 px-2.5 py-1.5 rounded-lg">Düzenle →</span>
+        </div>
+        <p class="text-xl font-black text-white leading-none mb-2">Hakkında Sayfası</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Çınarcık hakkında tanıtım içeriği</p>
+      </a>
+
+      <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-violet-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('companies')">
+        <span class="absolute inset-x-0 top-0 h-1 bg-violet-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-2xl">🏢</div>
+          <a href="/admin/firma-ekle" class="text-[11px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 rounded-lg transition-colors" onclick="event.stopPropagation()">+ Yeni Ekle</a>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2"><%= companies.length %></p>
+        <p class="text-sm font-bold text-zinc-100">Kayıtlı Firma</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Rehbere kayıtlı firmalar</p>
+      </div>
+
+      <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-red-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('breaking')">
+        <span class="absolute inset-x-0 top-0 h-1 bg-red-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-2xl">🚨</div>
+          <span class="text-[11px] font-bold text-red-400 border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 rounded-lg">Bant →</span>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2"><%= news.filter(n => n.badge_text && n.badge_text.trim()).length %></p>
+        <p class="text-sm font-bold text-zinc-100">Son Dakika Haberi</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Son dakika bandındaki haber sayısı</p>
+      </div>
+    </div>
+
+    <!-- 2. MODÜLER SEKMELİ GEZİNTİ -->
+    <div class="mb-6">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-lg font-bold text-white">🗂️ İçerik Yönetimi</h2>
+        <span class="text-xs text-zinc-500">Aşağıdaki sekmelerden içeriklerinizi düzenleyin</span>
+        <div class="flex-1 h-px bg-gradient-to-r from-zinc-800 to-transparent"></div>
+      </div>
+      <nav class="flex flex-wrap gap-2 bg-zinc-900/50 p-1.5 rounded-xl border border-zinc-800">
+        <button type="button" data-tab="news"
+          class="tab-btn active bg-red-600 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition-all">
+          📰 Haber Yönetimi
+        </button>
+        <button type="button" data-tab="announcements"
+          class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
+          📢 Duyuru Yönetimi
+        </button>
+        <button type="button" data-tab="places"
+          class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
+          📍 Mekan Yönetimi
+        </button>
+        <button type="button" data-tab="companies"
+          class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
+          🏢 Firma Yönetimi
+        </button>
+        <button type="button" data-tab="breaking"
+          class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
+          🚨 Son Dakika Bandı Ayarları
+        </button>
+      </nav>
+    </div>
+
+    <!-- 3. SEKMELERİN İÇERİKLERİ -->
+
+    <!-- TAB 1: HABER YÖNETİMİ -->
+    <div id="tab-news" class="tab-content">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div class="relative flex-1 max-w-md">
+            <input type="text" id="news-search" placeholder="Haber ara..."
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-2.5 text-sm placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          </div>
+          <select id="news-filter"
+            class="bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
+            <option value="all">Tümü</option>
+            <option value="active">Aktif</option>
+            <option value="passive">Pasif</option>
+            <option value="expired">Süresi Dolmuş</option>
+          </select>
+          <a href="/admin/haber-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">
+            ➕ Yeni Haber
+          </a>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-zinc-300">
+            <thead>
+              <tr class="bg-zinc-900/80 text-zinc-400 font-semibold uppercase text-xs border-b border-zinc-800">
+                <th class="p-4">Görsel</th>
+                <th class="p-4">Başlık & Rozet</th>
+                <th class="p-4">Kategori</th>
+                <th class="p-4">Yayın Süresi</th>
+                <th class="p-4">Durum</th>
+                <th class="p-4 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="news-table-body">
+              <% news.forEach(item => { 
+                const now = new Date().toISOString();
+                const isExpired = item.expires_at && item.expires_at.trim() && item.expires_at <= now;
+                let statusLabel, statusClass;
+                if (isExpired && item.status === 'active') {
+                  statusLabel = '⏰ Süresi Doldu';
+                  statusClass = 'bg-amber-500/10 text-amber-400';
+                } else if (item.status === 'passive') {
+                  statusLabel = '🔴 Pasif';
+                  statusClass = 'bg-rose-500/10 text-rose-400';
+                } else {
+                  statusLabel = '🟢 Aktif';
+                  statusClass = 'bg-emerald-500/10 text-emerald-400';
+                }
+              }) %>
+              <% news.forEach(item => { 
+                const now = new Date().toISOString();
+                const isExpired = item.expires_at && item.expires_at.trim() && item.expires_at <= now;
+                let statusLabel, statusClass;
+                if (isExpired && item.status === 'active') {
+                  statusLabel = '⏰ Süresi Doldu';
+                  statusClass = 'bg-amber-500/10 text-amber-400';
+                } else if (item.status === 'passive') {
+                  statusLabel = '🔴 Pasif';
+                  statusClass = 'bg-rose-500/10 text-rose-400';
+                } else {
+                  statusLabel = '🟢 Aktif';
+                  statusClass = 'bg-emerald-500/10 text-emerald-400';
+                }
+              %>
+              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors" data-status="<%= item.status %>" data-expired="<%= isExpired %>">
+                <td class="p-4">
+                  <% if (item.main_image_url) { %>
+                    <img src="<%= item.main_image_url %>" alt="" class="w-12 h-12 rounded-lg object-cover border border-zinc-800">
+                  <% } else { %>
+                    <div class="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-gray-600 text-xs">Yok</div>
+                  <% } %>
+                </td>
+                <td class="p-4">
+                  <p class="text-white font-medium text-sm line-clamp-1"><%= item.title %></p>
+                  <% if (item.badge_text) { %>
+                    <span class="inline-block bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded mt-1"><%= item.badge_text %></span>
+                  <% } %>
+                  <p class="text-zinc-500 text-xs mt-1"><%= new Date(item.created_at).toLocaleDateString('tr-TR') %></p>
+                </td>
+                <td class="p-4 text-zinc-400 text-xs"><%= item.category || 'Genel' %></td>
+                <td class="p-4 text-zinc-400 text-xs whitespace-nowrap">
+                  <% if (item.expires_at && item.expires_at.trim()) { %>
+                    <%= new Date(item.expires_at).toLocaleDateString('tr-TR') %>
+                  <% } else { %>
+                    <span class="text-zinc-600">Süresiz</span>
+                  <% } %>
+                </td>
+                <td class="p-4 whitespace-nowrap">
+                  <span class="inline-block px-3 py-1 rounded-full text-xs font-medium <%= statusClass %>"><%= statusLabel %></span>
+                </td>
+                <td class="p-4 text-right whitespace-nowrap space-x-1">
+                  <a href="/admin/haber-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
+                  <a href="/haber/<%= item.slug || item.id %>" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Önizle">👁️</a>
+                  <form method="POST" action="/admin/haberler/toggle/<%= item.id %>" style="display:inline"><button type="submit" class="inline-flex items-center justify-center w-8 h-8 <%= item.status === 'active' ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' %> rounded-lg transition-all text-xs" title="<%= item.status === 'active' ? 'Yayından Kaldır' : 'Yayınla' %>"><%= item.status === 'active' ? '⛔' : '▶️' %></button></form>
+                  <form method="POST" action="/admin/haber-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Bu haber kalıcı olarak silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (news.length === 0) { %>
+                <tr><td colspan="6" class="p-12 text-center text-zinc-500">Henüz haber eklenmemiş.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: DUYURU YÖNETİMİ -->
+    <div id="tab-announcements" class="tab-content hidden">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Duyurular</h3>
+          <a href="/admin/duyuru-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Duyuru</a>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-zinc-300">
+            <thead>
+              <tr class="bg-zinc-900/80 text-zinc-400 font-semibold uppercase text-xs border-b border-zinc-800">
+                <th class="p-4">Başlık</th>
+                <th class="p-4">Yayın Tarihi</th>
+                <th class="p-4">Öncelik</th>
+                <th class="p-4">Durum</th>
+                <th class="p-4 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% announcements.forEach(item => { %>
+              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
+                <td class="p-4 text-white font-medium line-clamp-1"><%= item.title %></td>
+                <td class="p-4 text-zinc-400"><%= new Date(item.created_at).toLocaleDateString('tr-TR') %></td>
+                <td class="p-4">
+                  <span class="inline-block px-2 py-1 rounded text-xs font-medium bg-sky-500/10 text-sky-400">
+                    <%= item.category === 'ilan' ? 'İlan' : 'Duyuru' %>
+                  </span>
+                </td>
+                <td class="p-4"><span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">Aktif</span></td>
+                <td class="p-4 text-right space-x-1">
+                  <a href="/admin/duyuru-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
+                  <form method="POST" action="/admin/duyuru-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (announcements.length === 0) { %>
+                <tr><td colspan="5" class="p-8 text-center text-zinc-500">Henüz duyuru eklenmemiş.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MEKAN YÖNETİMİ -->
+    <div id="tab-places" class="tab-content hidden">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Mekanlar</h3>
+          <a href="/admin/mekan-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Mekan</a>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-zinc-300">
+            <thead>
+<tr class="bg-zinc-900/80 text-zinc-400 font-semibold uppercase text-xs border-b border-zinc-800">
+                 <th class="p-4">Görsel</th>
+                 <th class="p-4">Mekan Adı</th>
+                 <th class="p-4">Kategori</th>
+                 <th class="p-4">Durum</th>
+                 <th class="p-4 text-right">İşlemler</th>
+               </tr>
+            </thead>
+            <tbody>
+              <% places.forEach(item => { %>
+              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
+                <td class="p-4">
+                  <% if (item.main_image_url) { %>
+                    <img src="<%= item.main_image_url %>" alt="" class="w-12 h-12 rounded-lg object-cover border border-zinc-800">
+                  <% } else { %>
+                    <div class="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-gray-600 text-xs">Yok</div>
+                  <% } %>
+                </td>
+                <td class="p-4">
+                  <a href="/admin/mekan-ekle?edit=<%= item.id %>" class="text-white font-medium line-clamp-1 hover:text-emerald-400 transition-colors"><%= item.name %></a>
+                  <% if (item.is_featured == 1) { %>
+                    <span class="inline-block bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.25 rounded mt-1">🏆</span>
+                  <% } %>
+                </td>
+                <td class="p-4 text-zinc-400"><%= item.category || item.type || '-' %></td>
+<td class="p-4"><% if (item.display_until) { const now = new Date(); const du = new Date(item.display_until); if (du > now) { %><span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-sky-500/10 text-sky-400">Aktif</span><% } else { %><span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400">Süresi Doldu</span><% } } else { %><span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-sky-500/10 text-sky-400">Süresiz</span><% } %></td>
+                 <td class="p-4 text-right space-x-1">
+                  <a href="/admin/mekan-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
+                  <button onclick="openPreviewModal(<%= item.id %>)" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Önizle">👁️</button>
+                  <form method="POST" action="/admin/mekan-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (places.length === 0) { %>
+                <tr><td colspan="5" class="p-8 text-center text-zinc-500">Henüz mekan eklenmemiş.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3B: FİMA YÖNETİMİ -->
+    <div id="tab-companies" class="tab-content hidden">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Firmalar</h3>
+          <a href="/admin/firma-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Firma</a>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-zinc-300">
+            <thead>
+              <tr class="bg-zinc-900/80 text-zinc-400 font-semibold uppercase text-xs border-b border-zinc-800">
+                <th class="p-4">Logo</th>
+                <th class="p-4">Firma Adı</th>
+                <th class="p-4">Kategori</th>
+                <th class="p-4">Durum</th>
+                <th class="p-4 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% companies.forEach(item => { %>
+              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
+                <td class="p-4">
+                  <% if (item.logo_url) { %>
+                    <img src="<%= item.logo_url %>" alt="" class="w-12 h-12 rounded-lg object-cover border border-zinc-800">
+                  <% } else { %>
+                    <div class="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-gray-600 text-xs">🏢</div>
+                  <% } %>
+                </td>
+                <td class="p-4">
+                  <a href="/admin/firma-ekle?edit=<%= item.id %>" class="text-white font-medium line-clamp-1 hover:text-emerald-400 transition-colors"><%= item.name %></a>
+                  <% if (item.is_featured == 1) { %>
+                    <span class="inline-block bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.25 rounded mt-1">🏆</span>
+                  <% } %>
+                </td>
+                <td class="p-4 text-zinc-400"><%= item.category || 'Genel' %></td>
+                <td class="p-4">
+                  <% if (item.status === 'active') { %>
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">🟢 Aktif</span>
+                  <% } else { %>
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400">🔴 Pasif</span>
+                  <% } %>
+                </td>
+                <td class="p-4 text-right space-x-1">
+                  <a href="/admin/firma-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
+                  <a href="/rehber/<%= item.slug || item.id %>" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Önizle">👁️</a>
+                  <form method="POST" action="/admin/firma-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (companies.length === 0) { %>
+                <tr><td colspan="5" class="p-8 text-center text-zinc-500">Henüz firma eklenmemiş.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SON DAKİKA BANDI -->
+    <div id="tab-breaking" class="tab-content hidden">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Son Dakika Bandı Ayarları</h3>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="breaking-toggle" class="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-red-600 focus:ring-red-600">
+            <span class="text-sm text-zinc-300">Bandı Aktif Et</span>
+          </label>
+        </div>
+        <div class="p-4">
+          <p class="text-zinc-400 text-sm mb-4">
+            Son dakika haberleri bu banda gösterilir. Haberlerde "badge_text" alanını doldurduğunuzda otomatik olarak son dakika olarak işaretlenir.
+          </p>
+          <div class="space-y-3">
+            <% news.filter(n => n.badge_text && n.badge_text.trim()).slice(0, 10).forEach(item => { %>
+              <div class="flex items-center gap-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800/50">
+                <span class="text-xs text-zinc-500 w-6 text-right"><%= item.headline_order || 999 %></span>
+                <span class="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0"><%= item.badge_text.substring(0, 15) %><%= item.badge_text.length > 15 ? '...' : '' %></span>
+                <span class="text-zinc-200 text-sm font-medium line-clamp-1 flex-1"><%= item.title %></span>
+                <a href="/haber/<%= item.slug || item.id %>" target="_blank" class="text-xs text-zinc-500 hover:text-white">👁️</a>
+              </div>
+            <% }) %>
+            <% if (!news.filter(n => n.badge_text && n.badge_text.trim()).length) { %>
+              <p class="text-zinc-500 text-center py-6">Son dakika haberi bulunmuyor.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="preview-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePreviewModal()"></div>
+  <div class="absolute inset-4 sm:inset-8 md:inset-12 lg:inset-16 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b border-zinc-800">
+      <h3 id="modal-title" class="text-lg font-bold text-white"></h3>
+      <button onclick="closePreviewModal()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all text-lg">✕</button>
+    </div>
+    <div id="modal-body" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+  </div>
+</div>
+
+<script>
+var placesData = <%- JSON.stringify(places).replace(/</g, '\\u003c') %>;
+
+function openPreviewModal(placeId) {
+  var place = placesData.find(function(p) { return p.id === placeId; });
+  if (!place) return;
+
+  document.getElementById('modal-title').textContent = place.name;
+
+  var gallery = [];
+  try { gallery = JSON.parse(place.gallery_images || '[]'); } catch(e) { gallery = []; }
+  var allImages = [place.main_image_url].concat(gallery).filter(Boolean);
+  var features = [];
+  try { features = JSON.parse(place.features || '[]'); } catch(e) { features = []; }
+  var estType = [];
+  try { estType = JSON.parse(place.establishment_type || '[]'); } catch(e) { estType = []; }
+  var mealType = [];
+  try { mealType = JSON.parse(place.meal_type || '[]'); } catch(e) { mealType = []; }
+
+  var html = '';
+
+  if (allImages.length > 0) {
+    html += '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
+    allImages.slice(0, 6).forEach(function(img) {
+      html += '<img src="' + img + '" alt="" class="w-full h-32 object-cover rounded-lg border border-zinc-800">';
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">';
+  html += '<div class="space-y-3">';
+  html += '<div><span class="text-xs text-zinc-500 uppercase">Kategori</span><p class="text-white font-medium">' + (place.category || '-') + '</p></div>';
+  if (place.cuisine_type) html += '<div><span class="text-xs text-zinc-500 uppercase">Mutfak</span><p class="text-white font-medium">' + place.cuisine_type + '</p></div>';
+  if (place.phone) html += '<div><span class="text-xs text-zinc-500 uppercase">Telefon</span><p class="text-emerald-400 font-medium">' + place.phone + '</p></div>';
+  if (place.working_hours) html += '<div><span class="text-xs text-zinc-500 uppercase">Çalışma Saatleri</span><p class="text-white font-medium">' + place.working_hours + '</p></div>';
+  if (place.address) html += '<div><span class="text-xs text-zinc-500 uppercase">Adres</span><p class="text-zinc-300 text-sm">' + place.address + '</p></div>';
+  html += '</div>';
+  html += '<div class="space-y-3">';
+  if (place.description) html += '<div><span class="text-xs text-zinc-500 uppercase">Açıklama</span><p class="text-zinc-300 text-sm leading-relaxed">' + String(place.description).replace(/<[^>]*>/g, ' ') + '</p></div>';
+  if (estType.length) html += '<div><span class="text-xs text-zinc-500 uppercase">Kuruluş Türü</span><div class="flex flex-wrap gap-1 mt-1">' + estType.map(function(t){ return '<span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">' + t + '</span>'; }).join('') + '</div></div>';
+  if (mealType.length) html += '<div><span class="text-xs text-zinc-500 uppercase">Yemek Türü</span><div class="flex flex-wrap gap-1 mt-1">' + mealType.map(function(t){ return '<span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full">' + t + '</span>'; }).join('') + '</div></div>';
+  if (features.length) html += '<div><span class="text-xs text-zinc-500 uppercase">Özellikler</span><div class="flex flex-wrap gap-1 mt-1">' + features.map(function(f){ return '<span class="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded">✓ ' + f + '</span>'; }).join('') + '</div></div>';
+  html += '</div>';
+  html += '</div>';
+
+  if (place.google_reviews_url) {
+    html += '<a href="' + place.google_reviews_url + '" target="_blank" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">🌐 Google Yorumları</a>';
+  }
+  if (place.map_link) {
+    html += '<a href="' + place.map_link + '" target="_blank" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">📍 Haritada Gör</a>';
+  }
+
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('preview-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreviewModal() {
+  document.getElementById('preview-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closePreviewModal();
+});
+</script>
+<script>
+function switchTab(tabName) {
+  var tabs = document.querySelectorAll('.tab-btn');
+  var contents = document.querySelectorAll('.tab-content');
+  tabs.forEach(function(b) {
+    b.classList.remove('active', 'bg-red-600', 'text-white');
+    b.classList.add('bg-transparent', 'text-zinc-400');
+  });
+  var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+  if (targetBtn) {
+    targetBtn.classList.remove('bg-transparent', 'text-zinc-400');
+    targetBtn.classList.add('active', 'bg-red-600', 'text-white');
+  }
+  contents.forEach(function(c) { c.classList.add('hidden'); });
+  var targetContent = document.getElementById('tab-' + tabName);
+  if (targetContent) targetContent.classList.remove('hidden');
+}
+
+function showToast(message, type) {
+  var container = document.getElementById('toast-container');
+  if (!container) return;
+  var toast = document.createElement('div');
+  var bgClass = type === 'success' ? 'bg-emerald-600' : 'bg-red-600';
+  toast.className = bgClass + ' text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 transition-all';
+  toast.innerHTML = (type === 'success' ? '✅ ' : '⚠️ ') + message;
+  container.appendChild(toast);
+  setTimeout(function() { toast.style.opacity = '0'; toast.style.transform = 'translateX(100px)'; }, 3000);
+  setTimeout(function() { toast.remove(); }, 3500);
+}
+
+(function() {
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('updated') === '1') {
+    showToast('Güncelleme başarıyla tamamlandı!', 'success');
+    window.history.replaceState({}, '', '/admin');
+  }
+  if (urlParams.get('created') === '1') {
+    showToast('Mekan başarıyla oluşturuldu!', 'success');
+    window.history.replaceState({}, '', '/admin');
+  }
+  if (urlParams.get('tab')) {
+    switchTab(urlParams.get('tab'));
+  }
+
+  var tabs = document.querySelectorAll('.tab-btn');
+  var contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      // Update active tab button
+      tabs.forEach(function(b) {
+        b.classList.remove('active', 'bg-red-600', 'text-white');
+        b.classList.add('bg-transparent', 'text-zinc-400');
+        b.classList.remove('hover:bg-zinc-800/50');
+      });
+      btn.classList.remove('bg-transparent', 'text-zinc-400');
+      btn.classList.add('active', 'bg-red-600', 'text-white');
+
+      // Show corresponding content
+      var target = btn.getAttribute('data-tab');
+      contents.forEach(function(c) {
+        c.classList.add('hidden');
+      });
+      document.getElementById('tab-' + target).classList.remove('hidden');
+    });
+  });
+
+  // Live search for news table
+  var searchInput = document.getElementById('news-search');
+  var filterSelect = document.getElementById('news-filter');
+  var tableBody = document.getElementById('news-table-body');
+
+  function filterNews() {
+    if (!tableBody) return;
+    var searchTerm = searchInput.value.toLowerCase();
+    var filterVal = filterSelect.value;
+    var rows = tableBody.querySelectorAll('tr');
+
+    rows.forEach(function(row) {
+      var title = row.cells[1].textContent.toLowerCase();
+      var status = row.getAttribute('data-status') || '';
+      var expired = row.getAttribute('data-expired') === 'true';
+
+      var matchesSearch = title.includes(searchTerm);
+      var matchesFilter = true;
+
+      if (filterVal === 'active') matchesFilter = status === 'active' && !expired;
+      else if (filterVal === 'passive') matchesFilter = status === 'passive';
+      else if (filterVal === 'expired') matchesFilter = expired && status === 'active';
+
+      row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
+    });
+  }
+
+  if (searchInput) searchInput.addEventListener('input', filterNews);
+  if (filterSelect) filterSelect.addEventListener('change', filterNews);
+})();
+</script>

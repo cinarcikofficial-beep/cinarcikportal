@@ -1,0 +1,252 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('contactTitle') %>
+
+<style>
+  /* reCAPTCHA rozeti sayfanın sağ alt köşesi yerine Güvenlik Kodu panelinin içinde gösterilsin */
+  #rc-widget[data-size="invisible"] { position: relative; width: 100%; height: 66px; }
+  #rc-widget[data-size="invisible"] .grecaptcha-badge {
+    position: absolute !important;
+    left: 50% !important;
+    right: auto !important;
+    top: 4px !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    transition: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <div class="section-header">
+    <h2>✉️ <%= t('contactTitle') %></h2>
+    <a href="/" class="see-all"><%= t('home') %> ›</a>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+
+    <!-- Form -->
+    <div class="lg:col-span-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-lg">
+      <% if (sent) { %>
+      <div class="mb-5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-xl px-4 py-3">
+        <%= t('messageSent') %>
+      </div>
+      <% } %>
+      <% if (error) { %>
+      <div class="mb-5 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">
+        ✗ <%= error %>
+      </div>
+      <% } %>
+
+      <h3 class="text-white font-bold text-lg mb-1"><%= t('sendMessage') %></h3>
+      <p class="text-zinc-500 text-sm mb-5"><%= t('formIntro') %></p>
+
+      <form method="POST" action="/iletisim" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-zinc-400 text-sm mb-1.5" for="c-name"><%= t('nameLabel') %></label>
+            <input id="c-name" type="text" name="name" required maxlength="100"
+              value="<%= form.name || (isGoogleAuth && googleUser ? googleUser.name : '') %>"
+              placeholder="<%= t('namePlaceholder') %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          </div>
+          <div>
+            <label class="block text-zinc-400 text-sm mb-1.5" for="c-email">
+              <%= t('emailLabel') %> <%= (isGoogleAuth && googleUser && googleUser.email) ? '' : '*' %>
+            </label>
+            <% if (isGoogleAuth && googleUser && googleUser.email) { %>
+            <div class="relative">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-500 text-sm select-none" aria-hidden="true">🔒</span>
+              <input id="c-email" type="email" name="email" required maxlength="150" readonly
+                value="<%= googleUser.email %>"
+                class="w-full bg-zinc-900/70 text-emerald-300/90 border border-emerald-500/30 rounded-xl pl-9 pr-4 py-3 text-sm cursor-not-allowed"
+                aria-describedby="email-lock-note">
+            </div>
+            <p id="email-lock-note" class="text-emerald-500/70 text-[11px] mt-1.5 flex items-center gap-1">
+              <span>✓</span> <%= t('emailAutoFilled') %>
+            </p>
+            <% } else { %>
+            <input id="c-email" type="email" name="email" required maxlength="150"
+              value="<%= form.email || '' %>"
+              placeholder="<%= t('emailPlaceholder') %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <% } %>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-zinc-400 text-sm mb-1.5" for="c-subject"><%= t('subjectLabel') %></label>
+          <input id="c-subject" type="text" name="subject" maxlength="150"
+            value="<%= form.subject || '' %>"
+            placeholder="<%= t('subjectPlaceholder') %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+        </div>
+
+        <div>
+          <label class="block text-zinc-400 text-sm mb-1.5" for="c-message"><%= t('messageLabel') %></label>
+          <textarea id="c-message" name="message" rows="6" required maxlength="2000"
+            placeholder="<%= t('messagePlaceholder') %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"><%= form.message || '' %></textarea>
+        </div>
+
+        <!-- Güvenlik Kodu -->
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+          <label class="block text-zinc-400 text-sm mb-2" for="c-captcha"><%= t('securityCode') %></label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <img id="captcha-img" src="<%= captchaImage %>" alt="<%= t('securityCodeAlt') %>"
+              class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none">
+            <input id="c-captcha" type="text" name="captcha" required maxlength="5" autocomplete="off"
+              placeholder="<%= t('captchaPlaceholder') %>"
+              class="w-40 bg-zinc-900 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm uppercase tracking-widest placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <button type="button"
+              onclick="document.getElementById('captcha-img').src='/captcha.svg?t='+Date.now()"
+              class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-3 rounded-xl text-xs font-bold transition"><%= t('refresh') %>
+          </div>
+          <p class="text-zinc-600 text-xs mt-2"><%= t('captchaNote') %></p>
+
+          <!-- Google reCAPTCHA -->
+          <% if (recaptchaSiteKey) { %>
+          <div class="mt-4 pt-4 border-t border-zinc-800">
+            <% if (!recaptchaInvisible) { %>
+            <label class="block text-zinc-400 text-sm mb-2"><%= t('notRobot') %></label>
+            <% } %>
+            <div class="flex justify-center">
+              <div id="rc-widget" class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>" data-theme="dark"
+                <% if (recaptchaInvisible) { %>data-size="invisible"<% } %>
+                data-callback="rcDone" data-expired-callback="rcExpired" data-error-callback="rcFailed"></div>
+            </div>
+            <% if (!recaptchaInvisible) { %>
+            <p id="rc-hint" class="hidden text-red-400 text-xs mt-2 text-center"><%= t('notRobotHint') %></p>
+            <% } %>
+          </div>
+          <% } %>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <span class="text-zinc-600 text-xs"><%= t('requiredFields') %></span>
+          <button type="submit"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-emerald-600/20">
+            <%= t('sendSubmit') %>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- İletişim Bilgileri -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-lg">
+        <h3 class="text-white font-bold text-lg mb-4 flex items-center gap-2">📍 Marmara'nın İncisi</h3>
+        <ul class="space-y-3.5 text-sm text-zinc-400">
+          <li class="flex items-start gap-2.5"><span>📍</span><span>Çınarcık, Yalova<br><span class="text-zinc-600"><%= t('marmaraShore') %></span></span></li>
+          <li class="flex items-start gap-2.5"><span>🌊</span><span><%= t('contactTagline') %></span></li>
+          <li class="flex items-start gap-2.5"><span>⏱️</span><span><%= t('replyInfo') %></span></li>
+        </ul>
+        <div class="mt-5 pt-4 border-t border-zinc-800">
+          <p class="text-zinc-500 text-xs leading-relaxed">
+            <%= t('privacyNote') %>
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <iframe
+          title="<%= t('mapTitle') %>"
+          src="https://www.google.com/maps?q=%C3%87%C4%B1narc%C4%B1k%2C%20Yalova&output=embed"
+          class="w-full h-56 border-0"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+
+      <a href="/" class="block bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-2xl p-5 transition-all group">
+        <p class="text-white font-bold text-sm mb-1 group-hover:text-emerald-400 transition-colors"><%= t('backToHome') %></p>
+        <p class="text-zinc-500 text-xs"><%= t('homeExploreSub') %>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<% if (recaptchaSiteKey) { %>
+<script src="https://www.google.com/recaptcha/api.js?hl=<%= lang === 'tr' ? 'tr' : lang %>" async defer></script>
+<script>
+(function () {
+  var form = document.querySelector('form[action="/iletisim"]');
+  if (!form) return;
+  var isInvisible = <%= typeof recaptchaInvisible !== 'undefined' && recaptchaInvisible ? 'true' : 'false' %>;
+  var sending = false;
+  var guard = null;
+
+  function hint(show) {
+    var h = document.getElementById('rc-hint');
+    if (!h) return;
+    if (show) h.classList.remove('hidden');
+    else h.classList.add('hidden');
+  }
+
+  function responseField() {
+    return form.querySelector('textarea[name="g-recaptcha-response"]');
+  }
+
+  function clearToken() {
+    var ta = responseField();
+    if (ta) ta.value = '';
+    try {
+      if (typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.reset === 'function') grecaptcha.reset();
+    } catch (e) {}
+  }
+
+  function tokenExists() {
+    var ta = responseField();
+    if (ta && ta.value) return true;
+    try {
+      return typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.getResponse === 'function' && !!grecaptcha.getResponse();
+    } catch (e) { return false; }
+  }
+
+  function fire(tries) {
+    if (!guard) guard = setTimeout(submitForReal, 10000);
+    if (tokenExists()) { submitForReal(); return; }
+    if (typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.execute === 'function') {
+      try { grecaptcha.execute(); return; } catch (e) {}
+    }
+    if (tries < 20) setTimeout(function () { fire(tries + 1); }, 250);
+    else submitForReal();
+  }
+
+  function submitForReal() {
+    if (sending) return;
+    sending = true;
+    if (guard) clearTimeout(guard);
+    form.submit();
+  }
+
+  form.addEventListener('submit', function (e) {
+    if (sending) return;
+    if (tokenExists()) return;
+    e.preventDefault();
+    if (isInvisible) {
+      fire(0);
+    } else {
+      hint(true);
+      var w = document.getElementById('rc-widget');
+      if (w && w.scrollIntoView) w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  });
+
+  window.rcDone = function (token) {
+    var ta = responseField();
+    if (!ta) {
+      ta = document.createElement('textarea');
+      ta.name = 'g-recaptcha-response';
+      ta.style.display = 'none';
+      form.appendChild(ta);
+    }
+    ta.value = token;
+    hint(false);
+    if (isInvisible) submitForReal();
+  };
+
+  window.rcExpired = function () { clearToken(); };
+  window.rcFailed = function () { clearToken(); };
+})();
+</script>
+<% } %>

@@ -1,0 +1,340 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = article.title %>
+
+<div class="article-detail max-w-4xl mx-auto">
+  <div class="article-header mb-6">
+    <a href="/haberler" class="back-link inline-block text-red-500 hover:text-red-400 mb-4"><%= t('backToNews') %></a>
+    <div class="flex items-center gap-3 mb-3">
+      <% if (article.category) { %>
+      <span class="bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-r-md tracking-wider uppercase shadow-lg"><%= article.category %></span>
+      <% } %>
+      <% if (article.badge_text) { %>
+      <span class="bg-red-600 text-white font-black text-xs md:text-sm px-3 py-1.5 rounded-r-md tracking-wider uppercase inline-block shadow-lg"><%= article.badge_text %></span>
+      <% } %>
+      <span class="text-zinc-500 text-sm"><%= new Date(article.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-4"><%= article.title %></h1>
+    <% if (article.views_count) { %>
+    <div class="flex items-center gap-2 text-zinc-500 text-sm mb-4">
+      <span>👁️</span>
+      <span><%= article.views_count %> <%= t('views') %></span>
+    </div>
+    <% } %>
+
+  </div>
+
+  <% if (article.main_image_url) { %>
+  <div class="relative w-full max-h-[550px] bg-zinc-900/60 rounded-2xl overflow-hidden flex items-center justify-center border border-zinc-800/80 mb-6">
+    <img src="<%= article.main_image_url %>" alt="<%= article.title %>" class="max-h-[550px] w-auto h-auto object-contain mx-auto rounded-xl">
+  </div>
+  <% } %>
+
+  <% if (/<[a-z][\s\S]*>/i.test(article.content || '')) { %>
+  <div class="article-body rich-desc text-gray-300 leading-relaxed mb-8"><%- article.content %></div>
+  <% } else { %>
+  <div class="article-body text-gray-300 leading-relaxed mb-8 whitespace-pre-line"><%= article.content %></div>
+  <% } %>
+
+  <% const gallery = typeof article.gallery_images === 'string' ? JSON.parse(article.gallery_images || '[]') : (article.gallery_images || []); %>
+  <% if (gallery.length > 0) { %>
+  <section class="mb-10">
+    <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2"><%= t('newsGallery') %></h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+      <% gallery.forEach((img, i) => { %>
+      <div class="h-36 bg-zinc-900/80 rounded-xl overflow-hidden flex items-center justify-center p-1 border border-zinc-800 group relative cursor-pointer shadow-lg" onclick="openLightbox(<%= i %>)">
+        <img src="<%= img %>" alt="<%= t('gallery') %> <%= i + 1 %>" class="max-h-full max-w-full object-contain mx-auto my-auto group-hover:scale-105 transition-transform duration-300">
+        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <span class="text-white text-xs"><%= t('zoom') %></span>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <div id="lightbox" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 hidden" onclick="closeLightbox()">
+    <button class="absolute top-4 right-4 text-white text-3xl hover:text-red-400 transition-colors z-50" onclick="closeLightbox()">×</button>
+    <button id="lb-prev" class="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-red-400 transition-colors z-50 bg-black/40 w-12 h-12 rounded-full flex items-center justify-center" onclick="event.stopPropagation(); navigateLightbox(-1)">‹</button>
+    <div class="flex flex-col items-center gap-3 max-w-4xl w-full" onclick="event.stopPropagation()">
+      <img id="lightbox-img" src="" alt="<%= t('gallery') %>" class="max-h-[80vh] max-w-full rounded-lg shadow-2xl object-contain">
+      <div class="flex items-center gap-4 text-white text-sm">
+        <span id="lb-counter">1 / <%= gallery.length %></span>
+      </div>
+    </div>
+    <button id="lb-next" class="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-red-400 transition-colors z-50 bg-black/40 w-12 h-12 rounded-full flex items-center justify-center" onclick="event.stopPropagation(); navigateLightbox(1)">›</button>
+  </div>
+
+  <script>
+    var galleryImages = <%- JSON.stringify(gallery).replace(/</g, '\\u003c') %>;
+    var currentIdx = 0;
+    function openLightbox(idx) { currentIdx = idx; updateLightbox(); var lb = document.getElementById('lightbox'); lb.classList.remove('hidden'); lb.classList.add('flex'); document.body.style.overflow = 'hidden'; }
+    function updateLightbox() { document.getElementById('lightbox-img').src = galleryImages[currentIdx]; document.getElementById('lb-counter').textContent = (currentIdx + 1) + ' / ' + galleryImages.length; document.getElementById('lb-prev').style.display = currentIdx > 0 ? '' : 'none'; document.getElementById('lb-next').style.display = currentIdx < galleryImages.length - 1 ? '' : 'none'; }
+    function navigateLightbox(dir) { currentIdx += dir; if (currentIdx < 0) currentIdx = 0; if (currentIdx >= galleryImages.length) currentIdx = galleryImages.length - 1; updateLightbox(); }
+    function closeLightbox() { var lb = document.getElementById('lightbox'); lb.classList.add('hidden'); lb.classList.remove('flex'); document.body.style.overflow = ''; }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); if (e.key === 'ArrowLeft') navigateLightbox(-1); if (e.key === 'ArrowRight') navigateLightbox(1); });
+  </script>
+  <% } %>
+
+  <!-- YORUM BÖLÜMÜ (Galeri Sonrası) -->
+  <section id="yorum" class="mb-10 border-t border-zinc-800 pt-8 scroll-mt-24">
+    <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2"><%= t('comments') %></h2>
+
+    <!-- Giriş Durumuna Göre İçerik -->
+    <div id="comment-auth-section" class="mb-6">
+      <% if (isGoogleAuth && googleUser) { %>
+        <!-- Giriş Yapmış Kullanıcı -->
+        <div class="flex items-center gap-3 bg-zinc-900/80 rounded-xl p-4 border border-emerald-500/30">
+          <img src="<%= googleUser.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(googleUser.name) + '&background=10b981&color=fff' %>" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-emerald-500">
+          <div class="flex-1">
+            <p class="text-white font-medium text-sm"><%= googleUser.name %></p>
+            <p class="text-emerald-400 text-xs"><%= googleUser.email %></p>
+          </div>
+          <a href="/auth/google/logout" class="text-zinc-400 hover:text-red-400 text-xs transition"><%= t('logoutAction') %></a>
+        </div>
+      <% } else { %>
+        <!-- Giriş Yapmamış Kullanıcı -->
+        <div class="bg-zinc-900/80 rounded-xl p-5 border border-zinc-800">
+          <p class="text-zinc-400 text-sm mb-4"><%= t('loginToComment') %></p>
+          <a href="/auth/google?return=<%= encodeURIComponent('/haber/' + (article.slug || article.id) + '#yorum') %>" class="inline-flex items-center gap-2 bg-white hover:bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg text-sm transition-all">
+            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            <%= t('googleLogin') %>
+          </a>
+          <p class="text-zinc-600 text-xs mt-3"><%= t('gmailOnly') %></p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Yorum Formu (Sadece giriş yapanlar görebilir) -->
+    <% if (isGoogleAuth && googleUser) { %>
+      <div id="comment-form-section" class="mb-8">
+        <div class="bg-zinc-900/80 rounded-xl p-5 border border-zinc-800">
+          <label class="block text-zinc-400 text-sm mb-2"><%= t('commentLabel') %></label>
+          <textarea id="comment-content" maxlength="1000" rows="4"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"
+            placeholder="<%= t('commentPlaceholder') %>"></textarea>
+          <div class="flex items-center justify-between mt-3">
+            <span id="char-count" class="text-zinc-500 text-xs">0 / 1000</span>
+            <button onclick="submitComment()" id="submit-comment-btn"
+              class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded-lg text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              <%= t('send') %>
+            </button>
+          </div>
+          <p id="comment-status" class="text-xs mt-2 hidden"></p>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Yorum Listesi -->
+    <div id="comments-list" class="space-y-4">
+      <p class="text-zinc-500 text-sm"><%= t('commentsLoading') %></p>
+    </div>
+  </section>
+
+  <script>
+    var articleId = <%= article.id %>;
+    var isUserLoggedIn = <%= isGoogleAuth && googleUser ? 'true' : 'false' %>;
+    var currentUserEmail = '<%= isGoogleAuth && googleUser ? googleUser.email : '' %>';
+
+    // Karakter sayacı
+    var commentTextarea = document.getElementById('comment-content');
+    var charCount = document.getElementById('char-count');
+    if (commentTextarea) {
+      commentTextarea.addEventListener('input', function() {
+        var len = this.value.length;
+        charCount.textContent = len + ' / 1000';
+        charCount.className = len > 900 ? 'text-red-400 text-xs' : 'text-zinc-500 text-xs';
+      });
+    }
+
+    // Yorum gönder (sunucu tarafı session ile)
+    function submitComment() {
+      var content = document.getElementById('comment-content').value.trim();
+      if (!content || !isUserLoggedIn) return;
+
+      var btn = document.getElementById('submit-comment-btn');
+      var status = document.getElementById('comment-status');
+      btn.disabled = true;
+      btn.textContent = "<%= t('sending') %>";
+
+      fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          news_id: articleId,
+          content: content
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        btn.textContent = "<%= t('send') %>";
+        if (data.success) {
+          document.getElementById('comment-content').value = '';
+          charCount.textContent = '0 / 1000';
+          status.textContent = "<%= t('commentReceived') %>";
+          status.className = 'text-xs mt-2 text-emerald-400';
+          status.classList.remove('hidden');
+          setTimeout(function() { status.classList.add('hidden'); }, 5000);
+        } else {
+          status.textContent = '✗ ' + (data.error || "<%= t('errorOccurred') %>");
+          status.className = 'text-xs mt-2 text-red-400';
+          status.classList.remove('hidden');
+        }
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.textContent = "<%= t('send') %>";
+        status.textContent = '✗ ' + "<%= t('connError') %>";
+        status.className = 'text-xs mt-2 text-red-400';
+        status.classList.remove('hidden');
+      });
+    }
+
+    // Yorumları yükle
+    function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    function loadComments() {
+      fetch('/api/comments/' + articleId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var list = document.getElementById('comments-list');
+          if (!data.comments || data.comments.length === 0) {
+            list.innerHTML = '<div class="bg-zinc-900/40 rounded-xl p-8 text-center border border-zinc-800/50">' +
+              '<p class="text-zinc-400 text-sm mb-2"><%= t('noComments') %></p>' +
+              '<p class="text-emerald-400 font-medium text-sm"><%= t('firstComment') %></p>' +
+              '</div>';
+            return;
+          }
+          var html = '';
+          data.comments.forEach(function(c) {
+            if (c.status === 'hidden' && !isUserLoggedIn) return;
+            var date = new Date(c.created_at).toLocaleDateString("<%= t('dateLocale') %>", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            var isOwner = isUserLoggedIn && c.user_email === currentUserEmail;
+            var isHidden = c.status === 'hidden';
+            html += '<div class="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/80' + (isHidden ? ' opacity-60 border-zinc-700' : '') + '" id="pub-comment-' + c.id + '">';
+            html += '  <div class="flex items-center gap-3 mb-3">';
+            if (c.user_avatar) {
+              html += '    <img src="' + escHtml(c.user_avatar) + '" class="w-8 h-8 rounded-full">';
+            } else {
+              html += '    <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">' + escHtml(c.user_name.charAt(0).toUpperCase()) + '</div>';
+            }
+            html += '    <div class="flex-1">';
+            html += '      <p class="text-white text-sm font-medium">' + escHtml(c.user_name) + '</p>';
+            html += '      <p class="text-zinc-500 text-xs">' + date + (isHidden ? ' · <span class="text-amber-400"><%= t('hidden') %></span>' : '') + '</p>';
+            html += '    </div>';
+            if (isOwner) {
+              html += '    <div class="flex items-center gap-1">';
+              html += '      <button onclick="startPubEdit(' + c.id + ')" class="text-zinc-400 hover:text-white px-2 py-1 rounded text-xs transition" title="<%= t('edit') %>">✎</button>';
+              html += '      <button onclick="deleteOwnComment(' + c.id + ')" class="text-zinc-400 hover:text-red-400 px-2 py-1 rounded text-xs transition" title="<%= t('remove') %>">✕</button>';
+              html += '    </div>';
+            }
+            html += '  </div>';
+            html += '  <div class="comment-display">';
+            html += '    <p class="text-zinc-300 text-sm leading-relaxed">' + c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>';
+            html += '  </div>';
+            if (isOwner) {
+              html += '  <div class="comment-edit hidden mt-3">';
+              html += '    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3">' + c.content.replace(/</g, '&lt;') + '</textarea>';
+              html += '    <div class="flex gap-2 mt-2">';
+              html += '      <button onclick="savePubEdit(' + c.id + ')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition"><%= t('save') %></button>';
+              html += '      <button onclick="cancelPubEdit(' + c.id + ')" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded text-xs font-bold transition"><%= t('cancel') %></button>';
+              html += '    </div>';
+              html += '    <p id="pub-edit-status-' + c.id + '" class="text-xs mt-2 hidden"></p>';
+              html += '  </div>';
+            }
+            html += '</div>';
+          });
+          list.innerHTML = html;
+        });
+    }
+
+    // Kullanıcı yorum düzenleme
+    function startPubEdit(id) {
+      var el = document.getElementById('pub-comment-' + id);
+      el.querySelector('.comment-display').classList.add('hidden');
+      el.querySelector('.comment-edit').classList.remove('hidden');
+    }
+
+    function cancelPubEdit(id) {
+      var el = document.getElementById('pub-comment-' + id);
+      var textarea = el.querySelector('.comment-edit textarea');
+      textarea.value = textarea.defaultValue;
+      el.querySelector('.comment-display').classList.remove('hidden');
+      el.querySelector('.comment-edit').classList.add('hidden');
+    }
+
+    function savePubEdit(id) {
+      var el = document.getElementById('pub-comment-' + id);
+      var content = el.querySelector('.comment-edit textarea').value.trim();
+      if (!content) return;
+
+      var statusEl = document.getElementById('pub-edit-status-' + id);
+      fetch('/api/comments/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          loadComments();
+        } else {
+          statusEl.textContent = '✗ ' + (data.error || "<%= t('errorOccurred') %>");
+          statusEl.className = 'text-xs mt-2 text-red-400';
+          statusEl.classList.remove('hidden');
+        }
+      })
+      .catch(function() {
+        statusEl.textContent = '✗ ' + "<%= t('connError') %>";
+        statusEl.className = 'text-xs mt-2 text-red-400';
+        statusEl.classList.remove('hidden');
+      });
+    }
+
+    function deleteOwnComment(id) {
+      if (!confirm("<%= t('confirmDelete') %>")) return;
+      fetch('/api/comments/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) loadComments();
+        });
+    }
+
+    // Sayfa yüklendiğinde
+    document.addEventListener('DOMContentLoaded', function() {
+      loadComments();
+
+      // Giriş sonrası yorum bölümüne odaklan
+      if (location.hash === '#yorum') {
+        var yorumSection = document.getElementById('yorum');
+        if (yorumSection) {
+          yorumSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          var ta = document.getElementById('comment-content');
+          if (ta) setTimeout(function() { ta.focus({ preventScroll: true }); }, 600);
+        }
+      }
+    });
+  </script>
+</div>
+
+<% if (recent.length > 0) { %>
+<section class="section">
+  <h2><%= t('otherNews') %></h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <% recent.forEach(n => { %>
+    <a href="/haber/<%= n.slug || n.id %>" class="glass-card news-card overflow-hidden">
+      <div class="h-48 bg-zinc-900/80 flex items-center justify-center p-2 overflow-hidden rounded-t-xl">
+        <% if (n.main_image_url) { %>
+          <img src="<%= n.main_image_url %>" alt="<%= n.title %>" class="max-h-full max-w-full object-contain mx-auto my-auto">
+        <% } else { %>
+          <img src="/img/fallback.webp" alt="<%= t('newsLabel') %>" class="max-h-full max-w-full object-contain mx-auto my-auto">
+        <% } %>
+      </div>
+      <div class="p-4 text-gray-200">
+        <h3><%= n.title %></h3>
+        <span class="card-date"><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>

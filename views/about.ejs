@@ -1,0 +1,80 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('aboutCinarcik') %>
+
+<style>
+  .about-content h2 { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 1.25rem 0 0.5rem; }
+  .about-content h3 { font-size: 1.15rem; font-weight: 700; color: #fff; margin: 1.1rem 0 0.4rem; }
+  .about-content p { color: #a1a1aa; line-height: 1.8; margin: 0 0 0.75rem; }
+  .about-content ul, .about-content ol { margin: 0 0 0.75rem 1.4rem; color: #a1a1aa; }
+  .about-content ul { list-style: disc; }
+  .about-content ol { list-style: decimal; }
+  .about-content strong { color: #e4e4e7; }
+</style>
+
+<style>
+  #hero-bgs .hero-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 1s ease;
+    will-change: transform, opacity;
+  }
+  @keyframes heroZoomOut {
+    from { transform: scale(1.15); }
+    to { transform: scale(1); }
+  }
+  #hero-bgs .hero-bg.on {
+    opacity: 1;
+    animation: heroZoomOut 7.5s ease-out forwards;
+  }
+  .hero-nav-btn { background: rgba(24,24,28,.55); backdrop-filter: blur(6px); }
+  .hero-nav-btn:hover { background: rgba(39,39,42,.85); }
+  .hero-dot { width: 9px; height: 9px; border-radius: 9999px; background: rgba(255,255,255,.35); transition: all .3s ease; }
+  .hero-dot.on { background: #10b981; width: 26px; }
+</style>
+
+<section id="hero" class="relative w-full h-[320px] md:h-[420px] overflow-hidden bg-zinc-950">
+  <div id="hero-bgs">
+    <div class="hero-bg on" style="background-image:url('/images/cinar/cin7.webp');"></div>
+  </div>
+  <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent"></div>
+</section>
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-lg">
+      <div class="about-content">
+        <% if (about && about.content) { %>
+          <%- about.content %>
+        <% } else { %>
+        <h2><%= t('aboutWelcome') %></h2>
+        <p><%= t('aboutWelcomeText') %></p>
+        <h3><%= t('aboutNature') %></h3>
+        <p><%= t('aboutNatureText') %></p>
+        <h3><%= t('aboutHistory') %></h3>
+        <p><%= t('aboutHistoryText') %></p>
+        <h3><%= t('aboutCuisine') %></h3>
+        <p><%= t('aboutCuisineText') %></p>
+        <% } %>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mt-10 bg-gradient-to-r from-emerald-950/60 to-zinc-900 border border-emerald-500/20 rounded-2xl p-8 text-center">
+    <h2 class="text-2xl font-black text-white mb-2"><%= about && about.cta_title ? about.cta_title : t('aboutCtaTitle') %></h2>
+    <p class="text-zinc-400 mb-5"><%= about && about.cta_text ? about.cta_text : t('aboutCtaText') %></p>
+    <a href="/mekanlar" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition-all"><%= t('explorePlaces') %></a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var bg = document.querySelector('#hero-bgs .hero-bg');
+  if (!bg) return;
+  setInterval(function() {
+    bg.style.animation = 'none';
+    void bg.offsetWidth;
+    bg.style.animation = '';
+  }, 7500);
+})();
+</script>

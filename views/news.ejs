@@ -1,0 +1,409 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('news') %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ticker-pulse { animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes marqueeFromRight { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+  .animate-marquee-right { display: inline-flex; white-space: nowrap; will-change: transform; animation: marqueeFromRight 20s linear infinite; gap: 3rem; }
+  .animate-marquee-right:hover { animation-play-state: paused; }
+  #manset-img { transition: opacity 0.4s ease; }
+  #manset-text { transition: opacity 0.4s ease; }
+  .manset-nav-btn { cursor: pointer; }
+  .manset-nav-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 12px rgba(220,38,38,0.4); }
+  .manset-nav-btn:not(.active) { background: rgba(24,24,28,0.8); color: #a1a1aa; }
+  .manset-nav-btn:not(.active):hover { background: rgba(39,39,42,0.9); color: #f4f4f5; }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-6 text-zinc-100">
+
+    <!-- 1. SON DAKİKA BANDI -->
+    <div class="relative flex items-center bg-red-600 rounded-xl h-11 my-4 overflow-hidden w-full shadow-lg">
+      <div class="z-30 bg-red-800 text-white font-black px-4 h-full flex items-center text-xs tracking-wider uppercase shrink-0 shadow-md ticker-pulse">
+        <%= t('breakingNews') %>
+      </div>
+      <div class="flex-1 w-full h-full relative overflow-hidden flex items-center z-10">
+        <div class="animate-marquee-right whitespace-nowrap text-white font-medium text-sm flex items-center">
+          <% const breakings = headlines.concat(regularNews).slice(0, 10); %>
+          <% for (let r = 0; r < 2; r++) { %>
+            <% breakings.forEach((n, i) => { %>
+              <span class="flex items-center shrink-0">
+                <span class="text-red-300 mx-4">•</span>
+                <a href="/haber/<%= n.slug || n.id %>" class="hover:text-red-200 transition-colors">
+                  <%= n.title.substring(0, 80) %><%= n.title.length > 80 ? '...' : '' %>
+                </a>
+              </span>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. MANŞET ALANI -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+
+      <!-- A) Sol/Orta Bölüm (8 Kolon - Ana Slider) -->
+      <div class="lg:col-span-8">
+        <div class="relative bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg group">
+          <% const featured = headlines[0]; %>
+          <% if (featured) { %>
+            <% const img = featured.main_image_url || '/img/fallback.webp'; %>
+            <div id="manset-slider-container" class="relative w-full h-[400px] md:h-[480px] overflow-hidden rounded-2xl">
+              <img id="manset-img" src="<%= img %>" alt="<%= featured.title %>" class="w-full h-full object-cover object-top transition-all duration-500">
+              <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent z-10"></div>
+              <div id="manset-text" class="absolute bottom-0 left-0 p-6 sm:p-8 lg:p-10 text-white z-20 max-w-2xl space-y-3">
+                <span id="manset-badge" class="inline-block bg-red-600 text-white font-black text-xs md:text-sm px-3 py-1.5 rounded-r-md tracking-wider uppercase shadow-lg">
+                  <%= featured.badge_text || t('manset') %>
+                </span>
+                <h2 id="manset-title" class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight uppercase drop-shadow-md leading-tight">
+                  <%= featured.title %>
+                </h2>
+                <p id="manset-summary" class="text-sm sm:text-base text-gray-300 max-w-xl drop-shadow line-clamp-2">
+                  <%= featured.summary || '' %>
+                </p>
+                <a id="manset-link" href="/haber/<%= featured.slug || featured.id %>" class="inline-block bg-red-600 text-white font-bold px-5 py-2.5 rounded-lg hover:bg-red-500 transition text-sm">
+                  <%= t('readNews') %>
+                </a>
+              </div>
+
+              <div class="absolute bottom-4 right-6 z-30 flex items-center gap-2" id="manset-nav">
+                <% headlines.slice(0, 10).forEach((n, i) => { %>
+                  <button type="button" data-slide="<%= i %>" title="<%= n.title %>"
+                    class="manset-nav-btn px-3 py-1.5 rounded-lg font-bold text-xs shadow-lg transition-all
+                      <%= i === 0 ? 'bg-red-600 text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700' %>">
+                    <%= i + 1 %>
+                  </button>
+                <% }) %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- B) Sağ Bölüm (4 Kolon - Yan Kartlar) -->
+      <div class="lg:col-span-4 space-y-4">
+        <% regularNews.slice(0, 4).forEach(n => { %>
+          <a href="/haber/<%= n.slug || n.id %>" class="block group">
+            <div class="relative rounded-xl overflow-hidden shadow-lg bg-zinc-800">
+              <% const img = n.main_image_url || '/img/fallback.webp'; %>
+              <img src="<%= img %>" alt="<%= n.title %>" class="w-full h-48 object-cover object-center rounded-xl group-hover:scale-105 transition-transform duration-300">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+              <div class="absolute bottom-0 left-0 p-3 text-white">
+                <span class="inline-block bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded mb-1">
+                  <%= n.badge_text || t('newsBadge') %>
+                </span>
+                <% if (n.category) { %>
+                <span class="inline-block bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded mb-1 ml-1">
+                  <%= n.category %>
+                </span>
+                <% } %>
+                <h3 class="text-sm font-bold line-clamp-2"><%= n.title %></h3>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- 3. KATEGORİ FİLTRE BAR -->
+    <div class="mb-8 overflow-x-auto">
+      <div class="flex gap-2 pb-2 border-b border-zinc-800" id="categoryFilter">
+        <% const categories = [['Tümü', t('catAll')], ['Gündem', t('catAgenda')], ['Spor', t('catSports')], ['Yaşam', t('catLife')], ['Duyurular', t('catAnnouncements')], ['Diğer Haberler', t('catOtherNews')]]; %>
+        <% categories.forEach((entry, i) => { const cat = entry[0]; %>
+          <button type="button" data-cat="<%= cat %>"
+            class="cat-btn <%= i === 0
+              ? 'bg-red-600 text-white font-bold'
+              : 'bg-zinc-900/90 text-zinc-400 hover:bg-zinc-800 hover:text-white' %>
+            px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border border-zinc-800">
+            <%= entry[1] %>
+          </button>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- 4. ANA İÇERİK -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- A) Sol Kolon (8 Kolon - Haber Akışı) -->
+      <div class="lg:col-span-8">
+        <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <span class="w-1 h-5 bg-red-600 rounded"></span>
+          <%= t('currentNews') %>
+        </h2>
+
+        <% const allNews = headlines.concat(regularNews); %>
+        <% if (allNews.length === 0) { %>
+          <div class="text-center py-12 text-zinc-500">
+            <p class="text-lg"><%= t('noNews') %></p>
+          </div>
+        <% } else { %>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <% allNews.slice(0, 12).forEach(n => { %>
+              <a href="/haber/<%= n.slug || n.id %>" class="group block news-card-item" data-category="<%= n.category || 'Gündem' %>">
+                <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg hover:border-zinc-700 transition-all h-full flex flex-col">
+                  <div class="relative h-auto max-h-[250px] overflow-hidden bg-zinc-900/60 flex items-center justify-center">
+                    <% const img = n.main_image_url || '/img/fallback.webp'; %>
+                    <img src="<%= img %>" alt="<%= n.title %>" class="max-h-[250px] w-auto h-auto object-contain mx-auto group-hover:scale-105 transition-transform duration-300">
+                    <div class="absolute top-2 left-2 flex items-center gap-1.5">
+                      <span class="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                        <%= n.badge_text || t('newsBadge') %>
+                      </span>
+                      <% if (n.category) { %>
+                      <span class="bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                        <%= n.category %>
+                      </span>
+                      <% } %>
+                    </div>
+                  </div>
+                  <div class="p-4 flex-1 flex flex-col">
+                    <span class="text-xs text-zinc-500 mb-2">
+                      <%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long' }) %>
+                    </span>
+                    <h3 class="text-zinc-100 font-bold line-clamp-2 group-hover:text-emerald-400 transition-colors mb-2 flex-1">
+                      <%= n.title %>
+                    </h3>
+                    <% if (n.summary) { %>
+                      <p class="text-zinc-400 text-sm line-clamp-2">
+                        <%= n.summary %>
+                      </p>
+                    <% } %>
+                  </div>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- DİĞER HABERLER (Online) -->
+        <div id="trending-section" class="mt-6" style="display:none;">
+          <div id="trending-news-list" class="divide-zinc-800/60">
+            <div class="text-zinc-500 text-sm py-4"><%= t('loading') %></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- B) Sağ Kolon (4 Kolon - Sidebar) -->
+      <div id="news-sidebar" class="lg:col-span-4 space-y-8">
+
+        <!-- 1. 🔥 En Çok Okunanlar -->
+        <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-red-500">🔥</span> <%= t('mostRead') %>
+          </h3>
+          <div class="space-y-3">
+            <% regularNews.slice(0, 5).forEach((n, i) => { %>
+              <div class="flex items-start gap-3 group">
+                <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-red-600/10 text-red-600 font-black text-sm flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all">
+                  <%= i + 1 %>
+                </span>
+                <div class="flex-1">
+                  <a href="/haber/<%= n.slug || n.id %>" class="text-zinc-200 hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm">
+                    <%= n.title %>
+                  </a>
+                  <div class="flex items-center gap-2 text-xs text-zinc-500 mt-1">
+                    <span>👁️ <%= n.views_count || 0 %></span>
+                    <span>•</span>
+                    <span><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short' }) %></span>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+<script>
+(function() {
+  var mansetData = <%- JSON.stringify(headlines.slice(0, 10)).replace(/</g, '\\u003c') %>;
+  var currentSlide = 0;
+  var autoplay = true;
+  var timerId = null;
+
+  var imgEl = document.getElementById('manset-img');
+  var badgeEl = document.getElementById('manset-badge');
+  var titleEl = document.getElementById('manset-title');
+  var summaryEl = document.getElementById('manset-summary');
+  var linkEl = document.getElementById('manset-link');
+  var navEl = document.getElementById('manset-nav');
+  var containerEl = document.getElementById('manset-slider-container');
+
+  if (!imgEl || !navEl || mansetData.length === 0) return;
+
+  var defaultImg = '/img/fallback.webp';
+
+  function updateNav() {
+    var btns = navEl.querySelectorAll('.manset-nav-btn');
+    btns.forEach(function(btn, i) {
+      if (i === currentSlide) {
+        btn.classList.add('bg-red-600', 'text-white');
+        btn.classList.remove('bg-zinc-800/80', 'text-zinc-300');
+      } else {
+        btn.classList.remove('bg-red-600', 'text-white');
+        btn.classList.add('bg-zinc-800/80', 'text-zinc-300');
+      }
+    });
+  }
+
+  function showSlide(index) {
+    if (mansetData.length === 0) return;
+    currentSlide = Math.max(0, Math.min(index, mansetData.length - 1));
+    var h = mansetData[currentSlide];
+
+    imgEl.style.opacity = '0';
+    setTimeout(function() {
+      imgEl.src = h.main_image_url || defaultImg;
+      imgEl.alt = h.title;
+      imgEl.style.opacity = '1';
+    }, 200);
+
+    var textWrap = document.getElementById('manset-text');
+    if (textWrap) textWrap.style.opacity = '0';
+    setTimeout(function() {
+      if (h.badge_text && h.badge_text.trim()) {
+        badgeEl.textContent = h.badge_text;
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.textContent = "<%= t('manset') %>";
+      }
+      titleEl.textContent = h.title;
+      summaryEl.textContent = h.summary || '';
+      linkEl.href = '/haber/' + (h.slug || h.id);
+      if (textWrap) textWrap.style.opacity = '1';
+    }, 250);
+
+    updateNav();
+  }
+
+  function startAuto() {
+    if (timerId) clearInterval(timerId);
+    if (autoplay && mansetData.length > 1) {
+      timerId = setInterval(function() {
+        showSlide(currentSlide + 1 >= mansetData.length ? 0 : currentSlide + 1);
+      }, 5000);
+    }
+  }
+
+  var navBtns = navEl.querySelectorAll('.manset-nav-btn');
+  navBtns.forEach(function(btn) {
+    btn.addEventListener('mouseenter', function() {
+      if (timerId) clearInterval(timerId);
+      var idx = parseInt(btn.getAttribute('data-slide'), 10);
+      showSlide(idx);
+    });
+    btn.addEventListener('mouseleave', function() {
+      startAuto();
+    });
+    btn.addEventListener('click', function() {
+      var idx = parseInt(btn.getAttribute('data-slide'), 10);
+      showSlide(idx);
+      startAuto();
+    });
+  });
+
+  if (containerEl) {
+    containerEl.addEventListener('mouseenter', function() { if (timerId) clearInterval(timerId); });
+    containerEl.addEventListener('mouseleave', function() { startAuto(); });
+  }
+
+  showSlide(0);
+  startAuto();
+})();
+</script>
+
+<script>
+(function() {
+  var filterBar = document.getElementById('categoryFilter');
+  if (!filterBar) return;
+  var btns = filterBar.querySelectorAll('.cat-btn');
+  var cards = document.querySelectorAll('.news-card-item');
+  var trendingSection = document.getElementById('trending-section');
+  var sidebar = document.getElementById('news-sidebar');
+  var mainGrid = trendingSection ? trendingSection.closest('.lg\\:grid-cols-12') : null;
+
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var cat = btn.getAttribute('data-cat');
+
+      btns.forEach(function(b) {
+        b.classList.remove('bg-red-600', 'text-white', 'font-bold');
+        b.classList.add('bg-zinc-900/90', 'text-zinc-400');
+      });
+      btn.classList.remove('bg-zinc-900/90', 'text-zinc-400');
+      btn.classList.add('bg-red-600', 'text-white', 'font-bold');
+
+      if (cat === 'Diğer Haberler') {
+        cards.forEach(function(card) { card.style.display = 'none'; });
+        if (sidebar) sidebar.style.display = 'none';
+        if (mainGrid) { mainGrid.style.gridTemplateColumns = '1fr'; }
+        if (trendingSection && !trendingSection.getAttribute('data-empty')) {
+          trendingSection.style.display = 'block';
+        }
+      } else {
+        if (trendingSection) trendingSection.style.display = 'none';
+        if (sidebar) sidebar.style.display = '';
+        if (mainGrid) { mainGrid.style.gridTemplateColumns = ''; }
+        cards.forEach(function(card) {
+          if (cat === 'Tümü' || card.getAttribute('data-category') === cat) {
+            card.style.display = '';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      }
+    });
+  });
+})();
+</script>
+
+<script>
+(function() {
+  var section = document.getElementById('trending-section');
+  var list = document.getElementById('trending-news-list');
+  if (!section || !list) return;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+  fetch('/api/trending-news')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.news || data.news.length === 0) {
+        section.setAttribute('data-empty', 'true');
+        return;
+      }
+      var h = '';
+      data.news.forEach(function(item, i) {
+        var dateStr = '';
+        if (item.pubDate) {
+          try {
+            var d = new Date(item.pubDate);
+            dateStr = d.toLocaleDateString("<%= t('dateLocale') %>", { day: 'numeric', month: 'short' });
+          } catch(e) {}
+        }
+        h += '<a href="' + esc(item.link) + '" target="_blank" rel="noopener" class="flex items-start gap-3 py-3 border-b border-zinc-800/60 hover:bg-zinc-900/40 px-3 rounded-lg transition-all group">';
+        h += '  <span class="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-600/10 text-blue-500 font-bold text-xs flex items-center justify-center mt-0.5">' + (i + 1) + '</span>';
+        h += '  <div class="flex-1 min-w-0">';
+        h += '    <h4 class="text-zinc-200 font-semibold text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">' + esc(item.title) + '</h4>';
+        h += '    <div class="flex items-center gap-2 text-[11px] text-zinc-600 mt-1">';
+        if (item.source) h += '      <span class="text-zinc-500">' + esc(item.source) + '</span>';
+        if (dateStr) h += '      <span>•</span><span>' + dateStr + '</span>';
+        h += '    </div>';
+        h += '  </div>';
+        h += '  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-zinc-700 group-hover:text-blue-400 transition-colors mt-1"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
+        h += '</a>';
+      });
+      list.innerHTML = h;
+    })
+    .catch(function() {
+      section.setAttribute('data-empty', 'true');
+    });
+})();
+</script>

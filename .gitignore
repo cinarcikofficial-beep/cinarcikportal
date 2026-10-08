@@ -1,0 +1,14 @@
+node_modules/
+.env
+db/cinarcik.db
+
+cookies.txt
+out.log
+err.log
+server.log
+server_error.log
+snake.html
+tmp.css
+t_out.log
+t_err.log
+test.log

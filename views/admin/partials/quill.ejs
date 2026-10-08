@@ -1,0 +1,70 @@
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<style>
+  .ql-wrapbox .ql-toolbar.ql-snow { background: #18181b; border: 1px solid #27272a; border-top: 0; }
+  .ql-wrapbox .ql-container.ql-snow { background: #09090b; border: 1px solid #27272a; border-bottom: 0; border-radius: 0 0 12px 12px; min-height: 200px; font-size: 14px; }
+  .ql-wrapbox .ql-editor { color: #e4e4e7; min-height: 200px; }
+  .ql-wrapbox .ql-editor.ql-blank::before { color: #52525b; font-style: normal; }
+  .ql-wrapbox .ql-snow .ql-stroke { stroke: #a1a1aa; }
+  .ql-wrapbox .ql-snow .ql-fill, .ql-wrapbox .ql-snow .ql-stroke.ql-fill { fill: #a1a1aa; }
+  .ql-wrapbox .ql-snow .ql-picker { color: #a1a1aa; }
+  .ql-wrapbox .ql-snow .ql-picker-options { background: #18181b; border-color: #27272a; }
+  .ql-wrapbox .ql-snow button:hover .ql-stroke { stroke: #10b981; }
+  .ql-wrapbox .ql-snow button:hover .ql-fill { fill: #10b981; }
+  .ql-wrapbox .ql-snow button.ql-active .ql-stroke { stroke: #10b981; }
+  .ql-wrapbox .ql-snow button.ql-active .ql-fill { fill: #10b981; }
+  .ql-wrapbox .ql-snow .ql-picker.ql-active { color: #10b981; }
+  .ql-wrapbox .ql-snow .ql-tooltip { background: #18181b; border-color: #27272a; color: #e4e4e7; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .ql-wrapbox .ql-snow .ql-tooltip input[type=text] { background: #09090b; border-color: #3f3f46; color: #fff; }
+  .ql-wrapbox .ql-editor h1 { font-size: 1.5rem; font-weight: 800; color: #fff; margin: .5rem 0 .35rem; }
+  .ql-wrapbox .ql-editor h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin: .5rem 0 .35rem; }
+  .ql-wrapbox .ql-editor h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin: .5rem 0 .35rem; }
+  .ql-wrapbox .ql-editor strong { color: #fff; }
+  .ql-wrapbox .ql-editor p { margin-bottom: .5rem; }
+  .ql-wrapbox .ql-editor ul, .ql-wrapbox .ql-editor ol { margin-left: 1.4rem; }
+  .ql-wrapbox .ql-editor ul { list-style: disc; }
+  .ql-wrapbox .ql-editor ol { list-style: decimal; }
+  .ql-wrapbox .ql-editor li { margin-bottom: .2rem; }
+</style>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script>
+  window.initQuillEditor = function (editorId, hiddenId, placeholder, required) {
+    var hidden = document.getElementById(hiddenId);
+    var initial = hidden ? hidden.value : '';
+    var quill = new Quill(editorId, {
+      theme: 'snow',
+      placeholder: placeholder || 'Yazmaya başlayın...',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'header': [1, 2, 3, false] }],
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          ['clean']
+        ]
+      }
+    });
+    if (initial) {
+      if (/<[a-z][\s\S]*>/i.test(initial)) quill.clipboard.dangerouslyPasteHTML(initial);
+      else quill.setText(initial.replace(/\n+$/, ''));
+    }
+    var form = hidden && hidden.closest('form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        var html = quill.root.innerHTML;
+        if (!quill.getText().trim()) html = '';
+        if (required && !html) {
+          e.preventDefault();
+          e.stopPropagation();
+          alert('Bu alan zorunludur, lütfen içerik yazın.');
+          quill.focus();
+          return false;
+        }
+        hidden.value = html;
+      });
+    }
+    return quill;
+  };
+</script>

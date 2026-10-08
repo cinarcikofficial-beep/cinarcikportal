@@ -1,0 +1,85 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Hakkında Sayfası Düzenle' %>
+
+<div class="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+  <a href="/admin" class="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm">
+    <span class="text-lg">←</span> Yönetim Paneline Dön
+  </a>
+
+  <div>
+    <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+      <span class="text-2xl">ℹ️</span>
+      Hakkında Sayfası
+    </h1>
+    <p class="text-gray-400 mt-1 text-sm">"/cinarcik-hakkinda" sayfasının içeriklerini buradan düzenleyin</p>
+  </div>
+
+  <% if (error) { %>
+  <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+    <span class="text-lg">⚠️</span> <%= error %>
+  </div>
+  <% } %>
+
+  <% if (saved) { %>
+  <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+    <span class="text-lg">✅</span> Değişiklikler kaydedildi.
+  </div>
+  <% } %>
+
+  <form action="/admin/hakkinda" method="POST" id="admin-form" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5">
+    <div>
+      <label for="banner_subtitle" class="block text-sm font-medium text-gray-300 mb-2">Banner Alt Başlığı</label>
+      <input type="text" id="banner_subtitle" name="banner_subtitle" value="<%= about ? about.banner_subtitle : '' %>"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+        placeholder="Örn: Marmara'nın huzurlu kıyı kasabası" />
+    </div>
+
+    <div>
+      <label for="content" class="block text-sm font-medium text-gray-300 mb-2">Ana İçerik</label>
+      <div id="about-editor" class="ql-wrapbox bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"></div>
+      <textarea id="content" name="content" hidden><%= about ? about.content : '' %></textarea>
+    </div>
+
+    <div>
+      <label for="cta_title" class="block text-sm font-medium text-gray-300 mb-2">Alt Buton Başlığı</label>
+      <input type="text" id="cta_title" name="cta_title" value="<%= about ? about.cta_title : '' %>"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+        placeholder="Örn: Çınarcık'ı Keşfet" />
+    </div>
+
+    <div>
+      <label for="cta_text" class="block text-sm font-medium text-gray-300 mb-2">Alt Buton Metni</label>
+      <textarea id="cta_text" name="cta_text" rows="2"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+        placeholder="Çağrı metni"><%= about ? about.cta_text : '' %></textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+      <a href="/admin" class="px-5 py-3 rounded-xl text-gray-300 hover:text-white border border-zinc-700 hover:bg-zinc-800 transition-all text-sm font-medium">İptal</a>
+      <button type="submit" id="submit-btn" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition-all">
+        <svg id="spinner" class="hidden animate-spin h-5 w-5 text-zinc-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+        <span id="submit-text">Kaydet</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/quill') %>
+<script>
+  initQuillEditor('#about-editor', 'content', 'Hakkında içeriğini yazın', true);
+</script>
+
+<script>
+(function() {
+  var form = document.getElementById('admin-form');
+  var btn = document.getElementById('submit-btn');
+  var spinner = document.getElementById('spinner');
+  var txt = document.getElementById('submit-text');
+  form.addEventListener('submit', function() {
+    spinner.classList.remove('hidden');
+    txt.textContent = 'Kaydediliyor...';
+    btn.disabled = true;
+    btn.classList.add('opacity-75');
+  });
+})();
+</script>

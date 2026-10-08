@@ -1,0 +1,29 @@
+{
+  "name": "cinarcik-portal",
+  "version": "1.0.0",
+  "description": "Çınarcık Yerel Portal - Haber, Duyuru, İlan ve Mekan Rehberi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "lint:ejs": "node scripts/lint-ejs.js",
+    "build:css": "tailwindcss -i src/tailwind.css -o public/css/tailwind.css --minify"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "ejs-mate": "^4.0.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.18.0",
+    "helmet": "^8.3.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.0.15",
+    "sharp": "^0.35.5",
+    "sql.js": "^1.10.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

@@ -1,0 +1,62 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Gezilecek Yerler' %>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+
+    <div class="flex items-center justify-between mb-8 flex-wrap gap-3">
+      <div>
+        <h1 class="text-2xl font-black text-white">🧳 Gezilecek Yerler</h1>
+        <p class="text-zinc-500 text-sm mt-1">Toplam <%= items.length %> kayıt</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">← Dashboard</a>
+        <a href="/admin/gezilecek-yer-ekle" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition">+ Yeni Ekle</a>
+      </div>
+    </div>
+
+    <% if (items.length === 0) { %>
+    <div class="bg-zinc-900/60 rounded-xl p-12 text-center border border-zinc-800">
+      <p class="text-4xl mb-3">🧭</p>
+      <p class="text-zinc-500">Henüz kayıt yok</p>
+      <p class="text-zinc-600 text-sm mt-1">İlk gezilecek yeri eklemek için "+ Yeni Ekle" butonunu kullanın.</p>
+    </div>
+    <% } else { %>
+    <div class="space-y-3">
+      <% items.forEach(s => { %>
+      <div class="bg-zinc-900 rounded-xl p-4 border <%= s.status === 'active' ? 'border-zinc-800/80' : 'border-zinc-800/40 opacity-60' %> flex items-center gap-4 flex-wrap">
+        <div class="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0 flex items-center justify-center">
+          <% if (s.image) { %><img src="<%= s.image %>" alt="" class="w-full h-full object-cover"><% } else { %><span class="text-xl">🧳</span><% } %>
+        </div>
+
+        <div class="flex-1 min-w-[180px]">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="text-white font-bold text-sm"><%= s.title %></p>
+            <span class="bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[10px] font-medium px-2 py-0.5 rounded-full"><%= s.category %></span>
+            <% if (s.status === 'active') { %>
+            <span class="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">YAYINDA</span>
+            <% } else { %>
+            <span class="bg-zinc-800 text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-full">PASİF</span>
+            <% } %>
+          </div>
+          <p class="text-zinc-500 text-xs mt-1 line-clamp-1"><%= s.summary || String(s.description || '').replace(/<[^>]*>/g, ' ') || '—' %></p>
+          <p class="text-zinc-600 text-xs mt-0.5">📍 <%= s.location || '—' %> · Sıra: <%= s.sort_order %> · 📷 <%= (s.gallery && s.gallery.length) ? s.gallery.length : 0 %> galeri</p>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+          <a href="/admin/gezilecek-yer-ekle?edit=<%= s.id %>"
+            class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✏️ Düzenle</a>
+          <form method="POST" action="/admin/gezilecek-yer-toggle/<%= s.id %>" style="display:inline"><button type="submit"
+            class="<%= s.status === 'active' ? 'bg-amber-600/80 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500' %> text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+            <%= s.status === 'active' ? '⏸ Gizle' : '▶ Yayına Al' %></button></form>
+          <form method="POST" action="/admin/gezilecek-yer-sil/<%= s.id %>" style="display:inline"><button type="submit"
+            onclick="return confirm('Bu kayıt silinsin mi?')"
+            class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button></form>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+  </div>
+</div>

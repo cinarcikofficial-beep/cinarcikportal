@@ -1,0 +1,459 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('heroTagline') %>
+
+<style>
+  .slider-fade-enter { opacity: 0; }
+  .slider-fade-active { opacity: 1; transition: opacity 0.5s ease; }
+  #slider-bg { transition: opacity 0.4s ease, background-image 0s; }
+</style>
+
+<style>
+  #hero-bgs .hero-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 1s ease;
+    will-change: transform, opacity;
+  }
+  @keyframes heroZoomOut {
+    from { transform: scale(1.15); }
+    to { transform: scale(1); }
+  }
+  #hero-bgs .hero-bg.on {
+    opacity: 1;
+    animation: heroZoomOut 7.5s ease-out forwards;
+  }
+  .hero-nav-btn { background: rgba(24,24,28,.55); backdrop-filter: blur(6px); }
+  .hero-nav-btn:hover { background: rgba(39,39,42,.85); }
+  .hero-dot { width: 9px; height: 9px; border-radius: 9999px; background: rgba(255,255,255,.35); transition: all .3s ease; }
+  .hero-dot.on { background: #10b981; width: 26px; }
+</style>
+
+<style>
+  .manset-nav-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 12px rgba(220,38,38,0.4); }
+  .manset-nav-btn:not(.active) { background: rgba(24,24,28,0.8); color: #a1a1aa; }
+  .manset-nav-btn:not(.active):hover { background: rgba(39,39,42,0.9); color: #f4f4f5; }
+  .slider-text-fade { transition: opacity 0.4s ease; }
+</style>
+
+<!-- 🖼️ Çınarcık Görsel Hero -->
+<section id="hero" class="relative w-full h-[420px] md:h-[540px] overflow-hidden bg-zinc-950">
+  <div id="hero-bgs">
+    <div class="hero-bg on" data-title="<%= t('heroSlide1Title') %>" data-sub="<%= t('heroSlide1Sub') %>" style="background-image:url('/images/cinar/1.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide2Title') %>" data-sub="<%= t('heroSlide2Sub') %>" style="background-image:url('/images/cinar/2.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide3Title') %>" data-sub="<%= t('heroSlide3Sub') %>" style="background-image:url('/images/cinar/3.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide4Title') %>" data-sub="<%= t('heroSlide4Sub') %>" style="background-image:url('/images/cinar/4.webp'); background-position: center 40%;"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide5Title') %>" data-sub="<%= t('heroSlide5Sub') %>" style="background-image:url('/images/cinar/5.webp');"></div>
+  </div>
+  <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent"></div>
+
+  <div class="relative h-full max-w-7xl mx-auto px-4 flex items-end pb-16 md:pb-20">
+    <div id="hero-content" class="max-w-2xl text-white space-y-3 transition-opacity duration-500">
+      <span class="inline-block bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-r-md tracking-wider uppercase shadow-lg"><%= t('heroSlide3Title') %></span>
+      <h1 id="hero-title" class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase drop-shadow-md leading-tight"><%= t('heroSlide1Title') %></h1>
+      <p id="hero-sub" class="text-zinc-300 text-sm sm:text-base max-w-xl"><%= t('heroSlide1Sub') %></p>
+      <div class="flex flex-wrap gap-3 pt-1">
+        <a href="/haberler" class="bg-emerald-600 hover:bg-emerald-500 transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('news') %> →</a>
+        <a href="#sefer-saatleri" class="bg-white/10 hover:bg-white/20 backdrop-blur-md transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('ferrySchedule') %></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute bottom-5 right-6 z-20 flex items-center gap-2" id="hero-dots"></div>
+
+  <button id="hero-prev" aria-label="<%= t('previousImage') %>" class="hero-nav-btn absolute left-4 top-1/2 z-20 text-white w-11 h-11 rounded-full flex items-center justify-center text-xl font-bold transition">‹</button>
+  <button id="hero-next" aria-label="<%= t('nextImage') %>" class="hero-nav-btn absolute right-4 top-1/2 z-20 text-white w-11 h-11 rounded-full flex items-center justify-center text-xl font-bold transition">›</button>
+</section>
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="section-header">
+  <h2>📰 <%= t('news') %></h2>
+  <a href="/haberler" class="see-all"><%= t('allNews') %></a>
+</div>
+<section id="headline-slider" class="relative bg-zinc-950">
+  <div id="slider-inner" class="relative w-full h-[400px] md:h-[480px] overflow-hidden rounded-2xl">
+    <div id="slider-bg" class="absolute inset-0 bg-cover bg-top transition-all duration-700" style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');"></div>
+    <div id="slider-overlay" class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent z-10"></div>
+    <div id="slider-content" class="absolute inset-0 z-20 flex items-end p-6 sm:p-12 pb-20 sm:pb-24">
+      <div id="slider-text" class="max-w-2xl text-white space-y-3 slider-text-fade">
+        <div id="slider-badge" class="hidden bg-red-600 text-white font-black text-xs md:text-sm px-3 py-1.5 rounded-r-md tracking-wider uppercase inline-block shadow-lg"><%= t('manset') %></div>
+        <h2 id="slider-title" class="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight uppercase drop-shadow-md leading-tight"><%= t('heroTagline') %></h2>
+        <p id="slider-summary" class="text-gray-300 text-sm sm:text-base max-w-2xl"></p>
+        <a id="slider-link" href="/haberler" class="inline-block bg-red-600 text-white font-bold px-5 py-2.5 rounded-lg hover:bg-red-500 transition"><%= t('goToArticle') %></a>
+      </div>
+    </div>
+
+    <div class="absolute bottom-4 right-6 z-30 flex items-center gap-2" id="manset-nav">
+      <button class="manset-nav-btn active px-3 py-1.5 rounded-lg font-bold text-xs bg-red-600 text-white shadow-lg transition-all" data-slide="0">1</button>
+      <button class="manset-nav-btn px-3 py-1.5 rounded-lg font-bold text-xs bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 transition-all" data-slide="1">2</button>
+      <button class="manset-nav-btn px-3 py-1.5 rounded-lg font-bold text-xs bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 transition-all" data-slide="2">3</button>
+    </div>
+
+    <button id="slider-prev" class="absolute left-4 top-1/2 z-30 bg-white/10 backdrop-blur-md hover:bg-white/20 transition text-white w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold">‹</button>
+    <button id="slider-next" class="absolute right-4 top-1/2 z-30 bg-white/10 backdrop-blur-md hover:bg-white/20 transition text-white w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold">›</button>
+  </div>
+</section>
+</div>
+
+<% if (announcements.length > 0) { %>
+<section class="section">
+  <div class="section-header">
+    <h2>📢 <%= t('annList') %></h2>
+    <a href="/duyurular" class="see-all"><%= t('viewAll') %></a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <% announcements.forEach(a => { %>
+    <div class="card announcement-card">
+      <span class="announce-tag <%= a.category === 'ilan' ? 'tag-ilan' : 'tag-duyuru' %>"><%= a.category === 'ilan' ? t('ad') : t('announcement') %></span>
+      <% if (a.image) { %><img src="<%= a.image %>" alt="<%= a.title %>" class="w-full h-40 object-cover rounded-t-xl mb-2" /><% } %>
+      <h3><%= a.title %></h3>
+      <p><%= String(a.content || '').replace(/<[^>]*>/g, ' ').substring(0, 120) %>...</p>
+      <span class="card-date"><%= new Date(a.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
+    </div>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (places.length > 0) { %>
+<section class="section">
+  <div class="section-header">
+    <h2>📍 <%= t('discover') %></h2>
+    <a href="/mekanlar" class="see-all"><%= t('viewAllPlaces') %></a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <% places.forEach(p => { %>
+    <a href="/mekan/<%= p.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+      <% if (p.main_image_url) { %><div class="card-image" style="background-image:url('<%= p.main_image_url %>')"></div><% } else { %><div class="card-image" style="background-image:url('/img/fallback.webp')"></div><% } %>
+      <div class="p-4">
+        <span class="inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400"><%= p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : (p.category || t('place')) %></span>
+        <h3 class="mt-2 mb-1 text-lg font-bold tracking-tight text-white"><%= p.name %></h3>
+        <p class="text-sm leading-relaxed text-zinc-400 line-clamp-2"><%= String(p.description || '').replace(/<[^>]*>/g, ' ') || '' %></p>
+        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
+          <% if (p.avg_rating) { %>
+          <span class="inline-flex items-center gap-1 font-semibold text-amber-400">⭐ <%= Number(p.avg_rating).toFixed(1) %><span class="font-normal text-zinc-500">(<%= p.review_count %>)</span></span>
+          <% } else { %>
+          <span class="text-zinc-500">⭐ —</span>
+          <% } %>
+          <span class="font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('viewDetails') %></span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (typeof companies !== 'undefined' && companies.length > 0) { %>
+<section class="section">
+  <div class="section-header">
+    <h2>🏢 <%= t('guide') %></h2>
+    <a href="/rehber" class="see-all"><%= t('viewAllFirms') %></a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <% companies.forEach(c => { %>
+    <a href="/rehber/<%= c.slug || c.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+      <% if (c.logo_url) { %><div class="card-image" style="background-image:url('<%= c.logo_url %>')"></div><% } else { %><div class="card-image" style="background-image:url('/img/fallback.webp')"></div><% } %>
+      <div class="p-4">
+        <span class="inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400"><%= c.category || t('company') %></span>
+        <h3 class="mt-2 mb-1 text-lg font-bold tracking-tight text-white"><%= c.name %></h3>
+        <p class="text-sm leading-relaxed text-zinc-400 line-clamp-2"><%= String(c.description || '').replace(/<[^>]*>/g, ' ') || t('firmDetailInfo') %></p>
+        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
+          <% if (c.address) { %>
+          <span class="text-zinc-500 line-clamp-1" title="<%= c.address %>">📍 <%= c.address %></span>
+          <% } else if (c.sector) { %>
+          <span class="text-zinc-500 line-clamp-1">🏢 <%= c.sector %></span>
+          <% } else { %>
+          <span class="text-zinc-500">🏢 <%= t('company') %></span>
+          <% } %>
+          <span class="shrink-0 font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('viewDetails') %></span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (typeof sightseeing !== 'undefined' && sightseeing.length > 0) { %>
+<section class="section">
+  <div class="section-header">
+    <h2>🧳 <%= t('sightseeing') %></h2>
+    <a href="/gezilecek-yerler" class="see-all"><%= t('viewAllSights') %></a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <% sightseeing.forEach(s => { %>
+    <a href="/gezilecek-yer/<%= s.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+      <% if (s.image) { %><div class="card-image" style="background-image:url('<%= s.image %>')"></div><% } else { %><div class="card-image flex items-center justify-center text-5xl" style="background:linear-gradient(135deg,#18181b,#09090b)">🧳</div><% } %>
+      <div class="p-4">
+        <span class="inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400"><%= s.category || t('trip') %></span>
+        <h3 class="mt-2 mb-1 text-lg font-bold tracking-tight text-white"><%= s.title %></h3>
+        <p class="text-sm leading-relaxed text-zinc-400 line-clamp-2"><%= s.summary || String(s.description || '').replace(/<[^>]*>/g, ' ') || '' %></p>
+        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
+          <span class="text-zinc-500 line-clamp-1" title="<%= s.location %>"><%= s.location ? '📍 ' + s.location : '📍 ' + t('cinarcik') %></span>
+          <span class="shrink-0 font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('discoverCta') %></span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<section class="section" id="nobetci-eczaneler">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+    <!-- 💊 Nöbetçi Eczaneler -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+      <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>💊</span> <%= t('pharmacies') %>
+        </h2>
+        <span class="text-xs text-zinc-500">
+          <%= new Date().toLocaleDateString(t('dateLocale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) %>
+        </span>
+      </div>
+      <div class="p-4 grid grid-cols-1 gap-4">
+        <% if (typeof pharmacies !== 'undefined' && pharmacies.length > 0) { %>
+          <% pharmacies.forEach(p => { %>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex items-start gap-3 transition-colors hover:border-emerald-500/40">
+            <span class="text-2xl leading-none mt-0.5">💊</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-white font-bold"><%= p.name %></h3>
+                <span class="flex-shrink-0 inline-block bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"><%= t('onDuty') %></span>
+              </div>
+              <% if (p.address) { %>
+                <p class="text-zinc-400 text-sm mt-1.5">📍 <%= p.address %></p>
+              <% } %>
+              <% if (p.phone) { %>
+                <a href="tel:<%= p.phone.replace(/\s/g, '') %>" class="inline-flex items-center gap-1.5 text-zinc-300 hover:text-emerald-400 text-sm mt-1 transition-colors">📞 <%= p.phone %></a>
+              <% } %>
+              <% if (p.duty_note) { %>
+                <p class="text-xs text-zinc-500 mt-2">🕐 <%= t('dutyEnd') %>: <%= p.duty_note %></p>
+              <% } %>
+            </div>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <p class="text-zinc-500 text-sm text-center py-6">
+            <%= t('noPharmacy') %>
+          </p>
+        <% } %>
+      </div>
+      <div class="px-4 pb-4 text-[11px] text-zinc-600">
+        <%= t('dataSource') %>:
+        <a href="https://www.istanbuleczaciodasi.org.tr/nobetci-eczane/#!Yalova/" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors"><%= t('nobetciEczaneLink') %></a>
+        <%= t('autoUpdated') %>
+      </div>
+    </div>
+
+    <!-- ⛴️ Sefer Saatleri -->
+    <div id="sefer-saatleri" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg scroll-mt-24">
+      <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>⛴️</span> <%= t('turyolSchedule') %>
+        </h2>
+        <span class="text-xs text-zinc-500"><%= t('ferryRoute') %></span>
+      </div>
+      <div class="p-4 space-y-4">
+        <% if (typeof ferryGroups !== 'undefined' && ferryGroups.length > 0) { %>
+          <% ferryGroups.forEach(g => { %>
+          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-sky-500/40">
+            <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
+              <span class="text-sky-400">🚢</span> <%= g.title %>
+            </h3>
+            <p class="text-[10px] uppercase tracking-wide text-sky-500/70 font-semibold mb-3"><%= g.badge %></p>
+            <div class="<%= g.items.length > 1 ? 'space-y-3' : '' %>">
+              <% g.items.forEach(item => { %>
+              <div>
+                <% if (g.showLabel) { %>
+                <p class="text-[11px] text-zinc-400 font-semibold mb-1.5"><%= item.label %></p>
+                <% } %>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <% item.columns.forEach(col => { %>
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5 font-semibold"><%= col.label %></p>
+                    <div class="space-y-1">
+                      <% if (col.times.length > 0) { %>
+                        <% col.times.forEach(t => { %>
+                          <span class="block bg-zinc-900 border border-zinc-800 rounded-lg py-1.5 px-2 text-sm text-sky-400 font-bold"><%= t %></span>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="block text-xs text-zinc-600 py-1.5">—</span>
+                      <% } %>
+                    </div>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+              <% }) %>
+            </div>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <p class="text-zinc-500 text-sm text-center py-6">
+            <%= t('noFerry') %>
+          </p>
+        <% } %>
+      </div>
+      <div class="px-4 pb-4 text-[11px] text-zinc-600">
+        <%= t('dataSource') %>:
+        <a href="https://www.turyol.com/Home/Tarifeler" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Turyol Sefer Saatleri</a>
+        <%= t('autoUpdated') %>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+(function(){
+  var headlines = [];
+  var current = 0;
+  var autoplay = true;
+  var timerId = null;
+
+  var el = {
+    bg: document.getElementById('slider-bg'),
+    badge: document.getElementById('slider-badge'),
+    title: document.getElementById('slider-title'),
+    summary: document.getElementById('slider-summary'),
+    link: document.getElementById('slider-link'),
+    slider: document.getElementById('headline-slider'),
+    prev: document.getElementById('slider-prev'),
+    next: document.getElementById('slider-next'),
+    nav: document.getElementById('manset-nav')
+  };
+
+  var defaultImg = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80';
+
+  function updateNavButtons() {
+    if (!el.nav) return;
+    var btns = el.nav.querySelectorAll('.manset-nav-btn');
+    btns.forEach(function(btn, i) {
+      if (i === current) {
+        btn.classList.add('active');
+        btn.classList.remove('bg-zinc-800/80', 'text-zinc-300');
+      } else {
+        btn.classList.remove('active');
+        btn.classList.add('bg-zinc-800/80', 'text-zinc-300');
+      }
+    });
+  }
+
+  function show(index) {
+    if (headlines.length === 0) return;
+    current = Math.max(0, Math.min(index, headlines.length - 1));
+    var h = headlines[current];
+
+    el.bg.style.opacity = '0';
+    setTimeout(function() {
+      el.bg.style.backgroundImage = 'url(' + (h.main_image_url || defaultImg) + ')';
+      el.bg.style.opacity = '1';
+    }, 200);
+
+    var textEl = document.getElementById('slider-text');
+    if (textEl) textEl.style.opacity = '0';
+    setTimeout(function() {
+      if (h.badge_text && h.badge_text.trim()) {
+        el.badge.textContent = h.badge_text;
+        el.badge.classList.remove('hidden');
+      } else {
+        el.badge.classList.add('hidden');
+      }
+      el.title.textContent = h.title;
+      el.summary.textContent = h.summary || '';
+      el.link.href = '/haber/' + (h.slug || h.id);
+      if (textEl) textEl.style.opacity = '1';
+    }, 250);
+
+    updateNavButtons();
+  }
+
+  function startAuto() {
+    if (timerId) clearInterval(timerId);
+    if (autoplay) {
+      timerId = setInterval(function() { show(current + 1 >= headlines.length ? 0 : current + 1); }, 5000);
+    }
+  }
+
+  function build() {
+    fetch('/api/news?limit=5')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        headlines = data.news || [];
+        if (headlines.length === 0) return;
+        var navBtns = el.nav ? el.nav.querySelectorAll('.manset-nav-btn') : [];
+        navBtns.forEach(function(btn, i) {
+          btn.addEventListener('click', function() {
+            show(i);
+            startAuto();
+          });
+        });
+        show(0);
+        startAuto();
+      });
+  }
+
+  function next() { show(current + 1 >= headlines.length ? 0 : current + 1); }
+  function prev() { show(current - 1 < 0 ? headlines.length - 1 : current - 1); }
+
+  el.prev.addEventListener('click', function() { prev(); startAuto(); });
+  el.next.addEventListener('click', function() { next(); startAuto(); });
+
+  el.slider.addEventListener('mouseenter', function() { if (timerId) clearInterval(timerId); });
+  el.slider.addEventListener('mouseleave', function() { startAuto(); });
+
+  if (el.slider) build();
+})();
+</script>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('#hero-bgs .hero-bg'));
+  if (!slides.length) return;
+
+  var dotsWrap = document.getElementById('hero-dots');
+  var content = document.getElementById('hero-content');
+  var title = document.getElementById('hero-title');
+  var sub = document.getElementById('hero-sub');
+  var current = 0;
+  var timer = null;
+
+  slides.forEach(function(_, i) {
+    var d = document.createElement('button');
+    d.type = 'button';
+    d.className = 'hero-dot' + (i === 0 ? ' on' : '');
+    d.setAttribute('aria-label', (i + 1) + ". <%= t('imageWord') %>");
+    d.addEventListener('click', function() { show(i); restart(); });
+    dotsWrap.appendChild(d);
+  });
+  var dots = dotsWrap.querySelectorAll('.hero-dot');
+
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach(function(s, idx) { s.classList.toggle('on', idx === current); });
+    dots.forEach(function(d, idx) { d.classList.toggle('on', idx === current); });
+    if (content) content.style.opacity = '0';
+    setTimeout(function() {
+      if (title) title.textContent = slides[current].getAttribute('data-title') || "<%= t('cinarcik') %>";
+      if (sub) sub.textContent = slides[current].getAttribute('data-sub') || '';
+      if (content) content.style.opacity = '1';
+    }, 300);
+  }
+
+  function restart() {
+    clearInterval(timer);
+    timer = setInterval(function() { show(current + 1); }, 7500);
+  }
+
+  document.getElementById('hero-next').addEventListener('click', function() { show(current + 1); restart(); });
+  document.getElementById('hero-prev').addEventListener('click', function() { show(current - 1); restart(); });
+
+  var hero = document.getElementById('hero');
+  hero.addEventListener('mouseenter', function() { clearInterval(timer); });
+  hero.addEventListener('mouseleave', restart);
+
+  restart();
+})();
+</script>

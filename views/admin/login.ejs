@@ -1,0 +1,51 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Yönetici Girişi' %>
+
+<div class="login-container">
+  <div class="login-card">
+    <div class="text-center mb-6">
+      <div class="text-4xl mb-2">🔐</div>
+      <h2>Yönetici Girişi</h2>
+      <p class="subtitle">Devam etmek için giriş yapın</p>
+    </div>
+
+    <% if (error) { %>
+    <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl px-4 py-3 text-sm mb-4 flex items-center gap-2">
+      <span class="text-lg">⚠️</span> <%= error %>
+    </div>
+    <% } %>
+
+    <% if (typeof otpStep !== 'undefined' && otpStep) { %>
+    <form action="/admin/verify-otp" method="POST" id="login-form">
+      <p class="subtitle">Doğrulama kodu <strong><%= otpSentTo %></strong> adresine gönderildi.</p>
+      <label for="code">Doğrulama Kodu</label>
+      <input type="text" id="code" name="code" required autofocus inputmode="numeric" maxlength="6"
+        placeholder="6 haneli kod" />
+      <button type="submit" id="login-btn" class="login-btn">Doğrula</button>
+    </form>
+    <% } else { %>
+    <form action="/admin/login" method="POST" id="login-form">
+      <label for="username">Kullanıcı Adı</label>
+      <input type="text" id="username" name="username" required autofocus
+        placeholder="Kullanıcı adınız" />
+
+      <label for="password">Şifre</label>
+      <input type="password" id="password" name="password" required
+        placeholder="Şifreniz" />
+
+      <button type="submit" id="login-btn" class="login-btn">Giriş Yap</button>
+    </form>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function() {
+  var form = document.getElementById('login-form');
+  var btn = document.getElementById('login-btn');
+  form.addEventListener('submit', function() {
+    btn.disabled = true;
+    btn.textContent = 'Giriş yapılıyor...';
+  });
+})();
+</script>

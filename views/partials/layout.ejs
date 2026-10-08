@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" dir="<%= dir %>" data-lp="<%= lp %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %></title>
+  <link rel="icon" type="image/png" href="/img/logo-circle.png">
+  <link rel="stylesheet" href="/css/tailwind.css">
+  <meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDesc') %>">
+  <meta property="og:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : 'Ana Sayfa' %>">
+  <meta property="og:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDescShort') %>">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="<%= lang === 'ar' ? 'ar_AR' : lang + '_' + lang.toUpperCase() %>">
+  <meta name="robots" content="index, follow">
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
+</head>
+<body class="text-white" style="min-height:100vh;display:flex;flex-direction:column;">
+
+  <!-- CANLI BİLGİ ÇUBUĞU (En Üst) -->
+  <div id="ticker-bar" class="bg-zinc-950 border-b border-zinc-800 text-xs">
+    <div class="max-w-7xl mx-auto px-4 py-1.5 flex items-center gap-4">
+      <div class="flex-1 min-w-0 overflow-x-auto whitespace-nowrap" id="ticker-content">
+        <span class="text-zinc-500"><%= t('loading') %></span>
+      </div>
+      <span id="ticker-updated" class="hidden shrink-0 text-zinc-500 pl-3 border-l border-zinc-800 whitespace-nowrap"></span>
+    </div>
+  </div>
+
+  <header class="bg-zinc-900 bg-opacity-80 backdrop-blur-md sticky top-0 z-50 w-full shadow-md" role="banner">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-1">
+      <a href="/" class="flex items-center" aria-label="<%= t('homeAria') %>">
+        <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
+          <img src="/img/logo-circle.png" alt="<%= t('logoAlt') %>" class="w-full h-full object-cover">
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center gap-1.5 text-sm font-semibold">
+        <a href="<%= lp %>/" class="px-3 py-2 rounded-full transition-all <%= path === '/' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏠 <%= t('home') %></a>
+        <a href="<%= lp %>/haberler" class="px-3 py-2 rounded-full transition-all <%= (path === '/haberler' || path.startsWith('/haber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📰 <%= t('news') %></a>
+        <a href="<%= lp %>/duyurular" class="px-3 py-2 rounded-full transition-all <%= path === '/duyurular' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📢 <%= t('announcements') %></a>
+        <a href="<%= lp %>/mekanlar" class="px-3 py-2 rounded-full transition-all <%= (path === '/mekanlar' || path.startsWith('/mekan/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📍 <%= t('places') %></a>
+        <a href="<%= lp %>/rehber" class="px-3 py-2 rounded-full transition-all <%= (path === '/rehber' || path.startsWith('/rehber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏢 <%= t('guide') %></a>
+        <a href="<%= lp %>/gezilecek-yerler" class="px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🧳 <%= t('sightseeing') %></a>
+        <a href="<%= lp %>/cinarcik-hakkinda" class="px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">ℹ️ <%= t('about') %></a>
+      </nav>
+      <div class="nav-right">
+        <span class="inline-flex items-center gap-1 text-xs">
+          <% ['tr','en','ru','ar'].forEach(function(l){ %>
+            <a href="<%= (l === 'tr' ? '' : '/' + l) %><%= path === '/' ? '/' : path %>" class="px-1.5 py-0.5 rounded <%= lang === l ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white' %>"><%= l.toUpperCase() %></a>
+          <% }); %>
+        </span>
+        <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
+        <% if (isAdmin) { %>
+          <a href="<%= lp %>/admin" class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
+          <a href="<%= lp %>/admin/logout" class="ml-2 px-3 py-1 rounded bg-gray-600 text-white hover:bg-gray-500 transition"><%= t('logout') %></a>
+        <% } %>
+      </div>
+      <button class="md:hidden p-2 text-2xl text-white" onclick="document.querySelector('.site-header nav').classList.toggle('flex')">☰</button>
+    </div>
+  </header>
+
+  <!-- HAVA DURUMU TAHMİN MODALİ -->
+  <div id="weather-modal" class="fixed inset-0 z-[100] hidden" onclick="if(event.target===this)closeWeatherModal()">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="relative max-w-4xl mx-auto mt-20 mb-10 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col mx-4">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/90 sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🌤️</span>
+          <div>
+            <h3 class="text-white font-bold text-lg"><%= t('weatherTitle') %></h3>
+            <p class="text-zinc-500 text-xs"><%= t('weatherSub') %></p>
+          </div>
+        </div>
+        <button onclick="closeWeatherModal()" class="text-zinc-400 hover:text-white text-2xl leading-none px-2 transition">&times;</button>
+      </div>
+      <!-- Tabs -->
+      <div class="flex border-b border-zinc-800 bg-zinc-900/90 sticky top-[68px] z-10">
+        <button onclick="showForecastTab('week')" id="tab-week" class="flex-1 py-3 text-sm font-semibold text-center transition border-b-2 border-emerald-500 text-emerald-400"><%= t('weekly') %></button>
+        <button onclick="showForecastTab('15days')" id="tab-15days" class="flex-1 py-3 text-sm font-semibold text-center transition border-b-2 border-transparent text-zinc-500 hover:text-zinc-300"><%= t('days15') %></button>
+        <button onclick="showForecastTab('month')" id="tab-month" class="flex-1 py-3 text-sm font-semibold text-center transition border-b-2 border-transparent text-zinc-500 hover:text-zinc-300"><%= t('monthly') %></button>
+      </div>
+      <!-- Content -->
+      <div id="forecast-content" class="overflow-y-auto p-4 flex-1">
+        <div class="text-center text-zinc-500 py-8"><%= t('loading') %></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="main-content"><%- typeof body !== 'undefined' ? body : '' %></main>
+  <footer class="bg-zinc-800 text-gray-300 py-8" role="contentinfo">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+      <div class="space-y-2">
+        <div>
+          <h3>Marmara'nın İncisi</h3>
+          <p><%= t('footerTag') %></p>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <h4><%= t('quickLinks') %></h4>
+        <a href="<%= lp %>/haberler" class="text-gray-400 hover:text-emerald-400 transition"><%= t('news') %></a>
+        <a href="<%= lp %>/duyurular" class="text-gray-400 hover:text-emerald-400 transition"><%= t('annList') %></a>
+        <a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition"><%= t('places') %></a>
+        <a href="<%= lp %>/gezilecek-yerler" class="text-gray-400 hover:text-emerald-400 transition"><%= t('sightseeing') %></a>
+        <a href="<%= lp %>/rehber" class="text-gray-400 hover:text-emerald-400 transition"><%= t('guide') %></a>
+        <a href="<%= lp %>/iletisim" class="text-gray-400 hover:text-emerald-400 transition"><%= t('contact') %></a>
+        <a href="<%= lp %>/cinarcik-hakkinda" class="text-gray-400 hover:text-emerald-400 transition"><%= t('aboutCinarcik') %></a>
+      </div>
+      <div class="space-y-2">
+        <h4><%= t('contact') %></h4>
+        <p>☘️ Çınarcık, Yalova</p>
+        <p>🌊 <%= t('marmaraShore') %></p>
+      </div>
+    </div>
+    <div class="mt-8 text-center text-sm text-gray-500">
+      <p>&copy; <%= new Date().getFullYear() %> Marmara'nın İncisi. <%= t('rightsReserved') %></p>
+    </div>
+  </footer>
+
+  <!-- SABİT "BİZE ULAŞIN" BUTONU (Her sayfada) -->
+  <a href="<%= lp %>/iletisim" class="contact-fab" title="<%= t('contactUs') %>" aria-label="<%= t('contactUs') %>">
+    <span class="fab-ic">✉️</span>
+    <span class="fab-text"><%= t('contactFab') %></span>
+  </a>
+
+  <script>
+  window.__i18n = <%- JSON.stringify({ loading: t('loading'), goldGram: t('goldGram'), goldQuarter: t('goldQuarter'), lastUpdate: t('lastUpdate'), forecastLoad: t('forecastLoad'), forecastError: t('forecastError'), connError: t('connError'), noData: t('noData'), today: t('today'), historical: t('historical'), forecastTitle7: t('forecastTitle7'), forecastTitle15: t('forecastTitle15'), forecastTitleMonth: t('forecastTitleMonth'), forecastReal: t('forecastReal'), forecastHist: t('forecastHist') }) %>;
+  (function() {
+    var cache = null;
+    var lastFetch = 0;
+    var CACHE_MS = 5 * 60 * 1000;
+    var forecastData = null;
+
+    function formatNum(v) {
+      if (!v || v === '--') return '--';
+      var s = String(v).replace(/[^0-9.,-]/g, '');
+      s = s.replace(/\.(?=\d{3}(?:,|$))/g, '');
+      var n = parseFloat(s.replace(',', '.'));
+      if (isNaN(n)) return v;
+      return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderTicker(d) {
+      var el = document.getElementById('ticker-content');
+      if (!el) return;
+      var h = '';
+
+      function changeHtml(changeStr) {
+        if (!changeStr) return '';
+        var clean = changeStr.replace('%', '').replace(',', '.');
+        var val = parseFloat(clean);
+        if (isNaN(val)) return '';
+        if (val > 0) return ' <span class="text-emerald-400 text-[10px] font-bold">↑' + changeStr + '</span>';
+        if (val < 0) return ' <span class="text-red-400 text-[10px] font-bold">↓' + changeStr + '</span>';
+        return ' <span class="text-zinc-500 text-[10px]">→' + changeStr + '</span>';
+      }
+
+      // Hava Durumu (tıklanabilir)
+      h += '<span class="ticker-item ticker-weather" onclick="openWeatherModal()" style="cursor:pointer" title="Tahmini gör">';
+      h += '<span class="text-zinc-500">Çınarcık</span> ';
+      h += '<span class="text-white font-semibold">' + (d.weather.icon || '') + ' ' + d.weather.temp + '</span> ';
+      h += '<span class="text-zinc-400">' + d.weather.description + '</span>';
+      h += ' <span class="text-zinc-600 text-[10px]">▸</span>';
+      h += '</span>';
+      h += '<span class="ticker-sep">|</span>';
+      // Döviz
+      h += '<span class="ticker-item"><span class="text-zinc-500">USD</span> <span class="text-emerald-400 font-semibold">' + formatNum(d.usd) + ' ₺</span>' + changeHtml(d.usdChange) + '</span>';
+      h += '<span class="ticker-sep">|</span>';
+      h += '<span class="ticker-item"><span class="text-zinc-500">EUR</span> <span class="text-emerald-400 font-semibold">' + formatNum(d.eur) + ' ₺</span>' + changeHtml(d.eurChange) + '</span>';
+      h += '<span class="ticker-sep">|</span>';
+      // Altın
+      h += '<span class="ticker-item"><span class="text-zinc-500">' + window.__i18n.goldGram + '</span> <span class="text-amber-400 font-semibold">' + formatNum(d.gramAltin) + ' ₺</span>' + changeHtml(d.gramChange) + '</span>';
+      h += '<span class="ticker-sep">|</span>';
+      h += '<span class="ticker-item"><span class="text-zinc-500">' + window.__i18n.goldQuarter + '</span> <span class="text-amber-400 font-semibold">' + formatNum(d.ceYrekAltin) + ' ₺</span>' + changeHtml(d.ceYrekChange) + '</span>';
+      h += '<span class="ticker-sep">|</span>';
+      // BIST
+      h += '<span class="ticker-item"><span class="text-zinc-500">BIST 100</span> <span class="text-sky-400 font-semibold">' + formatNum(d.bist100) + '</span>' + changeHtml(d.bistChange) + '</span>';
+    // Güncelleme (saat her zaman sağda sabit görünür)
+    var upd = document.getElementById('ticker-updated');
+    if (upd) {
+      if (d.updated) {
+        upd.textContent = window.__i18n.lastUpdate + ': ' + d.updated;
+        upd.classList.remove('hidden');
+      } else {
+        upd.classList.add('hidden');
+      }
+    }
+    el.innerHTML = h;
+    }
+
+    function loadTicker() {
+      var now = Date.now();
+      if (cache && (now - lastFetch) < CACHE_MS) { renderTicker(cache); return; }
+      fetch('/api/ticker-data')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          cache = d;
+          lastFetch = Date.now();
+          renderTicker(d);
+        })
+        .catch(function() {
+          if (cache) renderTicker(cache);
+        });
+    }
+
+    // ---- Hava Durumu Modal ----
+    window.openWeatherModal = function() {
+      document.getElementById('weather-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      loadForecast('week');
+    };
+
+    window.closeWeatherModal = function() {
+      document.getElementById('weather-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+    };
+
+    window.showForecastTab = function(tab) {
+      document.querySelectorAll('#weather-modal [id^="tab-"]').forEach(function(t) {
+        t.className = 'flex-1 py-3 text-sm font-semibold text-center transition border-b-2 border-transparent text-zinc-500 hover:text-zinc-300';
+      });
+      var active = document.getElementById('tab-' + tab);
+      if (active) active.className = 'flex-1 py-3 text-sm font-semibold text-center transition border-b-2 border-emerald-500 text-emerald-400';
+      renderForecast(forecastData, tab);
+    };
+
+    function loadForecast(tab) {
+      var container = document.getElementById('forecast-content');
+      if (forecastData) {
+        renderForecast(forecastData, tab);
+        return;
+      }
+      container.innerHTML = '<div class="text-center text-zinc-500 py-8">' + window.__i18n.forecastLoad + '</div>';
+      fetch('/api/weather-forecast')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.success && d.forecast && d.forecast.length > 0) {
+            forecastData = d.forecast;
+            renderForecast(forecastData, tab);
+          } else {
+            container.innerHTML = '<div class="text-center text-red-400 py-8">' + window.__i18n.forecastError + '</div>';
+          }
+        })
+        .catch(function(err) {
+          container.innerHTML = '<div class="text-center text-red-400 py-8">' + window.__i18n.connError + ': ' + err.message + '</div>';
+        });
+    }
+
+    function renderForecast(data, tab) {
+      var container = document.getElementById('forecast-content');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="text-center text-zinc-500 py-8">' + window.__i18n.noData + '</div>';
+        return;
+      }
+      var days;
+      var title;
+      if (tab === 'week') {
+        days = data.slice(0, 7);
+        title = window.__i18n.forecastTitle7;
+      } else if (tab === '15days') {
+        days = data.slice(0, 15);
+        title = window.__i18n.forecastTitle15;
+      } else {
+        days = data;
+        var realCount = data.filter(function(f){ return f.isForecast; }).length;
+        var histCount = data.length - realCount;
+        title = window.__i18n.forecastTitleMonth + ' — ' + data.length + ' Gün';
+        if (histCount > 0) title += ' (' + realCount + ' ' + window.__i18n.forecastReal + ' + ' + histCount + ' ' + window.__i18n.forecastHist + ')';
+      }
+
+      var h = '<p class="text-zinc-500 text-xs mb-3">' + title + '</p>';
+      h += '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">';
+      days.forEach(function(f) {
+        var isToday = f.date === new Date().toISOString().slice(0, 10);
+        var borderClass = isToday ? ' ring-1 ring-emerald-500/40 border-emerald-500/30' : '';
+        if (!f.isForecast) borderClass += ' border-dashed';
+        h += '<div class="bg-zinc-800/80 border border-zinc-700/50 rounded-xl p-3 text-center transition hover:border-emerald-500/50' + borderClass + '">';
+        h += '  <p class="text-zinc-400 text-[11px] font-medium">' + f.dayName + '</p>';
+        h += '  <p class="text-white text-sm font-bold">' + f.dayNum + ' ' + f.month + '</p>';
+        if (isToday) h += '  <span class="inline-block bg-emerald-500/20 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded mt-0.5">' + window.__i18n.today + '</span>';
+        else if (!f.isForecast) h += '  <span class="inline-block bg-zinc-600/30 text-zinc-500 text-[9px] px-1.5 py-0.5 rounded mt-0.5">' + window.__i18n.historical + '</span>';
+        h += '  <div class="text-3xl my-2">' + f.icon + '</div>';
+        h += '  <p class="text-white font-bold text-lg">' + f.tempMax + '° <span class="text-zinc-500 font-normal text-sm">' + f.tempMin + '°</span></p>';
+        h += '  <p class="text-zinc-500 text-[11px] mt-1">' + f.description + '</p>';
+        h += '  <div class="flex items-center justify-center gap-2 mt-2 text-[10px] text-zinc-500">';
+        h += '    <span>💧%' + f.rainChance + '</span>';
+        h += '    <span>💨' + f.wind + ' km/s</span>';
+        h += '  </div>';
+        h += '</div>';
+      });
+      h += '</div>';
+      container.innerHTML = h;
+    }
+
+    // ESC ile kapat
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeWeatherModal();
+    });
+
+    loadTicker();
+    setInterval(loadTicker, CACHE_MS);
+
+    function translatePage() {
+      if (!window.__t) return;
+      // internal link/form prefixing
+      var lp = document.documentElement.getAttribute('data-lp') || '';
+      document.querySelectorAll('a[href]').forEach(function(a) {
+        var h = a.getAttribute('href');
+        if (h && h.charAt(0) === '/' && h.indexOf('//') !== 0 && h.indexOf(lp + '/') !== 0 && !/^\/(en|ru|ar)(\/|$)/.test(h) && h.indexOf('/api/') !== 0 && h.indexOf('/img/') !== 0 && h.indexOf('/css/') !== 0 && h.indexOf('/auth/') !== 0) {
+          a.setAttribute('href', lp + h);
+        }
+      });
+      document.querySelectorAll('form[action]').forEach(function(f) {
+        var a = f.getAttribute('action');
+        if (a && a.charAt(0) === '/' && a.indexOf(lp + '/') !== 0 && !/^\/(en|ru|ar)(\/|$)/.test(a) && a.indexOf('/api/') !== 0) {
+          f.setAttribute('action', lp + a);
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', translatePage);
+
+    var tBtn = document.getElementById('theme-toggle');
+    if (tBtn) {
+      if (localStorage.getItem('theme') === 'light') { document.documentElement.classList.add('light'); tBtn.textContent = '🌙'; }
+      tBtn.addEventListener('click', function() {
+        document.documentElement.classList.toggle('light');
+        var on = document.documentElement.classList.contains('light');
+        localStorage.setItem('theme', on ? 'light' : 'dark');
+        tBtn.textContent = on ? '🌙' : '☀️';
+      });
+    }
+
+    document.querySelectorAll('img').forEach(function(img) {
+      if (!img.src || (img.src.indexOf('logo-circle') === -1 && img.id.indexOf('manset') === -1 && img.id.indexOf('hero') === -1)) {
+        img.loading = 'lazy';
+        img.decoding = 'async';
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

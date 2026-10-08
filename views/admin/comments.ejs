@@ -1,0 +1,232 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Yorum Yönetimi' %>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Başlık -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-black text-white">💬 Yorum Yönetimi</h1>
+        <p class="text-zinc-500 text-sm mt-1">Kullanıcı yorumlarını yönetin</p>
+      </div>
+      <a href="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">← Dashboard</a>
+    </div>
+
+    <!-- Bekleyen Yorumlar -->
+    <div class="mb-10">
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+        Onay Bekleyen Yorumlar (<%= pendingComments.length %>)
+      </h2>
+
+      <% if (pendingComments.length === 0) { %>
+        <div class="bg-zinc-900/60 rounded-xl p-8 text-center border border-zinc-800">
+          <p class="text-zinc-500">Onay bekleyen yorum yok</p>
+        </div>
+      <% } else { %>
+        <div class="space-y-4">
+          <% pendingComments.forEach(c => { %>
+            <div class="bg-zinc-900/80 rounded-xl p-5 border border-yellow-500/30 shadow-lg" id="comment-<%= c.id %>">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-3">
+                    <img src="<%= c.user_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.user_name) + '&background=dc2626&color=fff' %>" class="w-10 h-10 rounded-full border-2 border-zinc-700">
+                    <div>
+                      <p class="text-white font-medium text-sm"><%= c.user_name %></p>
+                      <p class="text-zinc-500 text-xs"><%= c.user_email %></p>
+                    </div>
+                    <span class="bg-yellow-500/20 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded">BEKLİYOR</span>
+                  </div>
+                  <a href="/haber/<%= c.news_slug || c.news_id %>" target="_blank" class="inline-flex items-center gap-2 bg-zinc-950/70 border border-zinc-800 hover:border-emerald-500/50 rounded-lg px-3 py-2 mb-3 text-xs text-zinc-300 hover:text-emerald-400 transition-all group">
+                    <span>📰</span>
+                    <span class="font-semibold line-clamp-1"><%= c.news_title || 'Haber bulunamadı' %></span>
+                    <span class="text-emerald-500 font-bold shrink-0">Habere Git ↗</span>
+                  </a>
+                  <div class="comment-display">
+                    <p class="text-zinc-300 text-sm mb-3 bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50"><%= c.content %></p>
+                  </div>
+                  <div class="comment-edit hidden">
+                    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3"><%= c.content %></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button onclick="saveEdit(<%= c.id %>)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition">Kaydet</button>
+                      <button onclick="cancelEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded text-xs font-bold transition">İptal</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4 text-xs text-zinc-500">
+                    <span>🕐 <%= new Date(c.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="startEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Düzenle">✎</button>
+                  <form action="/admin/comments/approve/<%= c.id %>" method="POST" class="inline">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✓ Onayla</button>
+                  </form>
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Onaylanmış Yorumlar -->
+    <div class="mb-10">
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+        Onaylanmış Yorumlar (<%= approvedComments.length %>)
+      </h2>
+
+      <% if (approvedComments.length === 0) { %>
+        <div class="bg-zinc-900/60 rounded-xl p-8 text-center border border-zinc-800">
+          <p class="text-zinc-500">Onaylanmış yorum yok</p>
+        </div>
+      <% } else { %>
+        <div class="space-y-3">
+          <% approvedComments.forEach(c => { %>
+            <div class="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800/80" id="comment-<%= c.id %>">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <img src="<%= c.user_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.user_name) + '&background=10b981&color=fff' %>" class="w-8 h-8 rounded-full">
+                    <div>
+                      <p class="text-white font-medium text-sm"><%= c.user_name %></p>
+                      <p class="text-zinc-500 text-xs"><%= c.user_email %></p>
+                    </div>
+                    <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded">ONAYLI</span>
+                  </div>
+                  <a href="/haber/<%= c.news_slug || c.news_id %>" target="_blank" class="inline-flex items-center gap-2 bg-zinc-950/70 border border-zinc-800 hover:border-emerald-500/50 rounded-lg px-3 py-2 mb-2 text-xs text-zinc-300 hover:text-emerald-400 transition-all">
+                    <span>📰</span>
+                    <span class="font-semibold line-clamp-1"><%= c.news_title || 'Haber bulunamadı' %></span>
+                    <span class="text-emerald-500 font-bold shrink-0">Habere Git ↗</span>
+                  </a>
+                  <div class="comment-display">
+                    <p class="text-zinc-300 text-sm mb-2"><%= c.content %></p>
+                  </div>
+                  <div class="comment-edit hidden">
+                    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3"><%= c.content %></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button onclick="saveEdit(<%= c.id %>)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition">Kaydet</button>
+                      <button onclick="cancelEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded text-xs font-bold transition">İptal</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4 text-xs text-zinc-500">
+                    <span>🕐 <%= new Date(c.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="startEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Düzenle">✎</button>
+                  <form action="/admin/comments/toggle/<%= c.id %>" method="POST" class="inline">
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Gizle">👁‍🗨</button>
+                  </form>
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                    <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Gizlenmiş Yorumlar -->
+    <div>
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 bg-zinc-500 rounded-full"></span>
+        Gizlenmiş Yorumlar (<%= hiddenComments.length %>)
+      </h2>
+
+      <% if (hiddenComments.length === 0) { %>
+        <div class="bg-zinc-900/60 rounded-xl p-8 text-center border border-zinc-800">
+          <p class="text-zinc-500">Gizlenmiş yorum yok</p>
+        </div>
+      <% } else { %>
+        <div class="space-y-3">
+          <% hiddenComments.forEach(c => { %>
+            <div class="bg-zinc-900/60 rounded-xl p-4 border border-zinc-700/50 opacity-70" id="comment-<%= c.id %>">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <img src="<%= c.user_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.user_name) + '&background=6b7280&color=fff' %>" class="w-8 h-8 rounded-full grayscale">
+                    <div>
+                      <p class="text-white font-medium text-sm"><%= c.user_name %></p>
+                      <p class="text-zinc-500 text-xs"><%= c.user_email %></p>
+                    </div>
+                    <span class="bg-zinc-500/20 text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded">GİZLİ</span>
+                  </div>
+                  <a href="/haber/<%= c.news_slug || c.news_id %>" target="_blank" class="inline-flex items-center gap-2 bg-zinc-950/70 border border-zinc-800 hover:border-emerald-500/50 rounded-lg px-3 py-2 mb-2 text-xs text-zinc-300 hover:text-emerald-400 transition-all">
+                    <span>📰</span>
+                    <span class="font-semibold line-clamp-1"><%= c.news_title || 'Haber bulunamadı' %></span>
+                    <span class="text-emerald-500 font-bold shrink-0">Habere Git ↗</span>
+                  </a>
+                  <div class="comment-display">
+                    <p class="text-zinc-400 text-sm mb-2"><%= c.content %></p>
+                  </div>
+                  <div class="comment-edit hidden">
+                    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3"><%= c.content %></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button onclick="saveEdit(<%= c.id %>)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition">Kaydet</button>
+                      <button onclick="cancelEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded text-xs font-bold transition">İptal</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4 text-xs text-zinc-500">
+                    <span>🕐 <%= new Date(c.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="startEdit(<%= c.id %>)" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Düzenle">✎</button>
+                  <form action="/admin/comments/toggle/<%= c.id %>" method="POST" class="inline">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Göster">👁</button>
+                  </form>
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                    <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function startEdit(id) {
+    var el = document.getElementById('comment-' + id);
+    el.querySelector('.comment-display').classList.add('hidden');
+    el.querySelector('.comment-edit').classList.remove('hidden');
+  }
+
+  function cancelEdit(id) {
+    var el = document.getElementById('comment-' + id);
+    var textarea = el.querySelector('.comment-edit textarea');
+    textarea.value = textarea.defaultValue;
+    el.querySelector('.comment-display').classList.remove('hidden');
+    el.querySelector('.comment-edit').classList.add('hidden');
+  }
+
+  function saveEdit(id) {
+    var el = document.getElementById('comment-' + id);
+    var content = el.querySelector('.comment-edit textarea').value.trim();
+    if (!content) return;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/comments/edit/' + id;
+
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'content';
+    input.value = content;
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>

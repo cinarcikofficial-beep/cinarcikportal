@@ -1,0 +1,327 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = edit ? 'Firma Düzenle' : 'Yeni Firma' %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+</style>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-4xl mx-auto px-4 py-6">
+
+    <div class="flex items-center justify-between mb-6">
+      <a href="/admin/firmalar" class="inline-flex items-center gap-2 text-zinc-400 hover:text-emerald-400 transition-colors text-sm">
+        ← Firma Listesine Dön
+      </a>
+    </div>
+
+    <div class="mb-6">
+      <h1 class="text-3xl font-black text-white flex items-center gap-3">
+        <span class="text-2xl">🏢</span>
+        <%= edit ? 'Firma Düzenle' : 'Yeni Firma Oluştur' %>
+      </h1>
+    </div>
+
+    <% if (error) { %>
+      <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2 mb-6">
+        <span class="text-lg">⚠️</span> <%= error %>
+      </div>
+    <% } %>
+
+    <form action="/admin/firma-ekle" method="POST" enctype="multipart/form-data" id="admin-form"
+      class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+
+      <% if (edit) { %>
+        <input type="hidden" name="edit_id" value="<%= edit.id %>" />
+      <% } %>
+
+      <!-- Firma Adı -->
+      <div>
+        <label for="name" class="block text-sm font-medium text-zinc-300 mb-2">Firma Adı <span class="text-rose-400">*</span></label>
+        <input type="text" id="name" name="name" value="<%= edit ? edit.name : '' %>" required
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+          placeholder="Örn: Çınarcık Market">
+      </div>
+
+      <!-- Kategori & Sektör -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="category" class="block text-sm font-medium text-zinc-300 mb-2">Kategori <span class="text-rose-400">*</span></label>
+          <select id="category" name="category" required
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <option value="">Seçiniz</option>
+            <option value="İnşaat" <%= edit && edit.category === 'İnşaat' ? 'selected' : '' %>>🏗️ İnşaat</option>
+            <option value="Güzellik Merkezi" <%= edit && edit.category === 'Güzellik Merkezi' ? 'selected' : '' %>>💆 Güzellik Merkezi</option>
+            <option value="Market" <%= edit && edit.category === 'Market' ? 'selected' : '' %>>🛒 Market</option>
+            <option value="Sağlık" <%= edit && edit.category === 'Sağlık' ? 'selected' : '' %>>🏥 Sağlık</option>
+            <option value="Eğitim" <%= edit && edit.category === 'Eğitim' ? 'selected' : '' %>>📚 Eğitim</option>
+            <option value="Hizmet" <%= edit && edit.category === 'Hizmet' ? 'selected' : '' %>>🔧 Hizmet</option>
+            <option value="Emlak" <%= edit && edit.category === 'Emlak' ? 'selected' : '' %>>🏠 Emlak</option>
+            <option value="Diğer" <%= edit && edit.category === 'Diğer' ? 'selected' : '' %>>📁 Diğer</option>
+          </select>
+        </div>
+        <div>
+          <label for="sector" class="block text-sm font-medium text-zinc-300 mb-2">Sektör <span class="text-gray-500 font-normal">(opsiyonel)</span></label>
+          <input type="text" id="sector" name="sector" value="<%= edit ? (edit.sector || '') : '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+            placeholder="Örn: Gıda, Tekstil, İnşaat">
+        </div>
+      </div>
+
+      <!-- İletişim Bilgileri -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="phone" class="block text-sm font-medium text-zinc-300 mb-2">Telefon</label>
+          <input type="text" id="phone" name="phone" value="<%= edit ? (edit.phone || '') : '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+            placeholder="0226 XXX XX XX">
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-medium text-zinc-300 mb-2">E-posta</label>
+          <input type="email" id="email" name="email" value="<%= edit ? (edit.email || '') : '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+            placeholder="info@ornek.com">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="website" class="block text-sm font-medium text-zinc-300 mb-2">Web Sitesi</label>
+          <input type="url" id="website" name="website" value="<%= edit ? (edit.website || '') : '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+            placeholder="https://ornek.com">
+        </div>
+        <div>
+          <label for="working_hours" class="block text-sm font-medium text-zinc-300 mb-2">Çalışma Saatleri</label>
+          <input type="text" id="working_hours" name="working_hours" value="<%= edit ? (edit.working_hours || '') : '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+            placeholder="09:00 - 18:00">
+        </div>
+      </div>
+
+      <div>
+        <label for="address" class="block text-sm font-medium text-zinc-300 mb-2">Adres</label>
+        <textarea id="address" name="address" rows="2"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-y"
+          placeholder="Tam adres bilgisi"><%= edit ? (edit.address || '') : '' %></textarea>
+      </div>
+
+      <div>
+        <label for="map_link" class="block text-sm font-medium text-zinc-300 mb-2">Google Maps Linki (Plus Code veya URL)</label>
+        <input type="text" id="map_link" name="map_link" value="<%= edit ? (edit.map_link || '') : '' %>"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+          placeholder="J4W8+6M Çınarcık, Yalova veya Google Maps URL">
+      </div>
+
+      <div>
+        <label for="google_reviews_url" class="block text-sm font-medium text-zinc-300 mb-2">Google Yorumlar Linki</label>
+        <input type="url" id="google_reviews_url" name="google_reviews_url" value="<%= edit ? (edit.google_reviews_url || '') : '' %>"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+          placeholder="https://...">
+        <p class="text-xs text-zinc-500 mt-1">Google Yorumlar sayfasının linkini yapıştırın</p>
+      </div>
+
+      <!-- Özellikler -->
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-3">Firma Özellikleri</label>
+        <% const featureOptions = ['Otopark', 'Wi-Fi', 'Kredi Kartı', 'Online Sipariş', 'Vale', 'Engelli Erişimi', 'Sigara Alanı', 'Alkolsüz']; %>
+        <% const selectedFeatures = edit ? (typeof edit.features === 'string' ? JSON.parse(edit.features || '[]') : (edit.features || [])) : []; %>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <% featureOptions.forEach(f => { %>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="features" value="<%= f %>"
+                class="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-emerald-500 focus:ring-emerald-500"
+                <%= selectedFeatures.includes(f) ? 'checked' : '' %>>
+              <span class="text-sm text-zinc-300"><%= f %></span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+
+      <!-- Açıklama -->
+      <div>
+        <label for="description" class="block text-sm font-medium text-zinc-300 mb-2">Firma Tanıtımı</label>
+        <div id="company-editor" class="ql-wrapbox bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"></div>
+        <textarea id="description" name="description" hidden><%= edit ? (edit.description || '') : '' %></textarea>
+      </div>
+
+      <!-- Logo -->
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-2">Logo / Kapak Görseli</label>
+        <% if (edit && edit.logo_url) { %>
+          <div class="mb-3">
+            <p class="text-xs text-zinc-500 mb-1">Mevcut görsel:</p>
+            <img src="<%= edit.logo_url %>" alt="Mevcut görsel" class="max-h-32 rounded-lg border border-zinc-800">
+          </div>
+        <% } %>
+        <label for="logo"
+          class="block cursor-pointer text-center px-4 py-6 border border-dashed border-zinc-700 hover:border-emerald-500 rounded-xl transition-colors bg-zinc-950">
+          <span class="text-3xl block mb-1">📁</span>
+          <span class="text-zinc-400 text-sm block">Logo yüklemek için tıklayın</span>
+          <span class="text-zinc-600 text-xs block mt-1">Maks 10 MB · JPG, PNG</span>
+          <input type="file" id="logo" name="logo" accept="image/*" class="hidden">
+        </label>
+        <div id="preview-wrapper" class="hidden mt-3">
+          <p class="text-xs text-zinc-500 mb-1">Seçilen görsel:</p>
+          <img id="preview-img" class="max-h-40 rounded-lg border border-zinc-800">
+        </div>
+      </div>
+
+      <!-- Galeri -->
+      <% const gal = edit && edit.gallery_images ? (typeof edit.gallery_images === 'string' ? JSON.parse(edit.gallery_images || '[]') : edit.gallery_images) : []; %>
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-2">Galeri Görselleri</label>
+        <% if (Array.isArray(gal) && gal.length > 0) { %>
+          <p class="text-xs text-zinc-500 mb-2">Mevcut Galeri:</p>
+          <div id="existingGalleryGrid" class="mb-4 grid grid-cols-5 sm:grid-cols-6 gap-2">
+            <% gal.forEach((url) => { %>
+              <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" data-url="<%= url %>">
+                <img src="<%= url %>" class="w-full h-20 object-cover">
+                <button type="button" class="gallery-remove absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full flex items-center justify-center" title="Kaldır">×</button>
+              </div>
+              <input type="hidden" name="existing_gallery[]" value="<%= url %>">
+            <% }) %>
+          </div>
+        <% } %>
+        <div id="galleryDropzone"
+          class="block cursor-pointer rounded-xl border-2 border-dashed border-zinc-600/60 bg-zinc-950/80 hover:border-emerald-400/60 hover:bg-zinc-900/90 transition-all px-4 py-10 text-center">
+          <span class="text-4xl block mb-2">📂</span>
+          <span class="text-zinc-200 text-base block font-medium">Galeri görsellerini seçmek veya sürüklemek için tıklayın</span>
+          <span class="text-zinc-500 text-sm block mt-2">Çoklu resim seçebilirsiniz (JPG, PNG, WEBP)</span>
+        </div>
+        <input type="file" id="galleryInput" name="gallery_images" multiple accept="image/*" class="hidden">
+        <div id="galleryPreviewContainer" class="flex flex-wrap gap-2 mt-3"></div>
+        <span id="gallery-counter" class="text-xs text-zinc-500 mt-2 block">(Toplam: <%= gal.length %>)</span>
+      </div>
+
+      <!-- Durum & Sıralama -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div>
+          <label for="status" class="block text-sm font-medium text-zinc-300 mb-2">Yayın Durumu</label>
+          <select id="status" name="status"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <option value="active" <%= edit && edit.status === 'active' ? 'selected' : '' %>>🟢 Yayında</option>
+            <option value="passive" <%= edit && edit.status === 'passive' ? 'selected' : '' %>>🔴 Pasif</option>
+          </select>
+        </div>
+        <div>
+          <label for="sort_order" class="block text-sm font-medium text-zinc-300 mb-2">Sıralama</label>
+          <input type="number" id="sort_order" name="sort_order" min="0" max="9999"
+            value="<%= edit ? (edit.sort_order || 0) : 0 %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="is_featured" name="is_featured" value="1"
+              class="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-red-600 focus:ring-red-600"
+              <%= edit && edit.is_featured == 1 ? 'checked' : '' %>>
+            <span class="text-sm text-zinc-300">🏆 Öne Çıkan Firma</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+        <a href="/admin/firmalar" class="px-5 py-3 rounded-xl text-zinc-300 hover:text-white border border-zinc-700 hover:bg-zinc-800 transition-all text-sm font-medium">İptal</a>
+        <button type="submit" id="submit-btn"
+          class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg">
+          <span id="submit-text"><%= edit ? 'Güncelle' : 'Kaydet & Yayınla' %></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  var imgInp = document.getElementById('logo');
+  var previewWrap = document.getElementById('preview-wrapper');
+  var previewImg = document.getElementById('preview-img');
+  if (imgInp) {
+    imgInp.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        var reader = new FileReader();
+        reader.onload = function(ev) { previewImg.src = ev.target.result; previewWrap.classList.remove('hidden'); };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  var gallInput = document.getElementById('galleryInput');
+  var gallDropzone = document.getElementById('galleryDropzone');
+  var gallPreview = document.getElementById('galleryPreviewContainer');
+  var galleryCounter = document.getElementById('gallery-counter');
+  var galleryDT = new DataTransfer();
+
+  function getExistingCount() {
+    var g = document.getElementById('existingGalleryGrid');
+    return g ? g.querySelectorAll('input[name="existing_gallery[]"]').length : 0;
+  }
+  function updateCounter() {
+    if (galleryCounter) galleryCounter.textContent = '(Toplam: ' + (getExistingCount() + galleryDT.files.length) + ')';
+  }
+  function rebuildPreviews() {
+    if (!gallPreview) return;
+    gallPreview.innerHTML = '';
+    for (var i = 0; i < galleryDT.files.length; i++) {
+      (function(idx) {
+        var file = galleryDT.files[idx];
+        if (!file.type.startsWith('image/')) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          var wrap = document.createElement('div');
+          wrap.className = 'relative gallery-preview-item group';
+          wrap.innerHTML = '<img src="' + ev.target.result + '" class="w-20 h-20 rounded-lg object-cover border border-zinc-700">' +
+            '<button type="button" class="remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">&times;</button>';
+          wrap.querySelector('.remove-preview').addEventListener('click', function() {
+            galleryDT.items.remove(idx); gallInput.files = galleryDT.files; rebuildPreviews();
+          });
+          gallPreview.appendChild(wrap);
+        };
+        reader.readAsDataURL(file);
+      })(i);
+    }
+    updateCounter();
+  }
+
+  if (gallInput) gallInput.addEventListener('change', function(e) {
+    Array.from(e.target.files).forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
+    gallInput.files = galleryDT.files; rebuildPreviews();
+  });
+  if (gallDropzone) {
+    gallDropzone.addEventListener('click', function() { gallInput.click(); });
+    ['dragover','dragenter'].forEach(function(ev) {
+      gallDropzone.addEventListener(ev, function(e) { e.preventDefault(); gallDropzone.classList.add('border-emerald-400'); });
+    });
+    ['dragleave','drop'].forEach(function(ev) {
+      gallDropzone.addEventListener(ev, function(e) { e.preventDefault(); gallDropzone.classList.remove('border-emerald-400'); });
+    });
+    gallDropzone.addEventListener('drop', function(e) {
+      Array.from(e.dataTransfer.files).forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
+      gallInput.files = galleryDT.files; rebuildPreviews();
+    });
+  }
+
+  var existingGrid = document.getElementById('existingGalleryGrid');
+  if (existingGrid) {
+    existingGrid.addEventListener('click', function(e) {
+      var btn = e.target.closest('.gallery-remove');
+      if (!btn) return;
+      var thumb = btn.closest('.gallery-thumb');
+      if (thumb) {
+        var hidden = thumb.nextElementSibling;
+        if (hidden && hidden.name === 'existing_gallery[]') hidden.remove();
+        thumb.remove(); updateCounter();
+      }
+    });
+  }
+
+  updateCounter();
+})();
+</script>
+
+<%- include('partials/quill') %>
+<script>
+  initQuillEditor('#company-editor', 'description', 'Firmanızı tanıtın...');
+</script>

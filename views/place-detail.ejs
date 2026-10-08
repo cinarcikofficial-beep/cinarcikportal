@@ -1,0 +1,246 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = place.name %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .fade-in { animation: fadeIn 0.3s ease; }
+</style>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+
+    <!-- Back Link -->
+    <a href="/mekanlar" class="inline-flex items-center gap-2 text-zinc-400 hover:text-emerald-400 transition-colors text-sm mb-6">
+      <%= t('backToPlaces') %>
+    </a>
+
+    <!-- Place Header -->
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center gap-4">
+                <h1 class="text-3xl md:text-4xl font-black text-white"><%= place.name %></h1>
+                <% if (place.is_featured == 1) { %>
+                  <span class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">🏆 <%= t('featured') %></span>
+                <% } %>
+              </div>
+            </div>
+
+    <!-- 1. Photo Gallery -->
+    <%
+    const gallery = typeof place.gallery_images === 'string' ? JSON.parse(place.gallery_images || '[]') : (place.gallery_images || []);
+    const allImages = [place.main_image_url, ...gallery].filter(Boolean);
+    %>
+    <% if (allImages.length > 0) { %>
+      <div class="mb-8">
+        <h2 class="text-white font-bold mb-3"><%= t('photos') %> (<%= allImages.length %>)</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          <% allImages.forEach((img, i) => { %>
+            <div class="aspect-square rounded-xl overflow-hidden border border-zinc-800/80 cursor-pointer group"
+                 onclick="showImg(<%= i %>)">
+              <img src="<%= img %>" alt="<%= place.name %> - <%= i + 1 %>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8 text-center">
+        <span class="text-4xl">🖼️</span>
+        <p class="text-zinc-500 mt-2"><%= t('noGallery') %></p>
+      </div>
+    <% } %>
+
+    <!-- 2. Place Details Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+      <!-- Left: Description & Info -->
+      <div class="lg:col-span-2 space-y-6">
+
+<!-- Category -->
+<div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm bg-zinc-900 border border-zinc-800 text-zinc-200 px-3 py-1.5 rounded-lg">
+              <%= place.category || place.type || t('place') %>
+            </span>
+            <% if (place.cuisine_type) { %>
+              <span class="text-sm text-zinc-500">• <%= place.cuisine_type %></span>
+            <% } %>
+          </div>
+
+        <!-- Description -->
+        <% if (place.description) { %>
+          <% if (/<[a-z][\s\S]*>/i.test(place.description)) { %>
+          <div class="rich-desc text-zinc-300 leading-relaxed"><%- place.description %></div>
+          <% } else { %>
+          <p class="text-zinc-300 leading-relaxed"><%= place.description %></p>
+          <% } %>
+        <% } %>
+
+        <!-- Features -->
+        <% const features = typeof place.features === 'string' ? JSON.parse(place.features || '[]') : (place.features || []); %>
+        <% if (features.length > 0) { %>
+          <div>
+            <h3 class="text-white font-bold mb-3"><%= t('placeFeatures') %></h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <% features.forEach(f => { %>
+                <div class="flex items-center gap-2 p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg">
+                  <span class="text-emerald-500">✓</span>
+                  <span class="text-sm text-zinc-300"><%= f %></span>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+
+      <!-- Right: Contact Info -->
+      <div class="space-y-4">
+        <% if (place.working_hours) { %>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <h4 class="text-zinc-400 text-xs uppercase mb-2"><%= t('workingHours') %></h4>
+            <p class="text-white font-medium">🕒 <%= place.working_hours %></p>
+          </div>
+        <% } %>
+
+        <% if (place.phone) { %>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <h4 class="text-zinc-400 text-xs uppercase mb-2"><%= t('phoneLabel') %></h4>
+            <a href="tel:<%= place.phone %>" class="text-emerald-400 hover:text-emerald-300 font-medium">
+              📞 <%= place.phone %>
+            </a>
+          </div>
+        <% } %>
+
+        <% if (place.address) { %>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <h4 class="text-zinc-400 text-xs uppercase mb-2"><%= t('addressLabel') %></h4>
+            <p class="text-zinc-300 text-sm"><%= place.address %></p>
+          </div>
+        <% } %>
+
+        <% if (place.google_reviews_url) { %>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <a href="<%= place.google_reviews_url %>" target="_blank"
+              class="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all">
+              <%= t('googleReviewsView') %>
+            </a>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- 3. Map Section -->
+    <% if (embedMapUrl) { %>
+      <div class="mb-8">
+        <h2 class="text-xl font-bold text-white mb-4"><%= t('locationMap') %></h2>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-80">
+          <iframe
+            width="100%"
+            height="100%"
+            style="border:0"
+            loading="lazy"
+            allowfullscreen
+            src="<%= embedMapUrl %>">
+          </iframe>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="mb-8">
+        <h2 class="text-xl font-bold text-white mb-4"><%= t('locationMap') %></h2>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-80 flex items-center justify-center">
+          <p class="text-zinc-500 text-lg"><%= t('noLocation') %></p>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- 4. Similar Places -->
+    <% if (place.category) { %>
+      <div class="mt-10">
+        <h2 class="text-xl font-bold text-white mb-4"><%= t('similarPlaces') %></h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <% const similar = places.filter(p => p.category === place.category && p.id !== place.id).slice(0, 3); %>
+          <% if (similar.length > 0) { %>
+            <% similar.forEach(p => { %>
+              <a href="/mekan/<%= p.slug || p.id %>" class="group block">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all">
+                  <% const img = p.main_image_url || '/img/fallback.webp'; %>
+                  <img src="<%= img %>" alt="<%= p.name %>" class="w-full h-24 object-cover group-hover:scale-105 transition-transform">
+                  <div class="p-3">
+                    <h3 class="text-white font-bold text-sm group-hover:text-emerald-400 transition-colors line-clamp-1"><%= p.name %></h3>
+                  </div>
+                </div>
+              </a>
+            <% }) %>
+          <% } else { %>
+            <p class="text-zinc-500 text-sm"><%= t('noSimilar') %></p>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="imgViewer" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.93); align-items:center; justify-content:center;">
+  <button onclick="hideImg()" style="position:absolute; top:20px; right:24px; color:white; font-size:2rem; background:rgba(255,255,255,0.1); border:none; width:48px; height:48px; border-radius:50%; cursor:pointer; z-index:10;">&times;</button>
+  <button onclick="navImg(-1)" style="position:absolute; left:20px; top:50%; transform:translateY(-50%); color:white; font-size:1.5rem; background:rgba(255,255,255,0.1); border:none; padding:14px 18px; border-radius:50%; cursor:pointer; z-index:10;">&#10094;</button>
+  <button onclick="navImg(1)" style="position:absolute; right:20px; top:50%; transform:translateY(-50%); color:white; font-size:1.5rem; background:rgba(255,255,255,0.1); border:none; padding:14px 18px; border-radius:50%; cursor:pointer; z-index:10;">&#10095;</button>
+  <img id="viewerImg" src="" style="max-width:90vw; max-height:85vh; border-radius:12px; box-shadow:0 0 60px rgba(0,0,0,0.5);">
+  <div style="position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:16px; background:rgba(0,0,0,0.6); padding:8px 20px; border-radius:999px; backdrop-filter:blur(8px);">
+    <span id="viewerCount" style="color:white; font-size:14px; font-weight:500;">1 / 1</span>
+    <a id="viewerDl" href="" download style="color:white;" onclick="event.stopPropagation()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+    </a>
+  </div>
+</div>
+
+<script>
+(function() {
+  var imgs = <%- JSON.stringify(allImages).replace(/</g, '\\u003c') %>;
+  var idx = 0;
+  var el = document.getElementById('imgViewer');
+  var imgEl = document.getElementById('viewerImg');
+
+  window.showImg = function(i) {
+    if (!imgs[i]) return;
+    idx = i;
+    imgEl.src = imgs[i];
+    el.style.display = 'flex';
+    updateUI();
+  };
+
+  window.hideImg = function() {
+    el.style.display = 'none';
+  };
+
+  window.navImg = function(d) {
+    idx += d;
+    if (idx < 0) idx = imgs.length - 1;
+    if (idx >= imgs.length) idx = 0;
+    imgEl.src = imgs[idx];
+    updateUI();
+  };
+
+  function updateUI() {
+    var c = document.getElementById('viewerCount');
+    var dl = document.getElementById('viewerDl');
+    if (c) c.textContent = (idx + 1) + ' / ' + imgs.length;
+    if (dl) dl.href = imgs[idx];
+  }
+
+  el.addEventListener('click', function(e) {
+    if (e.target === el || e.target === imgEl) hideImg();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (el.style.display !== 'flex') return;
+    if (e.key === 'ArrowLeft') navImg(-1);
+    else if (e.key === 'ArrowRight') navImg(1);
+    else if (e.key === 'Escape') hideImg();
+  });
+})();
+</script>

@@ -1,0 +1,115 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('sightseeing') %>
+
+<style>
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cat-pill { border: 1px solid #3f3f46; color: #a1a1aa; transition: all .2s ease; }
+  .cat-pill:hover { border-color: #10b981; color: #34d399; }
+  .cat-pill.active { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.45); color: #34d399; }
+  .sight-noimg::after {
+    content: '🧳';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+    background: linear-gradient(135deg, #27272a, #09090b);
+  }
+</style>
+
+<%
+  function cardSummary(desc) {
+    if (!desc) return '';
+    var txt = String(desc)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (txt.length > 220) {
+      txt = txt.substring(0, 220);
+      var lastSpace = txt.lastIndexOf(' ');
+      if (lastSpace > 160) txt = txt.substring(0, lastSpace);
+      txt += '…';
+    }
+    return txt;
+  }
+%>
+
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="section-header">
+    <h2>🧳 <%= t('sightseeing') %></h2>
+    <a href="/" class="see-all"><%= t('home') %> ›</a>
+  </div>
+
+  <p class="text-zinc-400 text-sm mb-6 max-w-3xl"><%= t('sightsSubtitle') %></p>
+
+  <% if (categories && categories.length > 1) { %>
+  <div class="flex flex-wrap gap-2 mb-6">
+    <button class="cat-pill active rounded-full px-4 py-1.5 text-xs font-bold" data-cat="all"><%= t('catAll') %></button>
+    <% categories.forEach(c => { %>
+    <button class="cat-pill rounded-full px-4 py-1.5 text-xs font-bold" data-cat="<%= c %>"><%= c %></button>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <% if (items.length === 0) { %>
+  <div class="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-12 text-center">
+    <p class="text-4xl mb-3">🧭</p>
+    <p class="text-zinc-500"><%= t('noSights') %></p>
+    <p class="text-zinc-600 text-sm mt-1"><%= t('sightsSoon') %></p>
+  </div>
+  <% } else { %>
+  <div id="sight-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <% items.forEach(s => { %>
+    <div role="link" tabindex="0" data-href="/gezilecek-yer/<%= s.id %>" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'){window.location.href=this.dataset.href}"
+      class="sight-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer" data-cat="<%= s.category %>">
+      <div class="relative h-48 overflow-hidden bg-zinc-800">
+        <% if (s.image) { %>
+        <img src="<%= s.image %>" alt="<%= s.title %>" loading="lazy"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onerror="this.style.display='none'; this.parentElement.classList.add('sight-noimg')">
+        <% } else { %>
+        <div class="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-zinc-800 to-zinc-900">🧳</div>
+        <% } %>
+        <span class="absolute top-3 left-3 inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400 backdrop-blur"><%= s.category || t('general') %></span>
+      </div>
+      <div class="p-4">
+        <h3 class="text-white text-lg font-bold tracking-tight mb-1 group-hover:text-emerald-400 transition-colors line-clamp-1"><%= s.title %></h3>
+        <p class="text-zinc-400 text-sm leading-relaxed line-clamp-2"><%= s.summary || cardSummary(s.description) %></p>
+        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
+          <span class="text-zinc-500 line-clamp-1"><%= s.location ? '📍 ' + s.location : '📍 ' + t('cinarcikYalova') %></span>
+          <% if (s.map_link) { %>
+          <a href="<%= s.map_link %>" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+            class="shrink-0 font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('openMap') %></a>
+          <% } else { %>
+          <span             class="shrink-0 font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('discoverCta') %></span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<script>
+  (function () {
+    var pills = document.querySelectorAll('.cat-pill');
+    var cards = document.querySelectorAll('.sight-card');
+    pills.forEach(function (p) {
+      p.addEventListener('click', function () {
+        pills.forEach(function (x) { x.classList.remove('active'); });
+        p.classList.add('active');
+        var cat = p.getAttribute('data-cat');
+        cards.forEach(function (c) {
+          var show = (cat === 'all') || (c.getAttribute('data-cat') === cat);
+          c.style.display = show ? '' : 'none';
+        });
+      });
+    });
+  })();
+</script>

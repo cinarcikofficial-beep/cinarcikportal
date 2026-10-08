@@ -1,0 +1,215 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = edit ? 'Yeri Düzenle' : 'Yeni Gezilecek Yer' %>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-3xl mx-auto px-4 py-8">
+
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-black text-white">🧳 <%= edit ? 'Yeri Düzenle' : 'Yeni Gezilecek Yer' %></h1>
+      <a href="/admin/gezilecek-yerler" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">← Listeye Dön</a>
+    </div>
+
+    <% if (error) { %>
+    <div class="mb-5 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">✗ <%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/admin/gezilecek-yer-ekle" enctype="multipart/form-data"
+      class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+      <% if (edit) { %><input type="hidden" name="edit_id" value="<%= edit.id %>"><% } %>
+
+      <div>
+        <label class="block text-zinc-400 text-sm mb-1.5" for="s-title">Başlık *</label>
+        <input id="s-title" type="text" name="title" required maxlength="150"
+          value="<%= edit ? edit.title : '' %>" placeholder="Örn: Çınarcık Sahili"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-zinc-400 text-sm mb-1.5" for="s-category">Kategori</label>
+          <input id="s-category" type="text" name="category" list="cat-list" maxlength="60"
+            value="<%= edit ? edit.category : 'Doğa' %>" placeholder="Doğa, Plaj, Tarih..."
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          <datalist id="cat-list">
+            <option value="Doğa"><option value="Plaj"><option value="Tarih"><option value="Manzara"><option value="Yayla"><option value="Aktivite">
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-zinc-400 text-sm mb-1.5" for="s-location">Konum</label>
+          <input id="s-location" type="text" name="location" maxlength="150"
+            value="<%= edit ? edit.location : '' %>" placeholder="Örn: Çınarcık Sahil Yolu"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-zinc-400 text-sm mb-1.5" for="s-summary">Kısa Özet</label>
+        <textarea id="s-summary" name="summary" rows="2" maxlength="500" placeholder="Kartta görünecek kısa açıklama"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"><%= edit ? edit.summary : '' %></textarea>
+      </div>
+
+      <div>
+        <label class="block text-zinc-400 text-sm mb-1.5">Detay Açıklama</label>
+        <div id="s-editor" class="ql-wrapbox bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"></div>
+        <p class="text-zinc-600 text-xs mt-1.5">Araç çubuğundan yazı boyutu, rengi, kalın/italik gibi düzenlemeleri yapabilirsiniz.</p>
+        <textarea id="s-description" name="description" hidden><%= edit ? edit.description : '' %></textarea>
+      </div>
+
+      <div>
+        <label class="block text-zinc-400 text-sm mb-1.5" for="s-map">Google Maps Linki</label>
+        <input id="s-map" type="url" name="map_link" maxlength="500"
+          value="<%= edit ? edit.map_link : '' %>" placeholder="https://maps.google.com/..."
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-zinc-400 text-sm mb-1.5">📷 Ana Fotoğraf</label>
+          <div class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-4">
+            <input id="s-image" type="file" name="image" accept="image/*"
+              class="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-zinc-800 file:text-zinc-300 file:text-xs file:font-bold hover:file:bg-zinc-700">
+            <input type="hidden" name="remove_image" id="remove-image" value="">
+            <div id="main-preview" class="mt-3"></div>
+            <p class="text-zinc-600 text-xs mt-2">Kartta ve detay sayfasında görünecek kapak fotoğrafı. Yeni fotoğraf seçerseniz mevcut resmin yerine geçer.</p>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex-1">
+            <label class="block text-zinc-400 text-sm mb-1.5" for="s-order">Sıra</label>
+            <input id="s-order" type="number" name="sort_order" min="0" max="9999"
+              value="<%= edit ? edit.sort_order : 999 %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          </div>
+          <div class="flex-1">
+            <label class="block text-zinc-400 text-sm mb-1.5" for="s-status">Durum</label>
+            <select id="s-status" name="status"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+              <option value="active" <%= edit && edit.status === 'passive' ? '' : 'selected' %>>Yayında</option>
+              <option value="passive" <%= edit && edit.status === 'passive' ? 'selected' : '' %>>Pasif</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Galeri -->
+      <div class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-4">
+        <label class="block text-zinc-400 text-sm mb-1.5" for="s-gallery">📷 Galeri Fotoğrafları (birden fazla)</label>
+        <input id="s-gallery" type="file" name="gallery_files" accept="image/*" multiple
+          class="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-zinc-800 file:text-zinc-300 file:text-xs file:font-bold hover:file:bg-zinc-700">
+        <p class="text-zinc-600 text-xs mt-1.5">Ctrl/Cmd + tıklayarak birden fazla fotoğraf seçebilirsiniz (en fazla 12).</p>
+
+        <input type="hidden" name="existing_gallery" id="eg" value="<%= edit && edit.gallery_images ? edit.gallery_images : '[]' %>">
+        <div id="gal-preview" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3"></div>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button type="submit"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-emerald-600/20">
+          <%= edit ? 'Değişiklikleri Kaydet' : 'Kaydet' %> →
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<%- include('partials/quill') %>
+
+<script>
+  (function () {
+    var eg = document.getElementById('eg');
+    var box = document.getElementById('gal-preview');
+    function render() {
+      var list = [];
+      try { list = JSON.parse(eg.value || '[]'); } catch (e) { list = []; }
+      if (!Array.isArray(list)) list = '';
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<p class="text-zinc-600 text-xs col-span-full">Henüz galeri fotoğrafı yok. Yukarıdan ekleyebilirsiniz.</p>';
+        return;
+      }
+      list.forEach(function (src, i) {
+        var d = document.createElement('div');
+        d.className = 'relative rounded-lg overflow-hidden aspect-[4/3] bg-zinc-800 border border-zinc-800';
+        var img = document.createElement('img');
+        img.src = src; img.alt = '';
+        img.className = 'w-full h-full object-cover';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Kaldır';
+        btn.textContent = '×';
+        btn.className = 'absolute top-1 right-1 bg-red-600 hover:bg-red-500 text-white text-sm w-6 h-6 rounded-full leading-none shadow';
+        btn.onclick = function () {
+          var cur = [];
+          try { cur = JSON.parse(eg.value || '[]'); } catch (e) { cur = []; }
+          cur.splice(i, 1);
+          eg.value = JSON.stringify(cur);
+          render();
+        };
+        d.appendChild(img);
+        d.appendChild(btn);
+        box.appendChild(d);
+      });
+    }
+    render();
+  })();
+</script>
+
+<script>
+  (function () {
+    var imgInp = document.getElementById('s-image');
+    var rmInp = document.getElementById('remove-image');
+    var box = document.getElementById('main-preview');
+    var current = <%- JSON.stringify(edit && edit.image ? edit.image : '').replace(/</g, '\\u003c') %>;
+    var picked = '';
+
+    function render() {
+      var src = picked || current;
+      box.innerHTML = '';
+      if (!src) {
+        box.innerHTML = '<div class="w-full h-28 rounded-lg border border-dashed border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center gap-1 text-zinc-600"><span class="text-2xl">🖼️</span><span class="text-xs">' + (rmInp.value ? 'Ana fotoğraf kaldırıldı — kaydettiğinizde silinir.' : 'Henüz ana fotoğraf eklenmedi.') + '</span></div>';
+        return;
+      }
+      var wrap = document.createElement('div');
+      wrap.className = 'relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900';
+      var img = document.createElement('img');
+      img.src = src;
+      img.alt = 'Ana fotoğraf önizleme';
+      img.className = 'w-full h-40 object-cover';
+      var tag = document.createElement('span');
+      tag.textContent = picked ? 'Yeni fotoğraf (kaydedilince değişir)' : 'Mevcut fotoğraf';
+      tag.className = 'absolute top-2 left-2 bg-zinc-950/85 border border-zinc-700 text-zinc-300 text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = 'Kaldır';
+      btn.textContent = '× Kaldır';
+      btn.className = 'absolute top-2 right-2 bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-md shadow';
+      btn.onclick = function () {
+        current = '';
+        picked = '';
+        imgInp.value = '';
+        rmInp.value = '1';
+        render();
+      };
+      wrap.appendChild(img);
+      wrap.appendChild(tag);
+      wrap.appendChild(btn);
+      box.appendChild(wrap);
+    }
+
+    imgInp.addEventListener('change', function () {
+      var f = imgInp.files && imgInp.files[0];
+      if (!f) return;
+      rmInp.value = '';
+      var r = new FileReader();
+      r.onload = function (ev) { picked = ev.target.result; render(); };
+      r.readAsDataURL(f);
+    });
+
+    render();
+  })();
+</script>
+
+<script>
+  initQuillEditor('#s-editor', 's-description', 'Yerin tanıtımı, görülmesi gerekenler...');
+</script>

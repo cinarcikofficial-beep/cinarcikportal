@@ -1,0 +1,477 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('places') %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
+</style>
+
+<!-- Hero Section -->
+<div class="places-hero">
+  <div class="places-hero-bg"></div>
+  <div class="places-hero-content">
+    <h1><%= t('placesHeroTitle') %></h1>
+    <p><%= t('placesHeroSub') %></p>
+    <div class="floating-search">
+      <div class="search-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
+      <input type="text" id="place-search" placeholder="<%= t('placeSearchPlaceholder') %>">
+      <div class="category-pills">
+        <button class="cat-active" data-category="all"><%= t('catAll') %></button>
+        <button data-category="Restoran"><%= t('catRestaurant') %></button>
+        <button data-category="Cafe"><%= t('catCafe') %></button>
+        <button data-category="Büfeler"><%= t('catBuffet') %></button>
+        <button data-category="Beach"><%= t('catBeach') %></button>
+        <button data-category="Aktivite"><%= t('catActivity') %></button>
+        <button data-category="Gece Hayatı"><%= t('catNightlife') %></button>
+        <button data-category="Otel"><%= t('catHotel') %></button>
+        <button data-category="Pansiyon"><%= t('catPension') %></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="main-layout-wrapper">
+
+  <!-- Sidebar Filters -->
+  <aside class="sidebar-container">
+    <div class="filter-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+        <%= t('mainCategories') %>
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:0.125rem">
+        <label><input type="checkbox" class="ana-category-filter" value="all"><span><%= t('catAll') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Restoran"><span><%= t('catRestaurant') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Cafe"><span><%= t('catCafe') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Büfeler"><span><%= t('catBuffet') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Beach"><span><%= t('catBeach') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Aktivite"><span><%= t('catActivity') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Gece Hayatı"><span><%= t('catNightlife') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Otel"><span><%= t('catHotel') %></span></label>
+        <label><input type="checkbox" class="ana-category-filter" value="Pansiyon"><span><%= t('catPension') %></span></label>
+      </div>
+    </div>
+
+    <div class="filter-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <%= t('establishmentType') %>
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:0.125rem">
+        <label><input type="checkbox" class="est-type-filter" value="Kahve ve Çay"><span><%= t('estCoffeeTea') %></span></label>
+        <label><input type="checkbox" class="est-type-filter" value="Tatlı"><span><%= t('estDessert') %></span></label>
+        <label><input type="checkbox" class="est-type-filter" value="Ayaküstü Yenebilecek Atıştırmalıklar"><span><%= t('estSnacks') %></span></label>
+        <label><input type="checkbox" class="est-type-filter" value="Unlu Mamuller"><span><%= t('estBakery') %></span></label>
+        <label><input type="checkbox" class="est-type-filter" value="Bar ve Pub'lar"><span><%= t('estBars') %></span></label>
+        <label><input type="checkbox" class="est-type-filter" value="Yöreye Özgü Gıda Ürünleri Satan Market"><span><%= t('estLocalMarket') %></span></label>
+      </div>
+    </div>
+
+    <div class="filter-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <%= t('featuresLabel') %>
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:0.125rem">
+        <label><input type="checkbox" class="feature-filter" value="Denize Sıfır"><span><%= t('featSeafront') %></span></label>
+        <label><input type="checkbox" class="feature-filter" value="Açık Alan"><span><%= t('featTerrace') %></span></label>
+        <label><input type="checkbox" class="feature-filter" value="Otopark"><span><%= t('featParking') %></span></label>
+        <label><input type="checkbox" class="feature-filter" value="Çocuk Dostu"><span><%= t('featKids') %></span></label>
+        <label><input type="checkbox" class="feature-filter" value="Canlı Müzik"><span><%= t('featLiveMusic') %></span></label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Places List -->
+  <main class="main-content-container">
+    <% if (places.length === 0) { %>
+      <div class="empty-state">
+        <p style="font-size:1.1rem"><%= t('noPlacesFound') %></p>
+      </div>
+    <% } else { %>
+      <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem" id="places-list">
+        <% places.forEach((place) => { 
+          const features = typeof place.features === 'string' ? JSON.parse(place.features || '[]') : (place.features || []);
+          const gallery = typeof place.gallery_images === 'string' ? JSON.parse(place.gallery_images || '[]') : (place.gallery_images || []);
+          const img = place.main_image_url || (gallery[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=75');
+          const estTypeArr = typeof place.establishment_type === 'string' ? JSON.parse(place.establishment_type || '[]') : (place.establishment_type || []);
+          const mealTypeArr = typeof place.meal_type === 'string' ? JSON.parse(place.meal_type || '[]') : (place.meal_type || []);
+        %>
+          <div class="place-card"
+            data-category="<%= place.category || place.type || '' %>"
+            data-establishment-type="<%= estTypeArr.join(',') %>"
+            data-meal-type="<%= mealTypeArr.join(',') %>"
+            data-features="<%= features.join(',') %>">
+
+            <div class="card-layout">
+              <!-- Image -->
+              <div class="card-image-wrap" onclick="togglePlaceDetail('<%= place.id %>')">
+                <img src="<%= img %>" alt="<%= place.name %>">
+                <span class="category-badge"><%= place.category || t('place') %></span>
+                <% if (place.is_featured == 1) { %>
+                  <span class="featured-badge"><%= t('featured') %></span>
+                <% } %>
+              </div>
+
+              <!-- Body -->
+              <div class="card-body">
+                <h3 onclick="togglePlaceDetail('<%= place.id %>')"><%= place.name %></h3>
+
+                <div class="card-meta">
+                  <span class="meta-tag"><%= place.category || t('place') %></span>
+                  <% if (place.cuisine_type) { %><span class="meta-tag"><%= place.cuisine_type %></span><% } %>
+                  <% estTypeArr.slice(0, 2).forEach(function(et) { %><span class="meta-tag" style="color:#34d399;border-color:rgba(16,185,129,0.2)"><%= et %></span><% }) %>
+                </div>
+
+                <div class="card-info">
+                  <% if (place.working_hours) { %>
+                    <div class="info-row">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <%= place.working_hours %>
+                    </div>
+                  <% } %>
+                  <% if (place.phone) { %>
+                    <div class="info-row">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      <a href="tel:<%= place.phone %>" style="color:#34d399;text-decoration:none"><%= place.phone %></a>
+                    </div>
+                  <% } %>
+                  <% if (place.address) { %>
+                    <div class="info-row">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <span class="line-clamp-1"><%= place.address %></span>
+                    </div>
+                  <% } %>
+                </div>
+
+                <div class="card-actions">
+                  <button onclick="togglePlaceDetail('<%= place.id %>')" id="btn-inspect-<%= place.id %>" class="btn-inspect">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <%= t('inspect') %>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accordion Detail Panel -->
+            <div id="place-detail-<%= place.id %>" class="place-accordion-content collapsed" style="max-height:0;opacity:0;">
+              <div class="accordion-inner">
+                <div class="detail-grid">
+
+                  <!-- Left: Media & Contact -->
+                  <div class="detail-media">
+                    <% if (img) { %>
+                      <div class="hero-image-wrap" onclick="openLightbox(0)">
+                        <img id="hero-img-<%= place.id %>" src="<%= img %>" alt="<%= place.name %>">
+                        <div class="overlay-label"><span><%= t('viewLarge') %></span></div>
+                      </div>
+                    <% } %>
+
+                    <% if (gallery.length > 0) { %>
+                      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem" id="gallery-<%= place.id %>">
+                        <% gallery.slice(0, 6).forEach(function(gImg, gi) { %>
+                          <div class="gallery-thumb" onclick="swapHeroImage('<%= place.id %>', '<%= gImg %>', <%= gi %>)">
+                            <img src="<%= gImg %>" alt="<%= t('gallery') %> <%= gi + 1 %>">
+                          </div>
+                        <% }) %>
+                        <% if (gallery.length > 6) { %>
+                          <div style="background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:#71717a;font-size:0.7rem;border-radius:0.5rem;height:4rem">+<%= gallery.length - 6 %> <%= t('more') %></div>
+                        <% } %>
+                      </div>
+                    <% } %>
+
+                    <div class="contact-info">
+                      <% if (place.working_hours) { %>
+                        <div class="info-item">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <%= place.working_hours %>
+                        </div>
+                      <% } %>
+                      <% if (place.phone) { %>
+                        <div class="info-item">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          <a href="tel:<%= place.phone %>" style="color:#34d399;text-decoration:none"><%= place.phone %></a>
+                        </div>
+                      <% } %>
+                      <% if (place.address) { %>
+                        <div class="info-item">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                          <span><%= place.address %></span>
+                        </div>
+                      <% } %>
+                    </div>
+
+                    <div class="action-links">
+                      <% if (place.map_link) { %>
+                        <a href="<%= place.map_link %>" target="_blank" class="action-link link-direction">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                          <%= t('directions') %>
+                        </a>
+                      <% } %>
+                      <% if (place.google_reviews_url) { %>
+                        <a href="<%= place.google_reviews_url %>" target="_blank" class="action-link link-reviews">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                          <%= t('googleReviews') %>
+                        </a>
+                      <% } %>
+                    </div>
+                  </div>
+
+                  <!-- Right: Details -->
+                  <div class="detail-content" style="display:flex;flex-direction:column;gap:1.25rem">
+                    <div>
+                      <h2 style="font-size:1.5rem;font-weight:900;color:#f4f4f5;margin:0 0 0.5rem;letter-spacing:-0.02em"><%= place.name %></h2>
+                      <div class="tag-row">
+                        <span class="tag-pill tag-zinc"><%= place.category || t('place') %></span>
+                        <% if (place.cuisine_type) { %><span class="tag-pill tag-zinc"><%= place.cuisine_type %></span><% } %>
+                        <% const eTypes = typeof place.establishment_type === 'object' ? place.establishment_type : (place.establishment_type ? JSON.parse(place.establishment_type) : []); %>
+                        <% eTypes.forEach(function(et) { %><span class="tag-pill tag-emerald"><%= et %></span><% }) %>
+                        <% const mTypes = typeof place.meal_type === 'object' ? place.meal_type : (place.meal_type ? JSON.parse(place.meal_type) : []); %>
+                        <% mTypes.forEach(function(mt) { %><span class="tag-pill tag-amber"><%= mt %></span><% }) %>
+                      </div>
+                    </div>
+
+                    <% if (place.description) { %>
+                      <% if (/<[a-z][\s\S]*>/i.test(place.description)) { %>
+                      <div class="rich-desc" style="color:#a1a1aa;font-size:0.875rem;line-height:1.7"><%- place.description %></div>
+                      <% } else { %>
+                      <p style="color:#a1a1aa;font-size:0.875rem;line-height:1.7;margin:0"><%= place.description %></p>
+                      <% } %>
+                    <% } %>
+
+                    <% if (features.length > 0) { %>
+                      <div>
+                        <h4><%= t('placeFeatures') %></h4>
+                        <div class="amenities-grid">
+                          <% features.forEach(function(f) { %>
+                            <div class="amenity-item">
+                              <svg class="check-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              <span><%= f %></span>
+                            </div>
+                          <% }) %>
+                        </div>
+                      </div>
+                    <% } %>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </main>
+
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="lightbox-overlay" style="display:none;" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="event.stopPropagation(); closeLightbox()">&times;</button>
+  <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation(); lightboxNav(-1)">&#10094;</button>
+  <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation(); lightboxNav(1)">&#10095;</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+  var currentPlaceId = null;
+  var lightboxAllImages = [];
+  var currentLightboxIndex = 0;
+
+  function togglePlaceDetail(id) {
+    var detailPanel = document.getElementById('place-detail-' + id);
+    var btn = document.getElementById('btn-inspect-' + id);
+    if (!detailPanel) return;
+    var isCollapsed = detailPanel.classList.contains('collapsed');
+
+    document.querySelectorAll('.place-accordion-content').forEach(function(p) {
+      p.classList.remove('expanded');
+      p.classList.add('collapsed');
+      p.style.maxHeight = '0';
+      p.style.opacity = '0';
+    });
+    document.querySelectorAll('[id^="btn-inspect-"]').forEach(function(b) {
+      b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <%= t('inspect') %>';
+    });
+
+    if (isCollapsed) {
+      detailPanel.classList.remove('collapsed');
+      detailPanel.classList.add('expanded');
+      detailPanel.style.maxHeight = '2000px';
+      detailPanel.style.opacity = '1';
+      if (btn) btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg> <%= t('close') %>';
+      currentPlaceId = id;
+    } else {
+      detailPanel.classList.remove('expanded');
+      detailPanel.classList.add('collapsed');
+      detailPanel.style.maxHeight = '0';
+      detailPanel.style.opacity = '0';
+      if (btn) btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <%= t('inspect') %>';
+      currentPlaceId = null;
+    }
+  }
+
+  function openLightbox(startIndex) {
+    var heroImg = document.getElementById('hero-img-' + (currentPlaceId || ''));
+    lightboxAllImages = [];
+    var mainImg = heroImg ? heroImg.src : '';
+    if (mainImg) lightboxAllImages.push(mainImg);
+    var card = document.querySelector('[id="place-detail-' + currentPlaceId + '"]');
+    if (card) {
+      var thumbs = card.querySelectorAll('#gallery-' + currentPlaceId + ' img');
+      thumbs.forEach(function(t) { lightboxAllImages.push(t.src); });
+    }
+    currentLightboxIndex = startIndex;
+    if (currentLightboxIndex >= lightboxAllImages.length) currentLightboxIndex = 0;
+    showLightboxImage();
+    document.getElementById('lightbox').style.display = 'flex';
+  }
+
+  function swapHeroImage(placeId, imgSrc, index) {
+    var heroImg = document.getElementById('hero-img-' + placeId);
+    if (!heroImg) return;
+    heroImg.style.opacity = '0';
+    setTimeout(function() {
+      heroImg.src = imgSrc;
+      heroImg.style.opacity = '1';
+    }, 150);
+    lightboxAllImages = [];
+    var card = document.querySelector('[id="place-detail-' + placeId + '"]');
+    if (card) {
+      var thumbs = card.querySelectorAll('#gallery-' + placeId + ' img');
+      thumbs.forEach(function(t) { lightboxAllImages.push(t.src); });
+    }
+    currentPlaceId = placeId;
+    currentLightboxIndex = index;
+  }
+
+  function showLightboxImage() {
+    var img = document.getElementById('lightboxImg');
+    if (img && lightboxAllImages[currentLightboxIndex]) {
+      img.src = lightboxAllImages[currentLightboxIndex];
+    }
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+  }
+
+  function lightboxNav(dir) {
+    currentLightboxIndex += dir;
+    if (currentLightboxIndex < 0) currentLightboxIndex = lightboxAllImages.length - 1;
+    if (currentLightboxIndex >= lightboxAllImages.length) currentLightboxIndex = 0;
+    showLightboxImage();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    var lb = document.getElementById('lightbox');
+    if (lb && lb.style.display === 'flex') {
+      if (e.key === 'ArrowLeft') lightboxNav(-1);
+      if (e.key === 'ArrowRight') lightboxNav(1);
+      if (e.key === 'Escape') closeLightbox();
+    }
+  });
+
+  (function() {
+    var searchInput = document.getElementById('place-search');
+    var categoryBtns = document.querySelectorAll('.category-pills button');
+    var anaCategoryFilters = document.querySelectorAll('.ana-category-filter');
+    var estTypeFilters = document.querySelectorAll('.est-type-filter');
+    var featureFilters = document.querySelectorAll('.feature-filter');
+    var placeCards = document.querySelectorAll('.place-card');
+
+    function syncTopBarFromSidebar() {
+      var checkedAna = Array.from(anaCategoryFilters).filter(function(f) { return f.checked; }).map(function(f) { return f.value; });
+      var activeCategory = document.querySelector('.category-pills button.cat-active');
+      var activeCategoryValue = activeCategory ? activeCategory.dataset.category : 'all';
+
+      categoryBtns.forEach(function(btn) {
+        var catVal = btn.dataset.category;
+        if (checkedAna.length === 0 || (checkedAna.length === 1 && checkedAna[0] === 'all')) {
+          btn.classList.toggle('cat-active', catVal === 'all');
+        } else {
+          btn.classList.toggle('cat-active', checkedAna.indexOf(catVal) !== -1);
+        }
+      });
+    }
+
+    function syncSidebarFromTopBar() {
+      var activeCategory = document.querySelector('.category-pills button.cat-active');
+      var activeCategoryValue = activeCategory ? activeCategory.dataset.category : 'all';
+
+      anaCategoryFilters.forEach(function(f) {
+        if (activeCategoryValue === 'all') {
+          f.checked = (f.value === 'all');
+        } else {
+          f.checked = (f.value === activeCategoryValue);
+        }
+      });
+    }
+
+    function filterPlaces() {
+      var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+      var activeCategory = document.querySelector('.category-pills button.cat-active');
+      var activeCategoryValue = activeCategory ? activeCategory.dataset.category : 'all';
+      var selectedEstTypes = Array.from(estTypeFilters).filter(function(f) { return f.checked; }).map(function(f) { return f.value; });
+      var selectedFeatures = Array.from(featureFilters).filter(function(f) { return f.checked; }).map(function(f) { return f.value; });
+
+      placeCards.forEach(function(card) {
+        var title = card.querySelector('h3').textContent.toLowerCase();
+        var category = card.dataset.category || '';
+        var establishmentType = card.dataset.establishmentType || '';
+        var features = card.dataset.features ? card.dataset.features.split(',') : [];
+
+        var matchesSearch = title.includes(searchTerm);
+        var matchesCategory = activeCategoryValue === 'all' || category.includes(activeCategoryValue);
+        var matchesEstType = selectedEstTypes.length === 0 || selectedEstTypes.some(function(et) { return establishmentType.includes(et); });
+        var matchesFeatures = selectedFeatures.length === 0 || selectedFeatures.some(function(f) { return features.includes(f); });
+
+        card.style.display = (matchesSearch && matchesCategory && matchesEstType && matchesFeatures) ? '' : 'none';
+      });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterPlaces);
+
+    if (categoryBtns) categoryBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        categoryBtns.forEach(function(b) { b.classList.remove('cat-active'); });
+        btn.classList.add('cat-active');
+        syncSidebarFromTopBar();
+        filterPlaces();
+      });
+    });
+
+    if (anaCategoryFilters) anaCategoryFilters.forEach(function(f) {
+      f.addEventListener('change', function() {
+        if (f.value === 'all' && f.checked) {
+          anaCategoryFilters.forEach(function(af) { af.checked = (af.value === 'all'); });
+        } else if (f.value !== 'all') {
+          if (f.checked) {
+            anaCategoryFilters.forEach(function(af) { af.checked = (af.value === f.value); });
+          } else {
+            var anyChecked = Array.from(anaCategoryFilters).some(function(af) { return af.value !== 'all' && af.checked; });
+            if (!anyChecked) {
+              var allCb = document.querySelector('.ana-category-filter[value="all"]');
+              if (allCb) allCb.checked = true;
+            }
+          }
+        }
+        syncTopBarFromSidebar();
+        filterPlaces();
+      });
+    });
+
+    if (estTypeFilters) estTypeFilters.forEach(function(f) { f.addEventListener('change', filterPlaces); });
+    if (featureFilters) featureFilters.forEach(function(f) { f.addEventListener('change', filterPlaces); });
+
+    syncSidebarFromTopBar();
+  })();
+</script>

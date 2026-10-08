@@ -1,0 +1,166 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('guide') %>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
+</style>
+
+<!-- Hero Section -->
+<div class="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border-b border-zinc-800">
+  <div class="max-w-7xl mx-auto px-4 py-16 text-center">
+    <span class="text-5xl mb-4 block">🏢</span>
+    <h1 class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight"><%= t('guide') %></h1>
+    <p class="text-zinc-400 text-lg max-w-2xl mx-auto"><%= t('rehberSubtitle') %></p>
+    <div class="mt-8 max-w-lg mx-auto relative">
+      <input type="text" id="company-search" placeholder="<%= t('companySearchPlaceholder') %>"
+        class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-2xl px-5 py-3.5 pl-12 text-sm placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors shadow-lg">
+      <svg class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    </div>
+    <!-- Category Pills -->
+    <div class="mt-6 flex flex-wrap justify-center gap-2" id="category-pills">
+      <button class="cat-pill cat-active" data-category="all"><%= t('catAll') %></button>
+      <button class="cat-pill" data-category="İnşaat">🏗️ <%= t('catConstruction') %></button>
+      <button class="cat-pill" data-category="Güzellik Merkezi">💆 <%= t('catBeauty') %></button>
+      <button class="cat-pill" data-category="Market">🛒 <%= t('catMarket') %></button>
+      <button class="cat-pill" data-category="Sağlık">🏥 <%= t('catHealth') %></button>
+      <button class="cat-pill" data-category="Eğitim">📚 <%= t('catEducation') %></button>
+      <button class="cat-pill" data-category="Hizmet">🔧 <%= t('catService') %></button>
+      <button class="cat-pill" data-category="Emlak">🏠 <%= t('catRealEstate') %></button>
+      <button class="cat-pill" data-category="Diğer">📁 <%= t('catOther') %></button>
+    </div>
+  </div>
+</div>
+
+<!-- Company List -->
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <% if (companies.length === 0) { %>
+    <div class="text-center py-20">
+      <span class="text-5xl block mb-4">📋</span>
+      <p class="text-zinc-500 text-lg"><%= t('noCompanies') %></p>
+    </div>
+  <% } else { %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="company-grid">
+      <% companies.forEach((company, idx) => { 
+        const features = typeof company.features === 'string' ? JSON.parse(company.features || '[]') : (company.features || []);
+        const gallery = typeof company.gallery_images === 'string' ? JSON.parse(company.gallery_images || '[]') : (company.gallery_images || []);
+        const img = company.logo_url || (gallery[0] || '');
+      %>
+        <a href="/rehber/<%= company.slug || company.id %>"
+          class="company-card group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all shadow-lg hover:shadow-xl fade-in-up"
+          style="animation-delay: <%= idx * 50 %>ms"
+          data-category="<%= company.category || 'Genel' %>"
+          data-name="<%= (company.name || '').toLowerCase() %>"
+          data-sector="<%= (company.sector || '').toLowerCase() %>">
+
+          <!-- Image -->
+          <div class="h-44 overflow-hidden bg-zinc-800 relative">
+            <% if (img) { %>
+              <img src="<%= img %>" alt="<%= company.name %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            <% } else { %>
+              <div class="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-zinc-800 to-zinc-900">
+                <%= company.category === 'İnşaat' ? '🏗️' : company.category === 'Güzellik Merkezi' ? '💆' : company.category === 'Market' ? '🛒' : company.category === 'Sağlık' ? '🏥' : company.category === 'Eğitim' ? '📚' : company.category === 'Hizmet' ? '🔧' : company.category === 'Emlak' ? '🏠' : '🏢' %>
+              </div>
+            <% } %>
+            <% if (company.is_featured == 1) { %>
+              <span class="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg"><%= t('featured') %></span>
+            <% } %>
+            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full"><%= company.category || t('general') %></span>
+          </div>
+
+          <!-- Body -->
+          <div class="p-5">
+            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors line-clamp-1 mb-1"><%= company.name %></h3>
+            <% if (company.sector) { %>
+              <p class="text-zinc-500 text-xs mb-3"><%= company.sector %></p>
+            <% } %>
+
+            <div class="space-y-1.5 mb-4">
+              <% if (company.phone) { %>
+                <div class="flex items-center gap-2 text-zinc-400 text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span><%= company.phone %></span>
+                </div>
+              <% } %>
+              <% if (company.address) { %>
+                <div class="flex items-center gap-2 text-zinc-400 text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span class="line-clamp-1"><%= company.address %></span>
+                </div>
+              <% } %>
+              <% if (company.working_hours) { %>
+                <div class="flex items-center gap-2 text-zinc-400 text-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span><%= company.working_hours %></span>
+                </div>
+              <% } %>
+            </div>
+
+            <% if (features.length > 0) { %>
+              <div class="flex flex-wrap gap-1.5">
+                <% features.slice(0, 3).forEach(f => { %>
+                  <span class="bg-zinc-800 text-zinc-400 text-[10px] px-2 py-0.5 rounded-full border border-zinc-700/50">✓ <%= f %></span>
+                <% }) %>
+                <% if (features.length > 3) { %>
+                  <span class="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5 rounded-full">+<%= features.length - 3 %></span>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<script>
+(function() {
+  var searchInput = document.getElementById('company-search');
+  var pills = document.querySelectorAll('.cat-pill');
+  var cards = document.querySelectorAll('.company-card');
+
+  function filter() {
+    var term = searchInput ? searchInput.value.toLowerCase() : '';
+    var activePill = document.querySelector('.cat-pill.cat-active');
+    var cat = activePill ? activePill.dataset.category : 'all';
+
+    cards.forEach(function(card) {
+      var name = card.dataset.name || '';
+      var sector = card.dataset.sector || '';
+      var category = card.dataset.category || '';
+      var matchSearch = name.includes(term) || sector.includes(term);
+      var matchCat = cat === 'all' || category === cat;
+      card.style.display = (matchSearch && matchCat) ? '' : 'none';
+    });
+  }
+
+  if (searchInput) searchInput.addEventListener('input', filter);
+  pills.forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      pills.forEach(function(p) { p.classList.remove('cat-active'); });
+      pill.classList.add('cat-active');
+      filter();
+    });
+  });
+})();
+</script>
+
+<style>
+  .cat-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid rgba(63, 63, 70, 0.5);
+    background: transparent;
+    color: #a1a1aa;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cat-pill:hover { background: rgba(39, 39, 42, 0.5); color: #e4e4e7; }
+  .cat-pill.cat-active { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
+</style>

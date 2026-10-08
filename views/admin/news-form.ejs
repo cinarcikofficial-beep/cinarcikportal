@@ -1,0 +1,300 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = edit ? 'Haber Düzenle' : 'Yeni Haber' %>
+
+<div class="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+  <a href="/admin/haberler" class="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm">
+    <span class="text-lg">←</span> Haber Listesine Dön
+  </a>
+
+  <div>
+    <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+      <span class="text-2xl">📝</span>
+      <%= edit ? 'Haber Düzenle' : 'Yeni Haber Oluştur' %>
+    </h1>
+    <p class="text-gray-400 mt-1 text-sm">Tüm alanları eksiksiz doldurun</p>
+  </div>
+
+  <% if (error) { %>
+  <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+    <span class="text-lg">⚠️</span> <%= error %>
+  </div>
+  <% } %>
+
+  <form action="/admin/haber-ekle" method="POST" enctype="multipart/form-data" id="admin-form" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5">
+    <% if (edit) { %>
+      <input type="hidden" name="edit_id" value="<%= edit.id %>" />
+    <% } %>
+
+    <div>
+      <label for="title" class="block text-sm font-medium text-gray-300 mb-2">Haber Başlığı <span class="text-rose-400">*</span></label>
+      <input type="text" id="title" name="title" value="<%= edit ? edit.title : '' %>" required
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+        placeholder="Haber başlığını girin" />
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div>
+        <label for="category" class="block text-sm font-medium text-gray-300 mb-2">Kategori <span class="text-rose-400">*</span></label>
+        <select id="category" name="category" required
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          <% ['Gündem', 'Duyurular', 'Spor', 'Yaşam'].forEach(cat => { %>
+            <option value="<%= cat %>" <%= (edit && edit.category === cat) ? 'selected' : '' %>><%= cat %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="badge_text" class="block text-sm font-medium text-gray-300 mb-2">Kırmızı Rozet Metni</label>
+        <input type="text" id="badge_text" name="badge_text" value="<%= edit ? (edit.badge_text || '') : '' %>"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+          placeholder="Örn: Görüntüler endişe verici" />
+      </div>
+    </div>
+
+    <div>
+      <label for="headline_order" class="block text-sm font-medium text-gray-300 mb-2">Manşet Sırası</label>
+      <input type="number" id="headline_order" name="headline_order" value="<%= edit ? (edit.headline_order || 999) : 999 %>" min="1" max="999"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" />
+    </div>
+
+    <div>
+      <label for="summary" class="block text-sm font-medium text-gray-300 mb-2">Özet</label>
+      <textarea id="summary" name="summary" rows="3"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-y"
+        placeholder="Kısa haber özeti"><%= edit ? (edit.summary || '') : '' %></textarea>
+    </div>
+
+    <div>
+      <label for="content" class="block text-sm font-medium text-gray-300 mb-2">İçerik <span class="text-rose-400">*</span></label>
+      <div id="news-editor" class="ql-wrapbox bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"></div>
+      <textarea id="content" name="content" hidden><%= edit ? (edit.content || '') : '' %></textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-300 mb-2">Manşet Görseli</label>
+      <% if (edit && edit.main_image_url) { %>
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 mb-1">Mevcut manşet görseli:</p>
+        <img src="<%= edit.main_image_url %>" alt="Mevcut görsel" class="max-h-40 rounded-lg border border-zinc-800" />
+      </div>
+      <% } %>
+      <label for="image" id="file-drop-zone" class="file-drop-zone block cursor-pointer text-center px-4 py-6 border border-dashed border-zinc-700 hover:border-emerald-500 rounded-xl transition-colors bg-zinc-950">
+        <span class="text-3xl block mb-1">📁</span>
+        <span class="text-gray-400 text-sm block">Kapak görseli yüklemek için tıklayın</span>
+        <span class="text-gray-600 text-xs block mt-1">Maks 10 MB · JPG, PNG, GIF</span>
+        <input type="file" id="image" name="image" accept="image/*" class="hidden" />
+      </label>
+      <div id="preview-wrapper" class="hidden mt-3">
+        <p class="text-xs text-gray-500 mb-1">Seçilen görsel:</p>
+        <img id="preview-img" class="max-h-40 rounded-lg border border-zinc-800" />
+      </div>
+    </div>
+
+    <% const gal = edit && edit.gallery_images ? (typeof edit.gallery_images === 'string' ? JSON.parse(edit.gallery_images || '[]') : edit.gallery_images) : []; %>
+    <div>
+      <label class="block text-sm font-medium text-gray-300 mb-2">Haber İçi Galeri Görselleri</label>
+
+      <% if (Array.isArray(gal) && gal.length > 0) { %>
+        <p class="text-xs text-gray-500 mb-2">Mevcut Galeri Görselleri:</p>
+        <div id="existingGalleryGrid" class="mb-4 flex flex-wrap gap-3">
+          <% gal.forEach((url, idx) => { %>
+            <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" data-url="<%= url %>">
+              <img src="<%= url %>" class="w-20 h-20 object-cover" />
+              <button type="button" class="gallery-remove absolute -top-1 -right-1 bg-rose-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hover:bg-rose-600" title="Kaldır">×</button>
+            </div>
+            <input type="hidden" name="existing_gallery[]" value="<%= url %>">
+          <% }); %>
+        </div>
+      <% } %>
+
+      <div id="galleryDropzone"
+        class="block cursor-pointer rounded-xl border-2 border-dashed border-zinc-600/60 bg-zinc-950/80 hover:border-emerald-400/60 hover:bg-zinc-900/90 transition-all px-4 py-8 text-center mb-3">
+        <span class="text-3xl block mb-1">🖼️</span>
+        <span class="text-zinc-200 text-sm block font-medium">Galeriye görsel eklemek için tıklayın veya sürükleyin</span>
+        <span class="text-zinc-500 text-xs block mt-1">Çoklu resim seçebilirsiniz (JPG, PNG)</span>
+      </div>
+      <input type="file" id="galleryInput" name="gallery_files" accept="image/*" multiple class="hidden" />
+
+      <div id="galleryPreviewContainer" class="flex flex-wrap gap-2 mt-2"></div>
+
+      <div class="mt-2 flex justify-between items-center">
+        <span id="gallery-counter" class="text-xs text-zinc-500">(Toplam Yüklü Görsel: <%= gal.length %>)</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div>
+        <label for="expires_at" class="block text-sm font-medium text-gray-300 mb-2">Yayın Süresi Bitişi</label>
+        <input type="datetime-local" id="expires_at" name="expires_at"
+          value="<%= (edit && edit.expires_at && edit.expires_at.trim()) ? edit.expires_at.substring(0,16) : '' %>"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" />
+        <p class="text-gray-600 text-xs mt-1">Boş bırakılırsa süresiz yayında kalır</p>
+      </div>
+      <div>
+        <label for="status" class="block text-sm font-medium text-gray-300 mb-2">Yayın Durumu</label>
+        <select id="status" name="status"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          <option value="active" <%= edit && edit.status === 'active' ? 'selected' : '' %>>🟢 Yayında (Aktif)</option>
+          <option value="passive" <%= edit && edit.status === 'passive' ? 'selected' : '' %>>🔴 Yayından Kaldır (Pasif)</option>
+        </select>
+      </div>
+      <div>
+        <label for="is_headline" class="block text-sm font-medium text-gray-300 mb-2">Manşet Gösterimi</label>
+        <select id="is_headline" name="is_headline"
+          class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+          <option value="1" <%= (!edit || edit.is_headline !== 0) ? 'selected' : '' %>>📰 Manşette Göster</option>
+          <option value="0" <%= edit && edit.is_headline === 0 ? 'selected' : '' %>>📋 Sadece Listede</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+      <a href="/admin/haberler" class="px-5 py-3 rounded-xl text-gray-300 hover:text-white border border-zinc-700 hover:bg-zinc-800 transition-all text-sm font-medium">İptal</a>
+      <button type="submit" id="submit-btn" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition-all">
+        <svg id="spinner" class="hidden animate-spin h-5 w-5 text-zinc-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+        <span id="submit-text"><%= edit ? 'Güncelle' : 'Kaydet & Yayınla' %></span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function() {
+  var imgInp = document.getElementById('image');
+  var drop = document.getElementById('file-drop-zone');
+  var previewWrap = document.getElementById('preview-wrapper');
+  var previewImg = document.getElementById('preview-img');
+  if (imgInp) {
+    var showPreview = function(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      var r = new FileReader();
+      r.onload = function(e) { previewImg.src = e.target.result; previewWrap.classList.remove('hidden'); };
+      r.readAsDataURL(file);
+    };
+    imgInp.addEventListener('change', function(e) { showPreview(e.target.files[0]); });
+    ['dragover','dragenter'].forEach(function(ev) { drop.addEventListener(ev, function(e) { e.preventDefault(); drop.classList.add('border-emerald-500'); }); });
+    ['dragleave','drop'].forEach(function(ev) { drop.addEventListener(ev, function(e) { e.preventDefault(); drop.classList.remove('border-emerald-500'); }); });
+    drop.addEventListener('drop', function(e) {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) { imgInp.files = e.dataTransfer.files; showPreview(e.dataTransfer.files[0]); }
+    });
+  }
+
+  // ===== GALLERY HANDLING =====
+  var gallInput = document.getElementById('galleryInput');
+  var gallDropzone = document.getElementById('galleryDropzone');
+  var gallPreview = document.getElementById('galleryPreviewContainer');
+  var galleryCounter = document.getElementById('gallery-counter');
+  var galleryDT = new DataTransfer();
+
+  function getExistingCount() {
+    var existingGrid = document.getElementById('existingGalleryGrid');
+    if (!existingGrid) return 0;
+    return existingGrid.querySelectorAll('input[name="existing_gallery[]"]').length;
+  }
+
+  function updateGalleryCounter() {
+    if (!galleryCounter) return;
+    var totalCount = getExistingCount() + galleryDT.files.length;
+    galleryCounter.textContent = '(Toplam Yüklü Görsel: ' + totalCount + ')';
+  }
+
+  function rebuildPreviews() {
+    if (!gallPreview) return;
+    gallPreview.innerHTML = '';
+    for (var i = 0; i < galleryDT.files.length; i++) {
+      (function(idx) {
+        var file = galleryDT.files[idx];
+        if (!file.type.startsWith('image/')) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          var wrap = document.createElement('div');
+          wrap.className = 'relative gallery-preview-item group';
+          wrap.setAttribute('data-idx', idx);
+          wrap.innerHTML =
+            '<img src="' + ev.target.result + '" class="w-20 h-20 rounded-lg object-cover border border-zinc-700">' +
+            '<button type="button" class="remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity" title="Kaldır">&times;</button>';
+          wrap.querySelector('.remove-preview').addEventListener('click', function() {
+            galleryDT.items.remove(idx);
+            gallInput.files = galleryDT.files;
+            rebuildPreviews();
+          });
+          gallPreview.appendChild(wrap);
+        };
+        reader.readAsDataURL(file);
+      })(i);
+    }
+    updateGalleryCounter();
+  }
+
+  function addFiles(files) {
+    var arr = Array.isArray(files) ? files : Array.from(files);
+    arr.forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
+    gallInput.files = galleryDT.files;
+    rebuildPreviews();
+  }
+
+  if (gallInput) {
+    gallInput.addEventListener('change', function(e) {
+      addFiles(e.target.files);
+    });
+  }
+
+  if (gallDropzone) {
+    gallDropzone.addEventListener('click', function() { gallInput.click(); });
+    ['dragover', 'dragenter'].forEach(function(ev) {
+      gallDropzone.addEventListener(ev, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        gallDropzone.classList.add('border-emerald-400', 'bg-zinc-900');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function(ev) {
+      gallDropzone.addEventListener(ev, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        gallDropzone.classList.remove('border-emerald-400', 'bg-zinc-900');
+      });
+    });
+    gallDropzone.addEventListener('drop', function(e) {
+      addFiles(e.dataTransfer.files);
+    });
+  }
+
+  // Existing gallery thumb remove buttons
+  var existingGrid = document.getElementById('existingGalleryGrid');
+  if (existingGrid) {
+    existingGrid.addEventListener('click', function(e) {
+      var btn = e.target.closest('.gallery-remove');
+      if (!btn) return;
+      var thumb = btn.closest('.gallery-thumb');
+      if (!thumb) return;
+      var hiddenInput = thumb.nextElementSibling;
+      if (hiddenInput && hiddenInput.name === 'existing_gallery[]') {
+        hiddenInput.remove();
+      }
+      thumb.remove();
+      updateGalleryCounter();
+    });
+  }
+
+  updateGalleryCounter();
+
+  var form = document.getElementById('admin-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var spinner = document.getElementById('spinner');
+  var txt = document.getElementById('submit-text');
+  form.addEventListener('submit', function() {
+    if (galleryDT.files.length > 0) {
+      gallInput.files = galleryDT.files;
+    }
+    spinner.classList.remove('hidden');
+    txt.textContent = 'Kaydediliyor...';
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-75');
+  });
+})();
+</script>
+
+<%- include('partials/quill') %>
+<script>
+  initQuillEditor('#news-editor', 'content', 'Detaylı haber içeriğini girin', true);
+</script>
