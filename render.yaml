@@ -51,3 +51,7 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: cinarcikofficial@gmail.com
+      - key: TURSO_URL
+        value: libsql://cinarcikportal-kkaplan.aws-eu-west-1.turso.io
+      - key: TURSO_TOKEN
+        sync: false

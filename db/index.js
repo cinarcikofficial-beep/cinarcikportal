@@ -1,22 +1,70 @@
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const { createClient } = require('@libsql/client');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'cinarcik.db');
+const TURSO_URL = process.env.TURSO_URL || '';
+const TURSO_TOKEN = process.env.TURSO_TOKEN || '';
 
 let db = null;
+let cloud = null;
+let syncTimer = null;
+
+function getCloud() {
+  if (!TURSO_URL) return null;
+  if (!cloud) cloud = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN || undefined });
+  return cloud;
+}
+
+async function downloadSnapshot() {
+  const c = getCloud();
+  if (!c) return null;
+  await c.execute('CREATE TABLE IF NOT EXISTS app_db (id INTEGER PRIMARY KEY CHECK (id = 1), data BLOB NOT NULL, updated_at TEXT)');
+  const rs = await c.execute('SELECT data FROM app_db WHERE id = 1');
+  if (!rs.rows.length) return null;
+  const raw = rs.rows[0].data;
+  return Buffer.from(raw instanceof Uint8Array ? raw : new Uint8Array(raw));
+}
+
+async function uploadSnapshot() {
+  const c = getCloud();
+  if (!c || !db) return;
+  const buffer = Buffer.from(db.export());
+  await c.execute('CREATE TABLE IF NOT EXISTS app_db (id INTEGER PRIMARY KEY CHECK (id = 1), data BLOB NOT NULL, updated_at TEXT)');
+  await c.execute({
+    sql: 'INSERT INTO app_db (id, data, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at',
+    args: [buffer, new Date().toISOString()]
+  });
+}
+
+function scheduleSnapshot() {
+  if (!TURSO_URL || syncTimer) return;
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    uploadSnapshot().then(
+      () => console.log('[db] Turso snapshot güncellendi'),
+      (e) => console.error('[db] Turso yazma hatası:', e.message)
+    );
+  }, 1500);
+}
 
 async function getDb() {
   // Internal function to obtain or create the database instance
 
   if (db) return db;
   const SQL = await initSqlJs();
-  if (fs.existsSync(DB_PATH)) {
-    const buffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(buffer);
-  } else {
-    db = new SQL.Database();
+  let buffer = null;
+  if (TURSO_URL) {
+    try {
+      buffer = await downloadSnapshot();
+      console.log('[db] Turso snapshot:', buffer ? (buffer.length / 1024).toFixed(0) + ' KB yüklendi' : 'yok (ilk kurulum)');
+    } catch (e) {
+      console.error('[db] Turso okuma hatası:', e.message);
+    }
   }
+  if (!buffer && fs.existsSync(DB_PATH)) buffer = fs.readFileSync(DB_PATH);
+  db = buffer ? new SQL.Database(buffer) : new SQL.Database();
   db.run('PRAGMA journal_mode=WAL');
   db.run('PRAGMA foreign_keys=ON');
   createTables();
@@ -29,6 +77,7 @@ function saveDb() {
   const data = db.export();
   const buffer = Buffer.from(data);
   fs.writeFileSync(DB_PATH, buffer);
+  scheduleSnapshot();
 }
 
 function createTables() {
@@ -307,7 +356,7 @@ function sweepExpired() {
   const now = new Date().toISOString();
   try {
     db.run("UPDATE news SET status='passive' WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at <= ? AND status='active'", [now]);
-    saveDb();
+    if (db.getRowsModified() > 0) saveDb();
   } catch (e) {}
 }
 

@@ -10,6 +10,7 @@
     "build:css": "tailwindcss -i src/tailwind.css -o public/css/tailwind.css --minify"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
