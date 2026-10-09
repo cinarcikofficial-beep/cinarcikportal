@@ -120,18 +120,31 @@ async function sendAdmin2FACode(code) {
   // 1) HTTP e-posta API (Render free plan SMTP portlarını engelliyor — 443 açık)
   if (apiKey) {
     const from = process.env.EMAIL_FROM || 'cinarcikofficial@gmail.com';
-    const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({
+    const provider = String(process.env.EMAIL_PROVIDER ||
+      (apiKey.startsWith('xkeysib-') ? 'brevo' : 'sendgrid')).toLowerCase();
+    let url, headers, payload;
+    if (provider === 'brevo') {
+      url = 'https://api.brevo.com/v3/smtp/email';
+      headers = { 'Content-Type': 'application/json', 'api-key': apiKey };
+      payload = {
+        sender: { email: from, name: 'Çınarcık Portal' },
+        to: [{ email: to }],
+        subject,
+        textContent: text
+      };
+    } else {
+      url = 'https://api.sendgrid.com/v3/mail/send';
+      headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey };
+      payload = {
         personalizations: [{ to: [{ email: to }] }],
         from: { email: from },
         subject,
         content: [{ type: 'text/plain', value: text }]
-      })
-    });
-    if (!resp.ok) throw new Error('SendGrid HTTP ' + resp.status + ': ' + (await resp.text()).slice(0, 300));
-    console.log('[2fa] SendGrid ile gönderildi →', to);
+      };
+    }
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    if (!resp.ok) throw new Error(provider + ' HTTP ' + resp.status + ': ' + (await resp.text()).slice(0, 300));
+    console.log('[2fa] ' + provider + ' ile gönderildi →', to);
     return;
   }
 
