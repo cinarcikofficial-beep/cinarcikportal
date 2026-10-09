@@ -1535,6 +1535,53 @@ app.delete('/api/comments/:id', requireGoogleAuth, (req, res) => {
 // ===================== TICKER DATA (Weather + Finance) =====================
 let tickerCache = { data: null, ts: 0 };
 const TICKER_CACHE_MS = 5 * 60 * 1000;
+const TICKER_PARTIAL_MS = 60 * 1000;
+const HTTP_JSON_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+  'Accept': 'application/json'
+};
+
+async function fetchJson(url, tries) {
+  let lastErr;
+  const n = tries || 2;
+  for (let i = 0; i < n; i++) {
+    try {
+      const r = await fetch(url, { headers: HTTP_JSON_HEADERS, signal: AbortSignal.timeout(8000) });
+      if (r.ok) return await r.json();
+      lastErr = new Error('HTTP ' + r.status);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < n - 1) await new Promise(function(res) { setTimeout(res, 700); });
+  }
+  throw lastErr;
+}
+
+function chartMeta(j) {
+  try {
+    const m = j.chart.result[0].meta;
+    if (m && m.regularMarketPrice) {
+      return { price: m.regularMarketPrice, prev: m.chartPreviousClose || m.previousClose || null };
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function yahooChart(symbol) {
+  let j;
+  try {
+    j = await fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=5d');
+  } catch (e) {
+    j = await fetchJson('https://query2.finance.yahoo.com/v8/finance/chart/' + symbol + '?interval=1d&range=5d');
+  }
+  return chartMeta(j);
+}
+
+function changeOf(cur, prev) {
+  if (!cur || !prev) return '';
+  const pct = ((cur - prev) / prev * 100);
+  return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+}
 
 function fmtNum(v, decimals) {
   const s = String(v).replace(/[^0-9.,-]/g, '');
@@ -1560,104 +1607,121 @@ async function fetchTickerData() {
     return tickerCache.data;
   }
 
+  const prev = tickerCache.data || null;
   const result = {
     weather: { temp: '--', description: '---', icon: '' },
     usd: '--', eur: '--', gramAltin: '--', ceYrekAltin: '--', bist100: '--',
     usdChange: '', eurChange: '', gramChange: '', ceYrekChange: '', bistChange: ''
   };
+  let usdNum = null;
+  let erapiData = null;
+  const getErapi = async function() {
+    if (!erapiData) erapiData = await fetchJson('https://open.er-api.com/v6/latest/USD');
+    return erapiData;
+  };
 
-  // 1. Hava Durumu - Open-Meteo
+  // 1. Hava Durumu - Open-Meteo (yedek: wttr.in)
   try {
-    const wRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.6475&longitude=29.0736&current=temperature_2m,weather_code&timezone=Europe/Istanbul', { signal: AbortSignal.timeout(5000) });
-    if (wRes.ok) {
-      const w = await wRes.json();
-      const wc = w.current;
-      result.weather.temp = Math.round(wc.temperature_2m) + '°C';
-      const wmo = { 0:'Güneşli',1:'Az Bulutlu',2:'Parçalı Bulutlu',3:'Kapalı', 45:'Sisli',48:'Sisli',51:'Hafif Yağmurlu',53:'Yağmurlu',55:'Şiddetli Yağmurlu', 61:'Hafif Yağmurlu',63:'Yağmurlu',65:'Şiddetli Yağmurlu', 71:'Hafif Karlı',73:'Karlı',75:'Şiddetli Kar',80:'Sağanak',81:'Sağanak',82:'Şiddetli Sağanak',95:'Gök Gürültülü' };
-      result.weather.description = wmo[wc.weather_code] || 'Bilinmiyor';
-      if (wc.weather_code <= 1) result.weather.icon = '☀️';
-      else if (wc.weather_code <= 3) result.weather.icon = '⛅';
-      else if (wc.weather_code <= 48) result.weather.icon = '🌫️';
-      else if (wc.weather_code <= 67) result.weather.icon = '🌧️';
-      else if (wc.weather_code <= 77) result.weather.icon = '🌨️';
-      else result.weather.icon = '⛈️';
-    }
-  } catch (e) { console.log('Ticker weather error:', e.message); }
-
-  // 2. Döviz + Altın + BIST - Yahoo Finance
-  try {
-    const [usdRes, eurRes, goldRes, bistRes] = await Promise.all([
-      fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=5d', { signal: AbortSignal.timeout(8000) }),
-      fetch('https://query1.finance.yahoo.com/v8/finance/chart/EURTRY=X?interval=1d&range=5d', { signal: AbortSignal.timeout(8000) }),
-      fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=5d', { signal: AbortSignal.timeout(8000) }),
-      fetch('https://query1.finance.yahoo.com/v8/finance/chart/XU100.IS?interval=1d&range=5d', { signal: AbortSignal.timeout(8000) })
-    ]);
-
-    // USD/TRY
-    if (usdRes.ok) {
-      const usdData = await usdRes.json();
-      const m = usdData.chart.result[0].meta;
-      if (m.regularMarketPrice) result.usd = fmtNum(m.regularMarketPrice);
-      if (m.regularMarketPrice && m.chartPreviousClose) {
-        const pct = ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100);
-        result.usdChange = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-      }
-    }
-
-    // EUR/TRY
-    if (eurRes.ok) {
-      const eurData = await eurRes.json();
-      const m = eurData.chart.result[0].meta;
-      if (m.regularMarketPrice) result.eur = fmtNum(m.regularMarketPrice);
-      if (m.regularMarketPrice && m.chartPreviousClose) {
-        const pct = ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100);
-        result.eurChange = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-      }
-    }
-
-    // Gram Altın (XAU/TRY → gram bazında)
-    // XAU/TRY ons fiyatı gelir, 1 ons = 31.1035 gram
-    if (goldRes.ok) {
-      const goldData = await goldRes.json();
-      const m = goldData.chart.result[0].meta;
-      if (m.regularMarketPrice) {
-        const gramAltinUSD = m.regularMarketPrice / 31.1035;
-        const gramAltinTRY = gramAltinUSD * (result.usd !== '--' ? parseTurkishNum(result.usd) : 1);
-        result.gramAltin = fmtNum(gramAltinTRY);
-        if (m.chartPreviousClose) {
-          const prevGramTRY = (m.chartPreviousClose / 31.1035) * (result.usd !== '--' ? parseTurkishNum(result.usd) : 1);
-          const pct = ((gramAltinTRY - prevGramTRY) / prevGramTRY * 100);
-          result.gramChange = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-        }
-      }
-      // Çeyrek Altın ≈ 1.75 gram altın fiyatı (1.75g saf altın içerir)
-      if (result.gramAltin !== '--') {
-        const gramVal = parseTurkishNum(result.gramAltin);
-        if (!isNaN(gramVal)) {
-          result.ceYrekAltin = fmtNum(gramVal * 1.75);
-          result.ceYrekChange = result.gramChange;
-        }
-      }
-    }
-
-    // BIST 100
-    if (bistRes.ok) {
-      const bistData = await bistRes.json();
-      const m = bistData.chart.result[0].meta;
-      if (m.regularMarketPrice) result.bist100 = fmtNum(m.regularMarketPrice);
-      if (m.regularMarketPrice && m.chartPreviousClose) {
-        const pct = ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100);
-        result.bistChange = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-      }
-    }
-  } catch (e) { console.log('Ticker finance error:', e.message); }
-
-  const hasData = result.usd !== '--' || result.eur !== '--' || result.gramAltin !== '--' || result.bist100 !== '--';
-  if (hasData) {
-    tickerCache = { data: result, ts: Date.now() };
-    return result;
+    const w = await fetchJson('https://api.open-meteo.com/v1/forecast?latitude=40.6475&longitude=29.0736&current=temperature_2m,weather_code&timezone=Europe/Istanbul');
+    const wc = w.current;
+    if (!wc || typeof wc.temperature_2m !== 'number') throw new Error('veri yok');
+    result.weather.temp = Math.round(wc.temperature_2m) + '°C';
+    const wmo = { 0:'Güneşli',1:'Az Bulutlu',2:'Parçalı Bulutlu',3:'Kapalı', 45:'Sisli',48:'Sisli',51:'Hafif Yağmurlu',53:'Yağmurlu',55:'Şiddetli Yağmurlu', 61:'Hafif Yağmurlu',63:'Yağmurlu',65:'Şiddetli Yağmurlu', 71:'Hafif Karlı',73:'Karlı',75:'Şiddetli Kar',80:'Sağanak',81:'Sağanak',82:'Şiddetli Sağanak',95:'Gök Gürültülü' };
+    result.weather.description = wmo[wc.weather_code] || 'Bilinmiyor';
+    if (wc.weather_code <= 1) result.weather.icon = '☀️';
+    else if (wc.weather_code <= 3) result.weather.icon = '⛅';
+    else if (wc.weather_code <= 48) result.weather.icon = '🌫️';
+    else if (wc.weather_code <= 67) result.weather.icon = '🌧️';
+    else if (wc.weather_code <= 77) result.weather.icon = '🌨️';
+    else result.weather.icon = '⛈️';
+  } catch (e) {
+    console.log('[ticker] open-meteo basarisiz (' + e.message + '), wttr.in yedegine gecildi');
+    try {
+      const j = await fetchJson('https://wttr.in/Cinarcik?format=j1');
+      const cc = j.current_condition && j.current_condition[0];
+      if (!cc || cc.temp_C == null) throw new Error('veri yok');
+      const desc = (cc.weatherDesc && cc.weatherDesc[0] && cc.weatherDesc[0].Value) || 'Bilinmiyor';
+      result.weather.temp = cc.temp_C + '°C';
+      result.weather.description = desc;
+      const d = desc.toLowerCase();
+      if (d.indexOf('rain') >= 0 || d.indexOf('drizzle') >= 0) result.weather.icon = '🌧️';
+      else if (d.indexOf('snow') >= 0) result.weather.icon = '🌨️';
+      else if (d.indexOf('sun') >= 0 || d.indexOf('clear') >= 0) result.weather.icon = '☀️';
+      else if (d.indexOf('thunder') >= 0) result.weather.icon = '⛈️';
+      else if (d.indexOf('fog') >= 0 || d.indexOf('mist') >= 0) result.weather.icon = '🌫️';
+      else result.weather.icon = '⛅';
+    } catch (e2) { console.log('[ticker] wttr.in yedegi de basarisiz: ' + e2.message); }
   }
-  return tickerCache.data || result;
+
+  // 2. USD/TRY - Yahoo (yedek: er-api)
+  try {
+    const m = await yahooChart('USDTRY=X');
+    if (!m) throw new Error('veri yok');
+    usdNum = m.price;
+    result.usd = fmtNum(m.price);
+    result.usdChange = changeOf(m.price, m.prev);
+  } catch (e) {
+    console.log('[ticker] USDTRY yahoo basarisiz (' + e.message + '), yedek er-api');
+    try {
+      const j = await getErapi();
+      if (j.result !== 'success' || !j.rates || !j.rates.TRY) throw new Error('veri yok');
+      usdNum = j.rates.TRY;
+      result.usd = fmtNum(usdNum);
+    } catch (e2) { console.log('[ticker] USD yedek de basarisiz: ' + e2.message); }
+  }
+
+  // 3. EUR/TRY - Yahoo (yedek: er-api)
+  try {
+    const m = await yahooChart('EURTRY=X');
+    if (!m) throw new Error('veri yok');
+    result.eur = fmtNum(m.price);
+    result.eurChange = changeOf(m.price, m.prev);
+  } catch (e) {
+    console.log('[ticker] EURTRY yahoo basarisiz (' + e.message + '), yedek er-api');
+    try {
+      const j = await getErapi();
+      if (j.result !== 'success' || !j.rates || !j.rates.TRY || !j.rates.EUR) throw new Error('veri yok');
+      result.eur = fmtNum(j.rates.TRY / j.rates.EUR);
+    } catch (e2) { console.log('[ticker] EUR yedek de basarisiz: ' + e2.message); }
+  }
+
+  // 4. Gram + Çeyrek altın (XAU/USD ons → gram → TL; 1 ons = 31.1035 g)
+  const usdForGold = usdNum || (prev && prev.usd !== '--' ? parseTurkishNum(prev.usd) : null);
+  try {
+    const m = await yahooChart('GC=F');
+    if (!m || !usdForGold) throw new Error('veri yok (altin veya usd eksik)');
+    const gramTRY = (m.price / 31.1035) * usdForGold;
+    result.gramAltin = fmtNum(gramTRY);
+    if (m.prev) result.gramChange = changeOf(gramTRY, (m.prev / 31.1035) * usdForGold);
+    result.ceYrekAltin = fmtNum(gramTRY * 1.75);
+    result.ceYrekChange = result.gramChange;
+  } catch (e) { console.log('[ticker] altin basarisiz: ' + e.message); }
+
+  // 5. BIST 100 - Yahoo
+  try {
+    const m = await yahooChart('XU100.IS');
+    if (!m) throw new Error('veri yok');
+    result.bist100 = fmtNum(m.price);
+    result.bistChange = changeOf(m.price, m.prev);
+  } catch (e) { console.log('[ticker] BIST basarisiz: ' + e.message); }
+
+  // 6. Eksik alanları önceki başarılı veriden tamamla
+  if (prev) {
+    ['usd', 'eur', 'gramAltin', 'ceYrekAltin', 'bist100'].forEach(function(k) {
+      if (result[k] === '--' && prev[k] && prev[k] !== '--') result[k] = prev[k];
+    });
+    [['usd', 'usdChange'], ['eur', 'eurChange'], ['gramAltin', 'gramChange'], ['ceYrekAltin', 'ceYrekChange'], ['bist100', 'bistChange']].forEach(function(p) {
+      if (result[p[0]] === prev[p[0]] && !result[p[1]] && prev[p[1]]) result[p[1]] = prev[p[1]];
+    });
+    if (result.weather.temp === '--' && prev.weather && prev.weather.temp !== '--') result.weather = prev.weather;
+  }
+
+  // 7. Cache: alanlar tam → 5 dk, eksik varsa → 60 sn (hızlı yeniden deneme)
+  const full = result.usd !== '--' && result.eur !== '--' && result.gramAltin !== '--' && result.bist100 !== '--' && result.weather.temp !== '--';
+  const fetchedAt = Date.now();
+  result.updated = new Date(fetchedAt).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul' });
+  tickerCache = { data: result, ts: full ? fetchedAt : fetchedAt - (TICKER_CACHE_MS - TICKER_PARTIAL_MS) };
+  return result;
 }
 
 // Hava durumu tahmin rotası (Haftalık / 15 Gün / Aylık)
@@ -1826,7 +1890,7 @@ app.get('/api/weather-forecast', (req, res) => {
 app.get('/api/ticker-data', async (req, res) => {
   try {
     const data = await fetchTickerData();
-    res.json({ success: true, ...data, updated: new Date().toLocaleTimeString('tr-TR') });
+    res.json({ success: true, ...data, updated: data.updated || new Date().toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul' }) });
   } catch (e) {
     res.json({ success: false, weather:{temp:'--',description:'---',icon:''}, usd:'--', eur:'--', gramAltin:'--', ceYrekAltin:'--', bist100:'--', updated:'--' });
   }
