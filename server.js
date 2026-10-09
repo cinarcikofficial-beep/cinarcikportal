@@ -122,7 +122,10 @@ async function sendAdmin2FACode(code) {
     host: smtpHost,
     port: Number(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: smtpUser, pass: smtpPass }
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 10 * 1000,
+    greetingTimeout: 10 * 1000,
+    socketTimeout: 20 * 1000
   });
   const to = process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com';
   await transporter.sendMail({
@@ -633,7 +636,7 @@ app.post('/admin/login', loginRateLimit, async (req, res) => {
     try {
       await sendAdmin2FACode(code);
     } catch (e) {
-      console.error('[2fa] mail gönderilemedi:', e.message);
+      console.error('[2fa] mail gönderilemedi:', e.message, '| kod:', code);
     }
     return res.render('admin/login', { error: null, otpStep: true, otpSentTo: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com' });
   }
