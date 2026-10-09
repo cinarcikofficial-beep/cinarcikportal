@@ -6,6 +6,7 @@ const { initDb } = require('./db');
 const { tx, txFields, txArray, txJsonArrayField } = require('./translator');
 
 const app = express();
+app.set('trust proxy', 1);
 process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));
 process.on('uncaughtException', (err) => console.error('[uncaughtException]', err));
 const helmet = require('helmet');
