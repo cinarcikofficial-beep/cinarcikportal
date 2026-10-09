@@ -112,6 +112,30 @@ function isAuthenticated(req, res, next) {
 }
 
 async function sendAdmin2FACode(code) {
+  const to = process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com';
+  const subject = 'Admin doğrulama kodu';
+  const text = 'Admin paneli giriş doğrulama kodunuz: ' + code + '\n\nBu kod 10 dakika geçerlidir.';
+  const apiKey = process.env.EMAIL_API_KEY;
+
+  // 1) HTTP e-posta API (Render free plan SMTP portlarını engelliyor — 443 açık)
+  if (apiKey) {
+    const from = process.env.EMAIL_FROM || 'cinarcikofficial@gmail.com';
+    const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: from },
+        subject,
+        content: [{ type: 'text/plain', value: text }]
+      })
+    });
+    if (!resp.ok) throw new Error('SendGrid HTTP ' + resp.status + ': ' + (await resp.text()).slice(0, 300));
+    console.log('[2fa] SendGrid ile gönderildi →', to);
+    return;
+  }
+
+  // 2) Yerel fallback: SMTP
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
@@ -129,12 +153,11 @@ async function sendAdmin2FACode(code) {
     greetingTimeout: 10 * 1000,
     socketTimeout: 20 * 1000
   });
-  const to = process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com';
   await transporter.sendMail({
     from: smtpUser,
     to,
-    subject: 'Admin doğrulama kodu',
-    text: 'Admin paneli giriş doğrulama kodunuz: ' + code + '\n\nBu kod 10 dakika geçerlidir.'
+    subject,
+    text
   });
 }
 
