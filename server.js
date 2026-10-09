@@ -6,6 +6,8 @@ const { initDb } = require('./db');
 const { tx, txFields, txArray, txJsonArrayField } = require('./translator');
 
 const app = express();
+process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));
+process.on('uncaughtException', (err) => console.error('[uncaughtException]', err));
 const helmet = require('helmet');
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 const PORT = process.env.PORT || 3000;
@@ -626,7 +628,7 @@ app.post('/admin/login', loginRateLimit, async (req, res) => {
   const { get } = require('./db');
   const { username, password } = req.body;
   const user = get('SELECT * FROM users WHERE username = ?', [username]);
-  if (user && await bcrypt.compare(password, user.password)) {
+  if (user && user.password && await bcrypt.compare(password, user.password)) {
     // 2FA: şifre doğru, şimdi e-posta doğrulama kodu gerekir
     const code = String(Math.floor(100000 + Math.random() * 900000));
     req.session.pendingAdmin = true;
