@@ -12,11 +12,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: SITE_URL
-        value: https://marmaranincisi.com
+        value: https://marmaraninincisi.com
       - key: GOOGLE_CLIENT_ID
         value: 1006777601330-qjsohqmh4a09v9740jqfhr25skak6c5k.apps.googleusercontent.com
       - key: GOOGLE_CALLBACK_URL
-        value: https://marmaranincisi.com/auth/google/callback
+        value: https://marmaraninincisi.com/auth/google/callback
       - key: RECAPTCHA_SITE_KEY
         value: 6Le1Wt0tAAAAAO4YwV-3UALrSCMB2m9YzCH14ixm
       - key: ADMIN_2FA_EMAIL
