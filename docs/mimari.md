@@ -60,6 +60,23 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 - `AAAA` (IPv6) kaydı **bulunmamalı** — Render IPv6 desteklemiyor
 - Render tarafında **Settings → Custom Domains** üzerinden domain eklenip Verify edilir
 
+### 3.3 Cloudflare R2 (kalıcı görsel deposu)
+
+- Bucket: `cinarcik-portal-uploads` (hesap: `0fc67f5590ae3c46017f396d1f46e5be`)
+- 10 GB ücretsiz depolama, **egress $0**, 1 M yazma + 10 M okuma/ay
+- `server.js` içindeki `finishUploads()` multer dosyalarını S3 API ile
+  `uploads/<dosyaadı>` anahtarına yükler; `pubUrl()` bunu **`/uploads/<dosyaadı>`**
+  olarak döndürür.
+- `GET /uploads/:file` yolu objeyi R2'den imzalı GET ile okuyup döner
+  (404 olursa `public/img/uploads`'tan yerel fallback).
+- Neden `r2.dev` veya custom domain değil: `r2.dev` bazı ISP'lerce engelleniyor,
+  R2 custom domain bağlama ise hesap/dialog kısıtlarıyla sorunlu — kendi
+  domain'inden proxy hem erişilebilir hem de hesap derdi yok.
+- 87 mevcut görsel R2'ye taşındı; `public/img/uploads` klasörü (git'te) fallback
+  olarak duruyor.
+- Env: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
+  (`R2_PUBLIC_URL` artık kullanılmıyor).
+
 ## 4. Uygulama Yapısı
 
 | Katman | Teknoloji |
@@ -69,7 +86,7 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | Veritabanı | SQLite via `sql.js` (WASM), `db/index.js` |
 | Oturum | `express-session` (in-memory store) |
 | Güvenlik | `helmet`, basic auth, bcrypt, login rate-limit, admin POST Origin kontrolü |
-| Dosya yükleme | `multer` → `public/img/uploads` |
+| Dosya yükleme | `multer` → R2 (`/uploads/*`), fallback `public/img/uploads` |
 | Stil | Tailwind (`npm run build:css`) |
 
 ### 4.1 Dil sistemi
@@ -91,6 +108,7 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | **Brevo** (`api.brevo.com`, HTTPS) | 2FA doğrulama kodu maili | 300 mail/gün, süresiz |
 | **Google OAuth Console** | Yorum için Gmail ile giriş | sınırsız |
 | **Google reCAPTCHA v2** | İletişim formu spam koruması | 50.000 doğrulama/ay |
+| **Cloudflare R2** | Kalıcı görsel deposu (`/uploads/*`) | 10 GB, egress $0 |
 | Open-Meteo / döviz / RSS | Ticker ve hava durumu | açık API'ler |
 
 ### 5.1 Neden SMTP değil?
@@ -110,10 +128,12 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 
 ## 6. Bilinen Sınırlamalar ve Riskler
 
-1. **Veri kalıcılığı yok (Free plan disk desteklemez)**
-   - `db/cinarcik.db` ve `public/img/uploads` her deploy/restart'ta sıfırlanır.
-   - Geçici çözüm: admin içerik girişi sonrası `db/cinarcik.db` commit'lenmeli.
-   - Kalıcı çözüm: Render **Starter ($7/ay)** + persistent disk (`DB_PATH=/data/...`).
+1. **Veri kalıcılığı — çözüldü**
+   - DB: **Turso (libSQL)** `db/index.js` üzerinden snapshot senkronu
+     (açılışta indirme, yazmalarda debounce ile upload) — bkz. `TURSO_*` env.
+   - Görseller: **Cloudflare R2** (bkz. 3.3).
+   - Geriye kalan: Render diski yalnızca yerel fallback; her deploy'ta sıfırlanır,
+     anlamlı veri kaybı yoktur.
 2. **Instance uykusu**: 15 dakika hareketsizlikte uyur, sonraki istekte ~1 dk uyanır.
 3. **Oturum kaybı**: session bellekte; deploy anında tüm oturumlar düşer.
 4. **Doğrudan SMTP yok**: yalnız Brevo/HTTP API üzerinden mail gönderilebilir.
@@ -138,6 +158,12 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 | `EMAIL_FROM` | render.yaml | Gönderici: `cinarcikofficial@gmail.com` |
 | `SMTP_*`, `GMAIL_*` | Dashboard | Yalnızca yerel fallback |
 | `SESSION_SECRET` | render.yaml (`generateValue`) | Oturum imzası |
+| `TURSO_URL` | render.yaml | `libsql://...turso.io` |
+| `TURSO_TOKEN` | Dashboard (secret) | Turso auth token |
+| `R2_ACCOUNT_ID` | Dashboard (secret) | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | Dashboard (secret) | R2 API token access key |
+| `R2_SECRET_ACCESS_KEY` | Dashboard (secret) | R2 API token secret |
+| `R2_BUCKET` | render.yaml | `cinarcik-portal-uploads` |
 | `DB_PATH` | (opsiyonel) | Disk eklendiğinde SQLite yolu |
 
 > `.env` dosyası `.gitignore` içindedir, repo'ya girmez; yerel geliştirme içindir.

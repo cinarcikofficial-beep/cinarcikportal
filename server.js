@@ -837,9 +837,9 @@ const upload = multer({
   }
 });
 
-// ---- Cloudflare R2 (kalıcı görsel deposu) ----
+// ---- Cloudflare R2 (kalıcı görsel deposu; servis kendi domain'imizden /uploads üzerinden) ----
 const { AwsClient } = require('aws4fetch');
-const R2 = (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET && process.env.R2_PUBLIC_URL)
+const R2 = (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET)
   ? {
       account: process.env.R2_ACCOUNT_ID,
       bucket: process.env.R2_BUCKET,
@@ -852,11 +852,13 @@ const R2 = (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process
       })
     }
   : null;
-if (R2) console.log('\x1b[32m✓ R2 görsel deposu aktif:\x1b[0m', R2.publicBase);
+if (R2) console.log('\x1b[32m✓ R2 görsel deposu aktif (servis: /uploads/*)\x1b[0m');
 else console.log('\x1b[33m⚠ R2 yapılandırması yok — görseller yerel diske yazılacak.\x1b[0m');
 
 function pubUrl(file) {
-  return (file && file.r2Url) ? file.r2Url : (file ? '/img/uploads/' + file.filename : '');
+  if (!file) return '';
+  if (R2) return '/uploads/' + file.filename;
+  return '/img/uploads/' + file.filename;
 }
 
 function finishUploads(req, res, done) {
@@ -900,6 +902,31 @@ function withUpload(mw) {
     });
   };
 }
+
+app.get('/uploads/:file', async (req, res) => {
+  const name = path.basename(String(req.params.file || ''));
+  if (!name || name === '.' || name === '..') return res.status(404).type('text').send('Görsel bulunamadı');
+  if (R2) {
+    try {
+      const r = await R2.client.fetch('https://' + R2.account + '.r2.cloudflarestorage.com/' + R2.bucket + '/uploads/' + name, { method: 'GET' });
+      if (r.ok) {
+        const buf = Buffer.from(await r.arrayBuffer());
+        res.set('Content-Type', r.headers.get('content-type') || 'application/octet-stream');
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        return res.send(buf);
+      }
+      if (r.status !== 404) console.error('[r2] okuma hatası (' + name + '): HTTP ' + r.status);
+    } catch (e) {
+      console.error('[r2] okuma hatası (' + name + '):', e.message);
+    }
+  }
+  const local = path.join(__dirname, 'public', 'img', 'uploads', name);
+  if (require('fs').existsSync(local)) {
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(local);
+  }
+  res.status(404).type('text').send('Görsel bulunamadı');
+});
 
 function uploadHandler(field, renderView, loadData) {
   return (req, res, next) => {
