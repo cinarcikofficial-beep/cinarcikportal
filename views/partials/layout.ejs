@@ -45,11 +45,12 @@
         <a href="<%= lp %>/cinarcik-hakkinda" class="px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">ℹ️ <%= t('about') %></a>
       </nav>
       <div class="nav-right">
-        <span class="inline-flex items-center gap-1 text-xs">
+        <select id="lang-select" aria-label="Dil seçimi" title="Dil seçimi"
+          class="px-2 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-sm font-semibold cursor-pointer hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition">
           <% ['tr','en','ru','ar'].forEach(function(l){ %>
-            <a href="<%= (l === 'tr' ? '' : '/' + l) %><%= path === '/' ? '/' : path %>" class="px-1.5 py-0.5 rounded <%= lang === l ? 'bg-emerald-600 text-white' : 'text-zinc-400 hover:text-white' %>"><%= l.toUpperCase() %></a>
+            <option value="<%= (l === 'tr' ? '' : '/' + l) %><%= path === '/' ? '/' : path %>" <%= lang === l ? 'selected' : '' %>><%= l.toUpperCase() %></option>
           <% }); %>
-        </span>
+        </select>
         <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
         <% if (isAdmin) { %>
           <a href="<%= lp %>/admin" class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
@@ -319,6 +320,13 @@
       });
     }
     document.addEventListener('DOMContentLoaded', translatePage);
+
+    var langSel = document.getElementById('lang-select');
+    if (langSel) {
+      langSel.addEventListener('change', function() {
+        if (this.value) window.location.href = this.value;
+      });
+    }
 
     var tBtn = document.getElementById('theme-toggle');
     if (tBtn) {
