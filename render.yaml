@@ -9,3 +9,41 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: NODE_ENV
+        value: production
+      - key: SITE_URL
+        value: https://marmaranincisi.com
+      - key: GOOGLE_CLIENT_ID
+        value: 1006777601330-qjsohqmh4a09v9740jqfhr25skak6c5k.apps.googleusercontent.com
+      - key: GOOGLE_CALLBACK_URL
+        value: https://marmaranincisi.com/auth/google/callback
+      - key: RECAPTCHA_SITE_KEY
+        value: 6Le1Wt0tAAAAAO4YwV-3UALrSCMB2m9YzCH14ixm
+      - key: ADMIN_2FA_EMAIL
+        value: kerimkaplan@yahoo.com
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        value: cinarcikofficial@gmail.com
+      - key: GMAIL_USER
+        value: cinarcikofficial@gmail.com
+      - key: ADMIN_BASIC_USER
+        value: admin
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_BASIC_PASS
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: RECAPTCHA_SECRET_KEY
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
