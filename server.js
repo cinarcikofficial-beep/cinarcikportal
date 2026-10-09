@@ -407,17 +407,17 @@ app.get('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
-  upload.fields([
+  withUpload(upload.fields([
     { name: 'image', maxCount: 1 },
     { name: 'gallery_files', maxCount: 12 }
-  ])(req, res, (err) => {
+  ]))(req, res, (err) => {
     if (err) return next(err);
     const { run, get, parseGallery } = require('./db');
     const { title, summary, description, category, location, map_link, sort_order, status, edit_id, existing_gallery, remove_image } = req.body;
     if (!title || !String(title).trim()) {
       return res.render('admin/sightseeing-form', { edit: null, error: 'Başlık zorunludur' });
     }
-    let image = (req.files && req.files.image && req.files.image[0]) ? '/img/uploads/' + req.files.image[0].filename : '';
+    let image = (req.files && req.files.image && req.files.image[0]) ? pubUrl(req.files.image[0]) : '';
 
     let gallery = [];
     if (existing_gallery) {
@@ -427,7 +427,7 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
       } catch (e) { gallery = []; }
     }
     if (req.files && req.files.gallery_files) {
-      req.files.gallery_files.forEach(f => gallery.push('/img/uploads/' + f.filename));
+      req.files.gallery_files.forEach(f => gallery.push(pubUrl(f)));
     }
 
     const statusVal = status === 'passive' ? 'passive' : 'active';
@@ -754,10 +754,10 @@ app.get('/admin/haber-ekle', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
-  upload.fields([
+  withUpload(upload.fields([
     { name: 'image', maxCount: 1 },
     { name: 'gallery_files', maxCount: 10 }
-  ])(req, res, function(err) {
+  ]))(req, res, function(err) {
     if (err) {
       const edit = req.body && req.body.edit_id ? require('./db').get('SELECT * FROM news WHERE id = ?', [req.body.edit_id]) : null;
       return res.render('admin/news-form', { edit, error: 'Görsel yüklenemedi.' });
@@ -767,7 +767,7 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
 }, (req, res) => {
   const { run, get, slugify, ensureUniqueSlug } = require('./db');
   const { title, badge_text, summary, content, category, headline_order, is_headline, status, expires_at, edit_id } = req.body;
-  let main_image_url = (req.files && req.files.image && req.files.image[0]) ? '/img/uploads/' + req.files.image[0].filename : '';
+  let main_image_url = (req.files && req.files.image && req.files.image[0]) ? pubUrl(req.files.image[0]) : '';
 
   let galleryArr = [];
   if (req.body.existing_gallery) {
@@ -785,7 +785,7 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_files && Array.isArray(req.files.gallery_files)) {
-    req.files.gallery_files.forEach(function(f) { galleryArr.push('/img/uploads/' + f.filename); });
+    req.files.gallery_files.forEach(function(f) { galleryArr.push(pubUrl(f)); });
   }
 
   if (!title || !content) {
@@ -837,6 +837,70 @@ const upload = multer({
   }
 });
 
+// ---- Cloudflare R2 (kalıcı görsel deposu) ----
+const { AwsClient } = require('aws4fetch');
+const R2 = (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET && process.env.R2_PUBLIC_URL)
+  ? {
+      account: process.env.R2_ACCOUNT_ID,
+      bucket: process.env.R2_BUCKET,
+      publicBase: String(process.env.R2_PUBLIC_URL).replace(/\/+$/, ''),
+      client: new AwsClient({
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        region: 'auto',
+        service: 's3'
+      })
+    }
+  : null;
+if (R2) console.log('\x1b[32m✓ R2 görsel deposu aktif:\x1b[0m', R2.publicBase);
+else console.log('\x1b[33m⚠ R2 yapılandırması yok — görseller yerel diske yazılacak.\x1b[0m');
+
+function pubUrl(file) {
+  return (file && file.r2Url) ? file.r2Url : (file ? '/img/uploads/' + file.filename : '');
+}
+
+function finishUploads(req, res, done) {
+  const files = [];
+  if (req.file) files.push(req.file);
+  if (req.files) {
+    if (Array.isArray(req.files)) files.push.apply(files, req.files);
+    else Object.keys(req.files).forEach(function(k) {
+      const v = req.files[k];
+      if (Array.isArray(v)) files.push.apply(files, v);
+    });
+  }
+  if (!R2 || !files.length) return done();
+  let pending = files.length;
+  const step = function() { if (--pending === 0) done(); };
+  files.forEach(function(file) {
+    const key = 'uploads/' + file.filename;
+    let body = null;
+    try { body = require('fs').readFileSync(file.path); } catch (e) {}
+    if (!body) return step();
+    R2.client.fetch('https://' + R2.account + '.r2.cloudflarestorage.com/' + R2.bucket + '/' + key, {
+      method: 'PUT',
+      body: body,
+      headers: { 'Content-Type': file.mimetype || 'application/octet-stream' }
+    }).then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      file.r2Url = R2.publicBase + '/' + key;
+      try { require('fs').unlinkSync(file.path); } catch (e) {}
+      console.log('[r2] yüklendi:', key);
+    }).catch(function(e) {
+      console.error('[r2] yükleme hatası (' + file.filename + '):', e.message);
+    }).then(step);
+  });
+}
+
+function withUpload(mw) {
+  return function(req, res, next) {
+    mw(req, res, function(err) {
+      if (err) return next(err);
+      finishUploads(req, res, next);
+    });
+  };
+}
+
 function uploadHandler(field, renderView, loadData) {
   return (req, res, next) => {
     upload.single(field)(req, res, (err) => {
@@ -863,7 +927,7 @@ app.get('/admin/duyuru-ekle', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
-  upload.single('image')(req, res, function(err) {
+  withUpload(upload.single('image'))(req, res, function(err) {
     if (err) {
       const edit = req.body && req.body.edit_id ? require('./db').get('SELECT * FROM announcements WHERE id = ?', [req.body.edit_id]) : null;
       return res.render('admin/announcement-form', { edit, error: 'Görsel yüklenemedi.' });
@@ -876,7 +940,7 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
   let image = existing_image || '';
   const safeTitle = title || '';
   const safeContent = content || '';
-  if (req.file) image = '/img/uploads/' + req.file.filename;
+  if (req.file) image = pubUrl(req.file);
   if (edit_id) {
     run('UPDATE announcements SET title=?, content=?, category=?, image=? WHERE id=?', [safeTitle, safeContent, category || 'duyuru', image, edit_id]);
   } else {
@@ -917,10 +981,10 @@ app.get('/admin/mekan-ekle', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
-  upload.fields([
+  withUpload(upload.fields([
     { name: 'main_image', maxCount: 1 },
     { name: 'gallery_images', maxCount: 10 }
-  ])(req, res, function(err) {
+  ]))(req, res, function(err) {
     if (err) {
       const edit = req.body && req.body.edit_id ? require('./db').get('SELECT * FROM places WHERE id = ?', [req.body.edit_id]) : (req.query && req.query.edit ? require('./db').get('SELECT * FROM places WHERE id = ?', [req.query.edit]) : null);
       return res.render('admin/place-form', { edit, error: 'Görsel yüklenemedi.' });
@@ -933,7 +997,7 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
   const estTypeArr = Array.isArray(establishment_type) ? establishment_type : (establishment_type ? [establishment_type] : []);
   const mealTypeArr = Array.isArray(meal_type) ? meal_type : (meal_type ? [meal_type] : []);
 
-  let main_image_url = (req.files && req.files.main_image && req.files.main_image[0]) ? '/img/uploads/' + req.files.main_image[0].filename : '';
+  let main_image_url = (req.files && req.files.main_image && req.files.main_image[0]) ? pubUrl(req.files.main_image[0]) : '';
 
   let galleryArr = [];
   if (req.body.existing_gallery) {
@@ -951,7 +1015,7 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    req.files.gallery_images.forEach(function(f) { galleryArr.push('/img/uploads/' + f.filename); });
+    req.files.gallery_images.forEach(function(f) { galleryArr.push(pubUrl(f)); });
   }
 
   if (!name || !category || !description) {
@@ -1073,10 +1137,10 @@ app.get('/admin/firma-ekle', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
-  upload.fields([
+  withUpload(upload.fields([
     { name: 'logo', maxCount: 1 },
     { name: 'gallery_images', maxCount: 10 }
-  ])(req, res, function(err) {
+  ]))(req, res, function(err) {
     if (err) {
       const edit = req.body && req.body.edit_id ? require('./db').get('SELECT * FROM companies WHERE id = ?', [req.body.edit_id]) : null;
       return res.render('admin/company-form', { edit, error: 'Görsel yüklenemedi.' });
@@ -1087,7 +1151,7 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
   const { run, get, slugify, ensureUniqueSlug } = require('./db');
   const { name, category, sector, address, phone, website, email, working_hours, map_link, google_reviews_url, description, status, is_featured, sort_order, edit_id } = req.body;
 
-  let logo_url = (req.files && req.files.logo && req.files.logo[0]) ? '/img/uploads/' + req.files.logo[0].filename : '';
+  let logo_url = (req.files && req.files.logo && req.files.logo[0]) ? pubUrl(req.files.logo[0]) : '';
 
   let galleryArr = [];
   if (req.body.existing_gallery) {
@@ -1105,7 +1169,7 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    req.files.gallery_images.forEach(function(f) { galleryArr.push('/img/uploads/' + f.filename); });
+    req.files.gallery_images.forEach(function(f) { galleryArr.push(pubUrl(f)); });
   }
 
   if (!name || !category) {
