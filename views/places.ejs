@@ -40,7 +40,11 @@
 <div class="main-layout-wrapper">
 
   <!-- Sidebar Filters -->
-  <aside class="sidebar-container">
+  <aside class="sidebar-container" id="places-sidebar">
+    <button type="button" id="sidebar-toggle" class="lg:hidden w-full flex items-center justify-between gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white font-bold text-sm" aria-expanded="false" aria-controls="places-sidebar">
+      <span>⚙️ <%= t('mainCategories') %></span>
+      <span id="sidebar-chevron" class="transition-transform duration-200">▾</span>
+    </button>
     <div class="filter-card">
       <h3>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
@@ -381,6 +385,17 @@
   });
 
   (function() {
+    var sidebar = document.getElementById('places-sidebar');
+    var toggle = document.getElementById('sidebar-toggle');
+    var chevron = document.getElementById('sidebar-chevron');
+    if (toggle && sidebar) {
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+      });
+    }
+
     var searchInput = document.getElementById('place-search');
     var categoryBtns = document.querySelectorAll('.category-pills button');
     var anaCategoryFilters = document.querySelectorAll('.ana-category-filter');

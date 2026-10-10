@@ -24,18 +24,18 @@
       <div class="flex-1 min-w-0 overflow-x-auto whitespace-nowrap" id="ticker-content">
         <span class="text-zinc-500"><%= t('loading') %></span>
       </div>
-      <span id="ticker-updated" class="hidden shrink-0 text-zinc-500 pl-3 border-l border-zinc-800 whitespace-nowrap"></span>
+      <span id="ticker-updated" class="hidden max-sm:hidden shrink-0 text-zinc-500 pl-3 border-l border-zinc-800 whitespace-nowrap"></span>
     </div>
   </div>
 
-  <header class="bg-zinc-900 bg-opacity-80 backdrop-blur-md sticky top-0 z-50 w-full shadow-md" role="banner">
+  <header class="site-header bg-zinc-900 bg-opacity-80 backdrop-blur-md sticky top-0 z-50 w-full shadow-md" role="banner">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-1">
       <a href="/" class="flex items-center" aria-label="<%= t('homeAria') %>">
-        <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
           <img src="/img/logo-circle.png" alt="<%= t('logoAlt') %>" class="w-full h-full object-cover">
         </div>
       </a>
-      <nav class="hidden md:flex items-center gap-1.5 text-sm font-semibold">
+      <nav id="main-nav" class="main-nav hidden md:flex items-center gap-1.5 text-sm font-semibold">
         <a href="<%= lp %>/" class="px-3 py-2 rounded-full transition-all <%= path === '/' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏠 <%= t('home') %></a>
         <a href="<%= lp %>/haberler" class="px-3 py-2 rounded-full transition-all <%= (path === '/haberler' || path.startsWith('/haber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📰 <%= t('news') %></a>
         <a href="<%= lp %>/duyurular" class="px-3 py-2 rounded-full transition-all <%= path === '/duyurular' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📢 <%= t('announcements') %></a>
@@ -44,7 +44,7 @@
         <a href="<%= lp %>/gezilecek-yerler" class="px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🧳 <%= t('sightseeing') %></a>
         <a href="<%= lp %>/cinarcik-hakkinda" class="px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">ℹ️ <%= t('about') %></a>
       </nav>
-      <div class="nav-right">
+      <div class="nav-right flex items-center gap-1.5 sm:gap-2">
         <span class="inline-flex items-center gap-1">
           <span class="text-base leading-none" aria-hidden="true">🌐</span>
           <select id="lang-select" aria-label="Dil seçimi" title="Dil seçimi"
@@ -57,18 +57,18 @@
         </span>
         <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
         <% if (isAdmin) { %>
-          <a href="<%= lp %>/admin" class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
-          <a href="<%= lp %>/admin/logout" class="ml-2 px-3 py-1 rounded bg-gray-600 text-white hover:bg-gray-500 transition"><%= t('logout') %></a>
+          <a href="<%= lp %>/admin" class="hidden sm:inline-block px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
+          <a href="<%= lp %>/admin/logout" class="hidden sm:inline-block ml-2 px-3 py-1 rounded bg-gray-600 text-white hover:bg-gray-500 transition"><%= t('logout') %></a>
         <% } %>
       </div>
-      <button class="md:hidden p-2 text-2xl text-white" onclick="document.querySelector('.site-header nav').classList.toggle('flex')">☰</button>
+      <button id="menu-toggle" class="md:hidden p-2 -mr-2 text-2xl text-white" aria-label="Menü" aria-expanded="false" aria-controls="main-nav">☰</button>
     </div>
   </header>
 
   <!-- HAVA DURUMU TAHMİN MODALİ -->
   <div id="weather-modal" class="fixed inset-0 z-[100] hidden" onclick="if(event.target===this)closeWeatherModal()">
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-    <div class="relative max-w-4xl mx-auto mt-20 mb-10 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col mx-4">
+    <div class="relative w-auto max-w-4xl mt-6 sm:mt-16 mb-8 mx-4 sm:mx-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/90 sticky top-0 z-10">
         <div class="flex items-center gap-3">
@@ -329,6 +329,29 @@
     if (langSel) {
       langSel.addEventListener('change', function() {
         if (this.value) window.location.href = this.value;
+      });
+    }
+
+    // ---- Mobil menü ----
+    var menuBtn = document.getElementById('menu-toggle');
+    var mainNav = document.getElementById('main-nav');
+    if (menuBtn && mainNav) {
+      menuBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var open = mainNav.classList.toggle('open');
+        menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      document.addEventListener('click', function(e) {
+        if (mainNav.classList.contains('open') && !mainNav.contains(e.target)) {
+          mainNav.classList.remove('open');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+      mainNav.querySelectorAll('a').forEach(function(a) {
+        a.addEventListener('click', function() {
+          mainNav.classList.remove('open');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        });
       });
     }
 
