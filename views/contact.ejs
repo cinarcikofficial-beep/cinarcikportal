@@ -2,18 +2,7 @@
 <% locals.pageTitle = t('contactTitle') %>
 
 <style>
-  /* reCAPTCHA rozeti sayfanın sağ alt köşesi yerine Güvenlik Kodu panelinin içinde gösterilsin */
-  #rc-widget[data-size="invisible"] { position: relative; width: 100%; height: 66px; }
-  #rc-widget[data-size="invisible"] .grecaptcha-badge {
-    position: absolute !important;
-    left: 50% !important;
-    right: auto !important;
-    top: 4px !important;
-    bottom: auto !important;
-    transform: translateX(-50%) !important;
-    transition: none !important;
-    box-shadow: none !important;
-  }
+  #rc-widget { min-height: 78px; }
 </style>
 
 <div class="max-w-6xl mx-auto px-4 py-8">
@@ -111,7 +100,6 @@
             <% } %>
             <div class="flex justify-center">
               <div id="rc-widget" class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>" data-theme="dark"
-                <% if (recaptchaInvisible) { %>data-size="invisible"<% } %>
                 data-callback="rcDone" data-expired-callback="rcExpired" data-error-callback="rcFailed"></div>
             </div>
             <% if (!recaptchaInvisible) { %>
@@ -227,8 +215,22 @@
       fire(0);
     } else {
       hint(true);
-      var w = document.getElementById('rc-widget');
-      if (w && w.scrollIntoView) w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  var w = document.getElementById('rc-widget');
+  if (w && !w.dataset.rendered) {
+    w.dataset.rendered = '1';
+    try {
+      if (typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.render === 'function') {
+        grecaptcha.render(w, {
+          sitekey: '<%= recaptchaSiteKey %>',
+          theme: 'dark',
+          callback: rcDone,
+          'expired-callback': rcExpired,
+          'error-callback': rcFailed
+        });
+      }
+    } catch (e) {}
+  }
+  if (w && w.scrollIntoView) w.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   });
 
