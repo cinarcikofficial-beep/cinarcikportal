@@ -18,7 +18,7 @@ services:
       - key: GOOGLE_CALLBACK_URL
         value: https://marmaraninincisi.com/auth/google/callback
       - key: RECAPTCHA_SITE_KEY
-        value: 6Ld71-gtAAAAABqe6N0qvmWcTQhuEyJZZlU7-W4I
+        value: 6Ld64OgtAAAAACJyajF1fwQksLklkadFkPqsjan_
       - key: ADMIN_2FA_EMAIL
         value: kerimkaplan@yahoo.com
       - key: SMTP_HOST
@@ -42,7 +42,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: RECAPTCHA_SECRET_KEY
-        value: 6Ld71-gtAAAAALVoKc5kahZlFQecPJammWo-wR-x
+        value: 6Ld64OgtAAAAAIQV51-EV8er03ZY2tQEacBnuT9s
       - key: SMTP_PASS
         sync: false
       - key: GMAIL_APP_PASSWORD
