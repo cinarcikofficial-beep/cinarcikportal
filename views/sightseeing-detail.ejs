@@ -1,5 +1,32 @@
 <% layout('partials/layout') %>
-<% locals.pageTitle = item.title %>
+  locals.pageSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TouristAttraction",
+        "name": item.title,
+        "description": (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
+        "image": item.image || undefined,
+        "url": siteUrl + lp + '/gezilecek-yer/' + item.id,
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": item.location || "Çınarcık",
+          "addressRegion": "Yalova",
+          "addressCountry": "TR"
+        },
+        "geo": { "@type": "GeoCoordinates", "latitude": 40.6667, "longitude": 29.1333 }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": t('home'), "item": siteUrl + lp + '/' },
+          { "@type": "ListItem", "position": 2, "name": t('sightseeing'), "item": siteUrl + lp + '/gezilecek-yerler' },
+          { "@type": "ListItem", "position": 3, "name": item.title }
+        ]
+      }
+    ]
+  };
+%>
 
 <style>
   .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }

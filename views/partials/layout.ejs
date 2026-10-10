@@ -7,14 +7,83 @@
   <link rel="icon" type="image/png" href="/img/logo-circle.png">
   <link rel="stylesheet" href="/css/tailwind.css">
   <meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDesc') %>">
-  <meta property="og:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : 'Ana Sayfa' %>">
+
+  <!-- Canonical + Hreflang -->
+  <link rel="canonical" href="<%= siteUrl %><%= lp %><%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="tr" href="<%= siteUrl %><%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="en" href="<%= siteUrl %>/en<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="ru" href="<%= siteUrl %>/ru<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="ar" href="<%= siteUrl %>/ar<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="x-default" href="<%= siteUrl %><%= path === '/' ? '/' : path %>">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %>">
   <meta property="og:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDescShort') %>">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="<%= typeof ogType !== 'undefined' ? ogType : 'website' %>">
+  <meta property="og:url" content="<%= siteUrl %><%= lp %><%= path === '/' ? '/' : path %>">
+  <meta property="og:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : siteUrl + '/img/logo-circle.png' %>">
+  <meta property="og:site_name" content="Marmara'nın İncisi">
   <meta property="og:locale" content="<%= lang === 'ar' ? 'ar_AR' : lang + '_' + lang.toUpperCase() %>">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %>">
+  <meta name="twitter:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDescShort') %>">
+  <meta name="twitter:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : siteUrl + '/img/logo-circle.png' %>">
+
   <meta name="robots" content="index, follow">
   <link rel="stylesheet" href="/css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
+
+  <!-- JSON-LD: Site + Organization (her sayfada) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "<%= siteUrl %>/#website",
+        "url": "<%= siteUrl %>/",
+        "name": "Marmara'nın İncisi",
+        "description": "<%= t('metaDesc') %>",
+        "inLanguage": "tr-TR",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "<%= siteUrl %>/haberler?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "<%= siteUrl %>/#organization",
+        "name": "Marmara'nın İncisi",
+        "url": "<%= siteUrl %>/",
+        "logo": "<%= siteUrl %>/img/logo-circle.png",
+        "sameAs": [],
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Çınarcık",
+          "addressRegion": "Yalova",
+          "addressCountry": "TR"
+        },
+        "areaServed": {
+          "@type": "City",
+          "name": "Çınarcık",
+          "addressRegion": "Yalova",
+          "addressCountry": "TR"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Sayfaya özel JSON-LD (haber, mekan vb.) -->
+  <% if (typeof pageSchema !== 'undefined' && pageSchema) { %>
+  <script type="application/ld+json"><%- JSON.stringify(pageSchema) %></script>
+  <% } %>
+</head>
+</head>
 </head>
 <body class="text-white" style="min-height:100vh;display:flex;flex-direction:column;">
 

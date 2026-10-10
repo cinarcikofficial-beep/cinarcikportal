@@ -1,5 +1,44 @@
 <% layout('partials/layout') %>
-<% locals.pageTitle = place.name %>
+  var schemaTypeMap = {
+    'Restoran': 'Restaurant', 'Cafe': 'CafeOrCoffeeShop', 'Otel': 'Hotel',
+    'Beach': 'BeachResort', 'Büfeler': 'FastFoodRestaurant', 'Gece Hayatı': 'BarOrPub',
+    'Pansiyon': 'Motel', 'Aktivite': 'TouristAttraction'
+  };
+  var placeSchema = {
+    "@context": "https://schema.org",
+    "@type": schemaTypeMap[place.category || place.type] || 'LocalBusiness',
+    "name": place.name,
+    "description": (place.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
+    "image": place.main_image_url || undefined,
+    "url": siteUrl + lp + '/mekan/' + place.id,
+    "telephone": place.phone || undefined,
+    "address": place.address ? {
+      "@type": "PostalAddress",
+      "streetAddress": place.address,
+      "addressLocality": "Çınarcık",
+      "addressRegion": "Yalova",
+      "addressCountry": "TR"
+    } : undefined,
+    "geo": { "@type": "GeoCoordinates", "latitude": 40.6667, "longitude": 29.1333 },
+    "areaServed": { "@type": "City", "name": "Çınarcık", "addressRegion": "Yalova", "addressCountry": "TR" },
+    "priceRange": "$$"
+  };
+  if (place.working_hours) placeSchema.openingHours = place.working_hours;
+  locals.pageSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      placeSchema,
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": t('home'), "item": siteUrl + lp + '/' },
+          { "@type": "ListItem", "position": 2, "name": t('places'), "item": siteUrl + lp + '/mekanlar' },
+          { "@type": "ListItem", "position": 3, "name": place.name }
+        ]
+      }
+    ]
+  };
+%>
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');

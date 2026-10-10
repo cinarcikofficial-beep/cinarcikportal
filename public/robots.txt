@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://marmaranincisi.com/sitemap.xml
+Sitemap: https://marmaraninincisi.com/sitemap.xml

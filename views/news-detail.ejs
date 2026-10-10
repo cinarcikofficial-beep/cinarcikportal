@@ -1,5 +1,42 @@
 <% layout('partials/layout') %>
-<% locals.pageTitle = article.title %>
+<% locals.metaDescription = article.summary || t('metaDescShort') %>
+<% locals.ogType = 'article' %>
+<% locals.ogImage = article.main_image_url || '' %>
+<%
+  locals.pageSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "NewsArticle",
+        "headline": article.title,
+        "description": article.summary || '',
+        "image": article.main_image_url ? [article.main_image_url] : undefined,
+        "datePublished": article.created_at,
+        "dateModified": article.updated_at || article.created_at,
+        "author": { "@type": "Organization", "name": "Marmara'nın İncisi", "url": siteUrl + '/' },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Marmara'nın İncisi",
+          "logo": { "@type": "ImageObject", "url": siteUrl + '/img/logo-circle.png' }
+        },
+        "mainEntityOfPage": {
+          "@type": "WebPage",
+          "@id": siteUrl + lp + '/haber/' + (article.slug || article.id)
+        },
+        "articleSection": article.category || undefined,
+        "inLanguage": lang
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": t('home'), "item": siteUrl + lp + '/' },
+          { "@type": "ListItem", "position": 2, "name": t('news'), "item": siteUrl + lp + '/haberler' },
+          { "@type": "ListItem", "position": 3, "name": article.title }
+        ]
+      }
+    ]
+  };
+%>
 
 <div class="article-detail max-w-4xl mx-auto">
   <div class="article-header mb-6">

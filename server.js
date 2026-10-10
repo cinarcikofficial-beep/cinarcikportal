@@ -102,6 +102,7 @@ app.use((req, res, next) => {
   res.locals.lang = req.lang;
   res.locals.lp = req.lang === 'tr' ? '' : '/' + req.lang;
   res.locals.dir = 'ltr';
+  res.locals.siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   res.locals.t = (key) => i18n.t(req.lang, key);
   res.locals.langs = i18n.LANGS;
   next();
@@ -203,11 +204,53 @@ function buildFerryGroups(rows) {
 }
 
 app.get('/sitemap.xml', (req, res) => {
-  const base = process.env.SITE_URL || 'https://marmaranincisi.com';
-  const routes = ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda'];
-  const urls = routes.map(r => `  <url><loc>${base}${r}</loc></url>`).join('\n');
+  const { all } = require('./db');
+  const base = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const langs = ['', '/en', '/ru', '/ar'];
+  const entries = [];
+
+  const addEntry = (path, lastmod) => {
+    entries.push({ path, lastmod: lastmod || new Date().toISOString().slice(0, 10) });
+  };
+
+  // Statik sayfalar
+  ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda']
+    .forEach(p => addEntry(p));
+
+  // Haberler (son 500)
+  try {
+    all("SELECT slug, id, updated_at, created_at FROM news WHERE status='active' ORDER BY created_at DESC LIMIT 500")
+      .forEach(n => addEntry('/haber/' + (n.slug || n.id), (n.updated_at || n.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap news:', e.message); }
+
+  // Mekanlar
+  try {
+    all("SELECT id, created_at FROM places WHERE status='active'")
+      .forEach(p => addEntry('/mekan/' + p.id, (p.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap places:', e.message); }
+
+  // Gezilecek yerler
+  try {
+    all("SELECT id, created_at FROM sightseeing WHERE status='active'")
+      .forEach(s => addEntry('/gezilecek-yer/' + s.id, (s.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap sightseeing:', e.message); }
+
+  // Firma rehberi
+  try {
+    all("SELECT slug, id, created_at FROM companies WHERE status='active'")
+      .forEach(c => addEntry('/rehber/' + (c.slug || c.id), (c.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap companies:', e.message); }
+
+  const urls = entries.map(e => {
+    const alternates = langs.map(l =>
+      `    <xhtml:link rel="alternate" hreflang="${l === '' ? 'tr' : l.slice(1)}" href="${base}${l}${e.path}"/>`
+    ).join('\n') +
+      `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${base}${e.path}"/>`;
+    return `  <url>\n    <loc>${base}${e.path}</loc>\n    <lastmod>${e.lastmod}</lastmod>\n${alternates}\n  </url>`;
+  }).join('\n');
+
   res.header('Content-Type', 'application/xml');
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`);
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>`);
 });
 
 app.get('/', async (req, res) => {
@@ -230,13 +273,29 @@ app.get('/', async (req, res) => {
     return { origin: r.origin || 'Çınarcık İskele', destination: r.destination, columns, updated_at: r.updated_at };
   });
   const lang = req.lang;
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   await Promise.all([
     txArray(announcements, ['title', 'content'], lang),
     txArray(places, ['description', 'working_hours'], lang),
     txArray(companies, ['description', 'sector'], lang),
     txArray(sightseeing, ['title', 'summary', 'description'], lang)
   ]);
-  res.render('home', { announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows) });
+  res.render('home', {
+    announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
+    pageTitle: 'Çınarcık Haber, Mekan ve Gezi Rehberi | ' + i18n.t(req.lang, 'heroTagline'),
+    metaDescription: i18n.t(req.lang, 'metaDesc'),
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@type": "TouristDestination",
+      "name": "Çınarcık",
+      "description": "Çınarcık, Yalova — Marmara kıyısında haber, mekan, firma ve gezi rehberi.",
+      "url": siteUrl + '/',
+      "address": { "@type": "PostalAddress", "addressLocality": "Çınarcık", "addressRegion": "Yalova", "addressCountry": "TR" },
+      "geo": { "@type": "GeoCoordinates", "latitude": 40.6667, "longitude": 29.1333 },
+      "touristType": ["Yerli turist", "Yabancı turist", "Günlük ziyaretçi"]
+    }
+  });
 });
 
 app.get('/haberler', async (req, res) => {
@@ -260,7 +319,46 @@ app.get('/haber/:slug', async (req, res) => {
     txFields(article, ['title', 'summary', 'content', 'category', 'badge_text'], req.lang),
     txArray(recent, ['title'], req.lang)
   ]);
-  res.render('news-detail', { article, recent, req });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const absUrl = siteUrl + lp + '/haber/' + (article.slug || article.id);
+  res.render('news-detail', {
+    article, recent, req,
+    pageTitle: article.title,
+    metaDescription: article.summary || i18n.t(req.lang, 'metaDescShort'),
+    ogType: 'article',
+    ogImage: article.main_image_url || '',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "NewsArticle",
+          "headline": article.title,
+          "description": article.summary || '',
+          "image": article.main_image_url ? [article.main_image_url] : undefined,
+          "datePublished": article.created_at,
+          "dateModified": article.updated_at || article.created_at,
+          "author": { "@type": "Organization", "name": "Marmara'nın İncisi", "url": siteUrl + '/' },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Marmara'nın İncisi",
+            "logo": { "@type": "ImageObject", "url": siteUrl + '/img/logo-circle.png' }
+          },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": absUrl },
+          "articleSection": article.category || undefined,
+          "inLanguage": req.lang
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'news'), "item": siteUrl + lp + '/haberler' },
+            { "@type": "ListItem", "position": 3, "name": article.title }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/api/news', (req, res) => {
@@ -352,7 +450,53 @@ app.get('/mekan/:id', async (req, res) => {
     if (place.map_link) {
       embedMapUrl = convertGoogleMapsToEmbed(place.map_link);
     }
-    res.render('place-detail', { place, places: allPlaces, embedMapUrl, pageTitle: place.name });
+    const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+    const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+    const schemaTypeMap = {
+      'Restoran': 'Restaurant', 'Cafe': 'CafeOrCoffeeShop', 'Otel': 'Hotel',
+      'Beach': 'BeachResort', 'Büfeler': 'FastFoodRestaurant', 'Gece Hayatı': 'BarOrPub',
+      'Pansiyon': 'Motel', 'Aktivite': 'TouristAttraction'
+    };
+    const placeSchema = {
+      "@context": "https://schema.org",
+      "@type": schemaTypeMap[place.category || place.type] || 'LocalBusiness',
+      "name": place.name,
+      "description": (place.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
+      "image": place.main_image_url || undefined,
+      "url": siteUrl + lp + '/mekan/' + place.id,
+      "telephone": place.phone || undefined,
+      "address": place.address ? {
+        "@type": "PostalAddress",
+        "streetAddress": place.address,
+        "addressLocality": "Çınarcık",
+        "addressRegion": "Yalova",
+        "addressCountry": "TR"
+      } : undefined,
+      "geo": { "@type": "GeoCoordinates", "latitude": 40.6667, "longitude": 29.1333 },
+      "areaServed": { "@type": "City", "name": "Çınarcık", "addressRegion": "Yalova", "addressCountry": "TR" },
+      "priceRange": "$$"
+    };
+    if (place.working_hours) placeSchema.openingHours = place.working_hours;
+    res.render('place-detail', {
+      place, places: allPlaces, embedMapUrl,
+      pageTitle: place.name,
+      metaDescription: (place.description || '').replace(/<[^>]*>/g, ' ').substring(0, 155) || (place.name + ' — Çınarcık, Yalova. ' + (place.category || '')),
+      ogImage: place.main_image_url || '',
+      pageSchema: {
+        "@context": "https://schema.org",
+        "@graph": [
+          placeSchema,
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+              { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'places'), "item": siteUrl + lp + '/mekanlar' },
+              { "@type": "ListItem", "position": 3, "name": place.name }
+            ]
+          }
+        ]
+      }
+    });
   } catch (error) {
     console.error('Mekan detay hatası:', error);
     res.status(500).render('place-detail', {
@@ -390,7 +534,41 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
     txFields(item, ['title', 'summary', 'description', 'category'], req.lang),
     txArray(others, ['title', 'summary', 'category'], req.lang)
   ]);
-  res.render('sightseeing-detail', { item, others, pageTitle: item.title });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('sightseeing-detail', {
+    item, others,
+    pageTitle: item.title,
+    metaDescription: (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 155) || (item.title + ' — Çınarcık, Yalova'),
+    ogImage: item.image || '',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TouristAttraction",
+          "name": item.title,
+          "description": (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
+          "image": item.image || undefined,
+          "url": siteUrl + lp + '/gezilecek-yer/' + item.id,
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": item.location || "Çınarcık",
+            "addressRegion": "Yalova",
+            "addressCountry": "TR"
+          },
+          "geo": { "@type": "GeoCoordinates", "latitude": 40.6667, "longitude": 29.1333 }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'sightseeing'), "item": siteUrl + lp + '/gezilecek-yerler' },
+            { "@type": "ListItem", "position": 3, "name": item.title }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/admin/gezilecek-yerler', isAuthenticated, (req, res) => {
