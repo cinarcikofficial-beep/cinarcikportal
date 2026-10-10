@@ -1261,6 +1261,23 @@ if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET === 'YOUR_GOOGLE_CLIENT_SECRET
 }
 console.log('\x1b[36m→ GOOGLE_CALLBACK_URL:\x1b[0m', GOOGLE_CALLBACK_URL);
 
+// Alan adı uyuşmazlığı koruması: callback URL, SITE_URL alan adıyla aynı olmalı.
+// Farklıysa Google girişi sonrası kullanıcı geçersiz/eksik SSL'li domain'e
+// yönlendirilir → tarayıcı "This connection is not private" uyarısı gösterir.
+(function validateCallbackHost() {
+  try {
+    const siteHost = new URL(process.env.SITE_URL || 'https://marmaraninincisi.com').host;
+    const cbHost = new URL(GOOGLE_CALLBACK_URL).host;
+    if (cbHost !== siteHost && cbHost !== 'localhost:3000' && cbHost !== 'localhost') {
+      console.warn('\x1b[31m✗ GOOGLE_CALLBACK_URL alan adı SITE_URL ile uyuşmuyor!\x1b[0m');
+      console.warn('   SITE_URL host:    ' + siteHost);
+      console.warn('   CALLBACK host:    ' + cbHost);
+      console.warn('   → Google girişi "This connection is not private" hatası verir.');
+      console.warn('   → Render env: GOOGLE_CALLBACK_URL=https://' + siteHost + '/auth/google/callback');
+    }
+  } catch (e) { /* geçersiz URL — üstteki log yeterli */ }
+})();
+
 // Auth config endpoint
 app.get('/api/auth/config', (req, res) => {
   res.json({ 
