@@ -2,8 +2,17 @@
 <% locals.pageTitle = t('contactTitle') %>
 
 <style>
-  #rc-widget { min-height: 78px; }
+  #captcha-img { cursor: pointer; }
 </style>
+
+<script>
+  function refreshCaptcha() {
+    var img = document.getElementById('captcha-img');
+    var input = document.getElementById('c-captcha');
+    if (img) img.src = '/captcha.svg?t=' + Date.now();
+    if (input) { input.value = ''; input.focus(); }
+  }
+</script>
 
 <div class="max-w-6xl mx-auto px-4 py-8">
   <div class="section-header">
@@ -77,17 +86,21 @@
             class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"><%= form.message || '' %></textarea>
         </div>
 
-        <!-- Güvenlik Kodu (Google reCAPTCHA) -->
+        <!-- Güvenlik Kodu -->
         <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-          <% if (recaptchaSiteKey) { %>
-          <label class="block text-zinc-400 text-sm mb-2"><%= t('notRobot') %></label>
-          <div class="flex justify-center py-1">
-            <div id="rc-widget" data-sitekey="<%= recaptchaSiteKey %>" data-theme="dark"></div>
+          <label class="block text-zinc-400 text-sm mb-2" for="c-captcha"><%= t('securityCode') %></label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <img id="captcha-img" src="<%= captchaImage %>" alt="<%= t('securityCodeAlt') %>"
+              title="<%= t('refresh') %>" onclick="refreshCaptcha()"
+              class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none">
+            <input id="c-captcha" type="text" name="captcha" required maxlength="5" autocomplete="off"
+              inputmode="text" autocapitalize="characters" spellcheck="false"
+              placeholder="<%= t('captchaPlaceholder') %>"
+              class="w-40 bg-zinc-900 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm uppercase tracking-widest placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+            <button type="button" onclick="refreshCaptcha()"
+              class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-3 rounded-xl text-xs font-bold transition"><%= t('refresh') %>
           </div>
-          <p id="rc-hint" class="hidden text-red-400 text-xs mt-2 text-center"><%= t('notRobotHint') %></p>
-          <% } else { %>
-          <p class="text-zinc-500 text-xs text-center py-2"><%= t('captchaNote') %></p>
-          <% } %>
+          <p class="text-zinc-600 text-xs mt-2"><%= t('captchaNote') %></p>
         </div>
 
         <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -134,86 +147,3 @@
   </div>
 </div>
 
-<% if (recaptchaSiteKey) { %>
-<script>
-  // reCAPTCHA'yı açıkça yükleyip widget'ı kendimiz render ediyoruz.
-  // (async/defer + otomatik render yarış durumu yaratıyordu)
-  window.__rcReady = function () {
-    var w = document.getElementById('rc-widget');
-    if (!w || w.dataset.done) return;
-    try {
-      if (typeof grecaptcha === 'undefined' || !grecaptcha.render) return;
-      w.dataset.done = '1';
-      grecaptcha.render(w, {
-        sitekey: '<%= recaptchaSiteKey %>',
-        theme: 'dark',
-        callback: window.rcDone,
-        'expired-callback': window.rcExpired,
-        'error-callback': window.rcFailed
-      });
-    } catch (e) {
-      if (window.console) console.error('reCAPTCHA render:', e);
-    }
-  };
-</script>
-<script src="https://www.google.com/recaptcha/api.js?hl=<%= lang === 'tr' ? 'tr' : lang %>&amp;onload=__rcReady" async defer></script>
-<script>window.addEventListener('load', function () { setTimeout(window.__rcReady, 150); });</script>
-<script>
-(function () {
-  var form = document.querySelector('form[action="/iletisim"]');
-  if (!form) return;
-  var sending = false;
-
-  function hint(show) {
-    var h = document.getElementById('rc-hint');
-    if (!h) return;
-    if (show) h.classList.remove('hidden');
-    else h.classList.add('hidden');
-  }
-
-  function responseField() {
-    return form.querySelector('textarea[name="g-recaptcha-response"]');
-  }
-
-  function clearToken() {
-    var ta = responseField();
-    if (ta) ta.value = '';
-    try {
-      if (typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.reset === 'function') grecaptcha.reset();
-    } catch (e) {}
-  }
-
-  function tokenExists() {
-    var ta = responseField();
-    if (ta && ta.value) return true;
-    try {
-      return typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.getResponse === 'function' && !!grecaptcha.getResponse();
-    } catch (e) { return false; }
-  }
-
-  form.addEventListener('submit', function (e) {
-    if (sending) return;
-    if (tokenExists()) return;
-    e.preventDefault();
-    hint(true);
-    var w = document.getElementById('rc-widget');
-    if (w && w.scrollIntoView) w.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  });
-
-  window.rcDone = function (token) {
-    var ta = responseField();
-    if (!ta) {
-      ta = document.createElement('textarea');
-      ta.name = 'g-recaptcha-response';
-      ta.style.display = 'none';
-      form.appendChild(ta);
-    }
-    ta.value = token;
-    hint(false);
-  };
-
-  window.rcExpired = function () { clearToken(); };
-  window.rcFailed = function () { clearToken(); };
-})();
-</script>
-<% } %>

@@ -745,7 +745,9 @@ function captchaOk(req, entered) {
 
 async function renderContact(req, res, opts) {
   const o = opts || {};
+  const code = issueCaptcha(req);
   const view = await contactView(!!o.sent, o.error || null, o.form || {});
+  view.captchaImage = svgDataUri(code);
   if (o.status) res.status(o.status);
   return res.render('contact', view);
 }
@@ -771,6 +773,7 @@ app.post('/iletisim', async (req, res) => {
   const email = gUser ? gUser.email : String(req.body.email || '').trim();
   const subject = String(req.body.subject || '').trim();
   const message = String(req.body.message || '').trim();
+  const captcha = String(req.body.captcha || '').trim().toUpperCase();
   const form = { name, email, subject, message };
 
   if (!name || !email || !message) {
@@ -783,15 +786,17 @@ app.post('/iletisim', async (req, res) => {
     return renderContact(req, res, { status: 400, error: 'Mesaj en fazla 2000 karakter olabilir.', form: form });
   }
 
-  let rcToken = req.body['g-recaptcha-response'];
-  if (Array.isArray(rcToken)) rcToken = rcToken[0];
-  const rc = await verifyRecaptcha(rcToken);
-  if (!rc.ok) {
-    return renderContact(req, res, { status: 400, error: rc.error, form: form });
+  if (!captchaOk(req, captcha)) {
+    return renderContact(req, res, {
+      status: 400,
+      error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.',
+      form: form
+    });
   }
 
   run('INSERT INTO contact_messages (name, email, subject, message) VALUES (?,?,?,?)',
     [name, email, subject, message]);
+  req.session.captchaCodes = [];
   res.redirect('/iletisim?sent=1');
 });
 
