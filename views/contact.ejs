@@ -99,8 +99,7 @@
             <label class="block text-zinc-400 text-sm mb-2"><%= t('notRobot') %></label>
             <% } %>
             <div class="flex justify-center">
-              <div id="rc-widget" class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>" data-theme="dark"
-                data-callback="rcDone" data-expired-callback="rcExpired" data-error-callback="rcFailed"></div>
+              <div id="rc-widget" data-sitekey="<%= recaptchaSiteKey %>" data-theme="dark"></div>
             </div>
             <% if (!recaptchaInvisible) { %>
             <p id="rc-hint" class="hidden text-red-400 text-xs mt-2 text-center"><%= t('notRobotHint') %></p>
