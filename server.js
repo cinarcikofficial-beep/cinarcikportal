@@ -892,6 +892,14 @@ app.post('/admin/haberler/toggle/:id', isAuthenticated, (req, res) => {
   res.redirect('/admin/haberler');
 });
 
+app.post('/admin/haberler/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM news').t || 0;
+  run('UPDATE news SET views_count = 0');
+  console.log(`[admin] Görüntelenme sayıları sıfırlandı (toplam ${total} görüntülenme) - ${req.session.adminUser || 'admin'}`);
+  res.redirect('/admin/haberler');
+});
+
 app.get('/admin/haber-ekle', isAuthenticated, (req, res) => {
   const { get } = require('./db');
   const edit = req.query.edit ? get('SELECT * FROM news WHERE id = ?', [req.query.edit]) : null;
