@@ -708,37 +708,13 @@ async function verifyRecaptcha(token) {
   }
 }
 
-// Anahtar tipi (.env'de hangi tip reCAPTCHA anahtarı olduğu) bir kez algılanır:
-// Checkbox (normal) anahtarı anchor endpoint'ini kabul eder, invisible anahtar "Invalid input" döner.
-let recaptchaSizeMode = null;
-let recaptchaSizeRetryAt = 0;
-
-async function detectRecaptchaSize() {
-  if (!RECAPTCHA_SITE_KEY) return null;
-  if (recaptchaSizeMode) return recaptchaSizeMode;
-  if (Date.now() < recaptchaSizeRetryAt) return 'invisible';
-  try {
-    const origin = 'https://example.com';
-    const js = await (await fetch('https://www.google.com/recaptcha/api.js?hl=tr')).text();
-    const v = (js.match(/releases\/([A-Za-z0-9_-]+)\//) || [])[1] || '';
-    const co = Buffer.from(origin).toString('base64').replace(/=+$/, '');
-    const url = 'https://www.google.com/recaptcha/api2/anchor?ar=1&k=' + encodeURIComponent(RECAPTCHA_SITE_KEY) +
-      '&co=' + co + '&hl=tr&v=' + encodeURIComponent(v) + '&size=normal&cb=1&theme=dark&origin=' + encodeURIComponent(origin);
-    const html = await (await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } })).text();
-    recaptchaSizeMode = html.includes('Invalid input') ? 'invisible' : 'normal';
-  } catch (e) {
-    recaptchaSizeRetryAt = Date.now() + 30000;
-    return 'invisible';
-  }
-  return recaptchaSizeMode;
-}
-
+// reCAPTCHA her zaman v2 checkbox ("Ben robot değilim") olarak kullanılır.
+// Invisible/v3 karmaşası widget'ın hiç render edilmemesine yol açıyordu.
 async function contactView(sent, error, form) {
-  const size = await detectRecaptchaSize();
   return {
     sent, error, form,
     recaptchaSiteKey: RECAPTCHA_SITE_KEY,
-    recaptchaInvisible: size === 'invisible',
+    recaptchaInvisible: false,
     captchaTs: Date.now()
   };
 }
