@@ -109,7 +109,10 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | **Google OAuth Console** | Yorum için Gmail ile giriş | sınırsız |
 | **Google reCAPTCHA v2** | İletişim formu spam koruması | 50.000 doğrulama/ay |
 | **Cloudflare R2** | Kalıcı görsel deposu (`/uploads/*`) | 10 GB, egress $0 |
-| Open-Meteo / döviz / RSS | Ticker ve hava durumu | açık API'ler |
+| Open-Meteo / wttr.in | Ticker hava durumu | açık API'ler |
+| Yahoo Finance (query1/query2) | USD, EUR, gram altın, BIST 100 | açık (ana kaynak) |
+| er-api.com | Döviz yedek kaynak | açık (fallback) |
+| Google News RSS | "Diğer haberler" akışı | açık API |
 
 ### 5.1 Neden SMTP değil?
 Render, **Free plan'da giden SMTP portlarını (25/465/587) engelliyor**
@@ -123,8 +126,24 @@ API** (port 443) ile gönderiliyor. Kod `server.js → sendAdmin2FACode()` için
 ```
 https://marmaraninincisi.com/auth/google/callback
 ```
-Google Cloud Console'da **kullanulan client** (`...qjsohqmh4a09v9740jqfhr25skak6c5k...`)
+Google Cloud Console'da **kullanılan client** (`...qjsohqmh4a09v9740jqfhr25skak6c5k...`)
 için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni verir.
+
+### 5.3 Ticker veri akışı (`GET /api/ticker-data`)
+
+`server.js → fetchTickerData()`: hava + USD + EUR + gram/çeyrek altın + BIST 100.
+
+- **Sıralı çekim** (eski `Promise.all` 4 eşzamanlı istek Yahoo'da 429/403
+  tetikliyordu) + her istekte **2 deneme** (700 ms arayla) + tarayıcı `User-Agent`.
+- **Yedek kaynaklar**: USD/EUR → `open.er-api.com`, hava → `wttr.in`,
+  Yahoo'da `query1` başarısızsa `query2` mirror'u.
+- **Gram altın doğru TL hesabı**: GC=F (ons USD) / 31,1035 × USDTRY.
+  (Eski hata: USD gelmeyince çarpan 1 kalıyor, gram USD fiyatıyla
+  gösteriliyordu — şimdi USD de yedekten gelir.)
+- **Eksik alanlar önceki başarılı cache'ten tamamlanır** → ticker `--` göstermez.
+- **Cache**: tüm alanlar doluysa 5 dk; eksik varsa 60 sn (hızlı yeniden deneme).
+- **Saat**: `updated` alanı `Europe/Istanbul` zaman diliminde üretilir
+  (Render UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
 
 ## 6. Bilinen Sınırlamalar ve Riskler
 
