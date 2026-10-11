@@ -424,6 +424,14 @@ app.get('/duyurular', async (req, res) => {
   res.render('announcements', { announcements });
 });
 
+app.get('/duyuru/:id', async (req, res) => {
+  const { get } = require('./db');
+  const announcement = get('SELECT * FROM announcements WHERE id = ?', [req.params.id]);
+  if (!announcement || !announcement.id) return res.redirect('/duyurular');
+  await txFields(announcement, ['title', 'content'], req.lang);
+  res.render('announcement-detail', { announcement, pageTitle: announcement.title });
+});
+
 app.get('/mekanlar', async (req, res) => {
   try {
     const { all } = require('./db');

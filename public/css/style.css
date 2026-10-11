@@ -1204,6 +1204,7 @@ a.card.place-card { padding: 0; }
 .rich-desc li { margin-bottom: 0.25rem; }
 .rich-desc a { color: #34d399; text-decoration: underline; text-underline-offset: 3px; }
 .rich-desc blockquote { border-left: 3px solid #34d399; padding-left: 0.85rem; color: #a1a1aa; font-style: italic; margin: 0.6rem 0; }
+.rich-desc img { max-width: 100%; height: auto; border-radius: 0.75rem; margin: 0.5rem 0; }
 
 /* ---- Mobil Menü (hamburger) ---- */
 @media (max-width: 768px) {
