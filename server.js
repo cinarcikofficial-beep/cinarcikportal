@@ -1945,7 +1945,7 @@ async function fetchTickerData() {
 
   // 1. Hava Durumu - Open-Meteo (yedek: wttr.in)
   try {
-    const w = await fetchJson('https://api.open-meteo.com/v1/forecast?latitude=40.6475&longitude=29.0736&current=temperature_2m,weather_code&timezone=Europe/Istanbul');
+    const w = await fetchJson('https://api.open-meteo.com/v1/forecast?latitude=40.6475&longitude=29.0736&current=temperature_2m,weather_code&timezone=Europe/Istanbul' + (process.env.OPENMETEO_API_KEY ? '&apikey=' + encodeURIComponent(process.env.OPENMETEO_API_KEY) : ''));
     const wc = w.current;
     if (!wc || typeof wc.temperature_2m !== 'number') throw new Error('veri yok');
     result.weather.temp = Math.round(wc.temperature_2m) + '°C';
@@ -2178,10 +2178,13 @@ app.get('/api/weather-forecast', (req, res) => {
   const remainingDays = lastDayOfMonth - todayDay;
 
   // 16 günlük tahmin
+  // OPENMETEO_API_KEY tanimliysa ekle: anonim/datacenter IP throttle'ini asar,
+  // hesap bazi limit uygulanir (10k/gun). Render'da env olarak tanimlanir.
+  const omKey = process.env.OPENMETEO_API_KEY ? '&apikey=' + encodeURIComponent(process.env.OPENMETEO_API_KEY) : '';
   const forecastUrl = 'https://api.open-meteo.com/v1/forecast'
     + '?latitude=40.6475&longitude=29.0736'
     + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max'
-    + '&timezone=Europe/Istanbul&forecast_days=16';
+    + '&timezone=Europe/Istanbul&forecast_days=16' + omKey;
 
   fetchWithRetry(forecastUrl, { signal: AbortSignal.timeout(10000) }, 3)
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
