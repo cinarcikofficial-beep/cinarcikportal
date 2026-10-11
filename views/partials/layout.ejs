@@ -114,15 +114,22 @@
         <a href="<%= lp %>/cinarcik-hakkinda" class="px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">ℹ️ <%= t('about') %></a>
       </nav>
       <div class="nav-right flex items-center gap-1.5 sm:gap-2">
-        <span class="inline-flex items-center gap-1">
+        <span class="inline-flex items-center gap-1 relative" id="lang-dropdown">
           <span class="text-base leading-none" aria-hidden="true">🌐</span>
-          <select id="lang-select" aria-label="Dil seçimi" title="Dil seçimi"
-            class="px-2 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-sm font-semibold cursor-pointer hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition">
-            <% [['tr','🇹🇷'],['en','🇬🇧'],['ru','🇷🇺'],['ar','🇸🇦']].forEach(function(item){ %>
-              <% var l = item[0]; %>
-              <option value="<%= (l === 'tr' ? '' : '/' + l) %><%= path === '/' ? '/' : path %>" <%= lang === l ? 'selected' : '' %>><%= item[1] %> <%= l.toUpperCase() %></option>
+          <button id="lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Dil seçimi" title="Dil seçimi"
+            class="px-2 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-sm font-semibold cursor-pointer hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition flex items-center gap-1.5">
+            <img src="https://flagcdn.com/w40/<%= ({tr:'tr',en:'gb',ru:'ru',ar:'sa'})[lang] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
+            <span><%= lang.toUpperCase() %></span>
+          </button>
+          <div id="lang-menu" class="hidden absolute right-0 top-full mt-1 w-40 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[60] py-1 overflow-hidden">
+            <% [['tr','tr','Türkçe'],['en','gb','English'],['ru','ru','Русский'],['ar','sa','العربية']].forEach(function(item){ %>
+              <% var l = item[0]; var langHref = (l === 'tr' ? '' : '/' + l) + (path === '/' ? '/' : path); %>
+              <a href="<%= langHref %>" class="flex items-center gap-2 px-3 py-2 text-sm <%= lang === l ? 'text-emerald-400 bg-zinc-700/50' : 'text-zinc-200 hover:bg-zinc-700' %> transition-colors">
+                <img src="https://flagcdn.com/w40/<%= item[1] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
+                <%= item[2] %>
+              </a>
             <% }); %>
-          </select>
+          </div>
         </span>
         <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
         <% if (isAdmin) { %>
@@ -394,10 +401,21 @@
     }
     document.addEventListener('DOMContentLoaded', translatePage);
 
-    var langSel = document.getElementById('lang-select');
-    if (langSel) {
-      langSel.addEventListener('change', function() {
-        if (this.value) window.location.href = this.value;
+    // ---- Dil dropdown (Windows'ta emoji bayrak render edilmez; PNG bayrak kullanılır) ----
+    var langBtn = document.getElementById('lang-btn');
+    var langMenu = document.getElementById('lang-menu');
+    var langWrap = document.getElementById('lang-dropdown');
+    if (langBtn && langMenu && langWrap) {
+      langBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var hidden = langMenu.classList.toggle('hidden');
+        langBtn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+      });
+      document.addEventListener('click', function(e) {
+        if (!langMenu.classList.contains('hidden') && !langWrap.contains(e.target)) {
+          langMenu.classList.add('hidden');
+          langBtn.setAttribute('aria-expanded', 'false');
+        }
       });
     }
 
