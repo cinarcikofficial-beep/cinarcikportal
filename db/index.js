@@ -1002,9 +1002,14 @@ async function initDb() {
 
 function sweepExpired() {
   if (!db) return;
-  const now = new Date().toISOString();
+  // expires_at hem 'YYYY-MM-DD HH:MM:SS' hem ISO 'YYYY-MM-DDTHH:MM:SSZ'
+  // biçiminde saklanabiliyor; saat dilimi kaymasını önlemek için UTC'ye çevirip karşılaştır.
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   try {
-    db.run("UPDATE news SET status='passive' WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at <= ? AND status='active'", [now]);
+    db.run(`UPDATE news SET status='passive'
+            WHERE expires_at IS NOT NULL AND expires_at != ''
+              AND (datetime(replace(expires_at, 'T', ' ')) <= ?)
+              AND status='active'`, [now]);
     if (db.getRowsModified() > 0) saveDb();
   } catch (e) {}
 }

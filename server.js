@@ -105,6 +105,11 @@ app.use((req, res, next) => {
   res.locals.siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   res.locals.t = (key) => i18n.t(req.lang, key);
   res.locals.langs = i18n.LANGS;
+  // CSS url() içinde boşluk ve Türkçe karakter geçersizdir; görsel hiç yüklenmez.
+  res.locals.img = (src) => {
+    if (!src) return '';
+    try { return encodeURI(String(src)).replace(/"/g, '%22'); } catch (e) { return String(src); }
+  };
   next();
 });
 
@@ -256,6 +261,14 @@ app.get('/sitemap.xml', (req, res) => {
 app.get('/', async (req, res) => {
   const { all } = require('./db');
   const announcements = all('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 4');
+  // Ana sayfa manşeti: /haberler ile birebir aynı kaynak ve sıralama,
+  // böylece admin'de yapılan her değişiklik ana sayfada da aynen görünür.
+  const newsWhere = `status='active'
+      AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now'))`;
+  const headlines = all(`SELECT * FROM news WHERE ${newsWhere} AND (is_headline=1 OR is_headline IS NULL)
+      ORDER BY headline_order ASC, created_at DESC LIMIT 10`);
+  const regularNews = all(`SELECT * FROM news WHERE ${newsWhere}
+      ORDER BY headline_order ASC, created_at DESC LIMIT 20`);
   const places = all(`
     SELECT p.*, ROUND(AVG(r.rating), 1) AS avg_rating, COUNT(r.id) AS review_count
     FROM places p
@@ -279,10 +292,13 @@ app.get('/', async (req, res) => {
     txArray(announcements, ['title', 'content'], lang),
     txArray(places, ['description', 'working_hours'], lang),
     txArray(companies, ['description', 'sector'], lang),
-    txArray(sightseeing, ['title', 'summary', 'description'], lang)
+    txArray(sightseeing, ['title', 'summary', 'description'], lang),
+    txArray(headlines, ['title', 'summary'], lang),
+    txArray(regularNews, ['title', 'summary'], lang)
   ]);
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
+    headlines, regularNews,
     pageTitle: 'Çınarcık Haber, Mekan ve Gezi Rehberi | ' + i18n.t(req.lang, 'heroTagline'),
     metaDescription: i18n.t(req.lang, 'metaDesc'),
     pageSchema: {
@@ -300,8 +316,8 @@ app.get('/', async (req, res) => {
 
 app.get('/haberler', async (req, res) => {
   const { all } = require('./db');
-  const headlines = all("SELECT * FROM news WHERE status='active' AND is_headline=1 AND (expires_at IS NULL OR expires_at='' OR expires_at > datetime('now')) ORDER BY headline_order ASC, created_at DESC LIMIT 10");
-  const regularNews = all("SELECT * FROM news WHERE status='active' AND (is_headline=0 OR is_headline IS NULL) AND (expires_at IS NULL OR expires_at='' OR expires_at > datetime('now')) ORDER BY created_at DESC");
+  const headlines = all("SELECT * FROM news WHERE status='active' AND is_headline=1 AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY headline_order ASC, created_at DESC LIMIT 10");
+  const regularNews = all("SELECT * FROM news WHERE status='active' AND (is_headline=0 OR is_headline IS NULL) AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY created_at DESC");
   await Promise.all([
     txArray(headlines, ['title', 'summary'], req.lang),
     txArray(regularNews, ['title', 'summary'], req.lang)
@@ -364,10 +380,14 @@ app.get('/haber/:slug', async (req, res) => {
 app.get('/api/news', (req, res) => {
   const { all } = require('./db');
   const limit = Math.min(parseInt(req.query.limit) || 25, 25);
+  // Ana sayfa slider'ı yalnızca manşet olarak işaretlenen haberleri göstermeli;
+  // aksi halde "sadece listede" haberler de manşete giriyordu.
+  const headlineOnly = req.query.headlines === '1';
   const news = all(`SELECT id, slug, title, badge_text, summary, main_image_url, headline_order, views_count, created_at, expires_at
     FROM news
     WHERE status='active'
-      AND (expires_at IS NULL OR expires_at='' OR expires_at > datetime('now'))
+      ${headlineOnly ? 'AND (is_headline=1 OR is_headline IS NULL)' : ''}
+      AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now'))
     ORDER BY headline_order ASC, created_at DESC
     LIMIT ?`, [limit]);
   res.json({ success: true, count: news.length, news });
@@ -946,9 +966,12 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
     return res.render('admin/news-form', { edit, error: 'Başlık ve içerik zorunludur' });
   }
 
-  const expiresValue = (expires_at && expires_at.trim()) ? expires_at.trim() : null;
+  const expiresValue = (expires_at && expires_at.trim()) ? expires_at.trim().replace('T', ' ').replace(/:\d{2}$/, ':00') : null;
   const isHeadline = (is_headline === 'on' || is_headline === '1' || is_headline === 'true') ? 1 : 0;
-  const statusVal = status === 'passive' ? 'passive' : 'active';
+  // Admin'de kaydedilen haber, süresi dolmamışsa otomatik yayına alınır.
+  // Formda "Pasif" seçilmiş olsa bile düzenleme yapıldığı için yayınlanır.
+  const requestedPassive = status === 'passive';
+  const statusVal = (requestedPassive && !expiresValue) ? 'passive' : 'active';
   const order = parseInt(headline_order) || 999;
 
   if (edit_id) {
@@ -978,7 +1001,15 @@ const multer = require('multer');
 const storage = multer.diskStorage({
   destination: path.join(__dirname, 'public', 'img', 'uploads'),
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_'));
+    // Dosya adını tamamen ASCII'ye indir: boşluk ve Türkçe karakterler
+    // URL'de bozulup 404'e yol açıyordu.
+    const ext = (path.extname(file.originalname || '') || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const base = path.basename(file.originalname || 'image', path.extname(file.originalname || ''))
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .substring(0, 60) || 'image';
+    cb(null, Date.now() + '-' + base + ext);
   }
 });
 const upload = multer({
@@ -1010,8 +1041,8 @@ else console.log('\x1b[33m⚠ R2 yapılandırması yok — görseller yerel disk
 
 function pubUrl(file) {
   if (!file) return '';
-  if (R2) return '/uploads/' + file.filename;
-  return '/img/uploads/' + file.filename;
+  if (file.r2Url) return '/uploads/' + path.basename(file.r2Url);
+  return '/img/uploads/' + encodeURIComponent(file.filename);
 }
 
 function finishUploads(req, res, done) {
