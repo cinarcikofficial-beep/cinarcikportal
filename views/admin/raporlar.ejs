@@ -1,0 +1,160 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Raporlar' %>
+
+<div class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+  <a href="/admin" class="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm">
+    <span class="text-lg">←</span> Yönetim Paneline Dön
+  </a>
+
+  <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+        <span class="text-2xl">📊</span> Raporlar
+      </h1>
+      <p class="text-gray-400 mt-1 text-sm">Sayfa trafiği, ziyaretçi IP'leri ve en çok ziyaret edilen sayfalar (son 90 gün saklanır).</p>
+    </div>
+  </div>
+
+  <!-- Özet kartları -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-gray-400 text-sm">Bugün</p>
+      <p class="text-3xl font-bold text-white mt-1"><%= today.views %></p>
+      <p class="text-emerald-400 text-xs mt-1"><%= today.uniques %> benzersiz IP</p>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-gray-400 text-sm">Son 7 Gün</p>
+      <p class="text-3xl font-bold text-white mt-1"><%= week.views %></p>
+      <p class="text-emerald-400 text-xs mt-1"><%= week.uniques %> benzersiz IP</p>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-gray-400 text-sm">Son 30 Gün</p>
+      <p class="text-3xl font-bold text-white mt-1"><%= month.views %></p>
+      <p class="text-emerald-400 text-xs mt-1"><%= month.uniques %> benzersiz IP</p>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-gray-400 text-sm">Toplam</p>
+      <p class="text-3xl font-bold text-white mt-1"><%= totalViews %></p>
+      <p class="text-emerald-400 text-xs mt-1"><%= totalUniques %> benzersiz IP</p>
+    </div>
+  </div>
+
+  <!-- Grafik -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <h2 class="text-white font-bold mb-4">Son 30 Günlük Trafik</h2>
+    <div class="h-72">
+      <canvas id="trafficChart"></canvas>
+    </div>
+  </div>
+
+  <!-- En çok ziyaret edilen sayfalar -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+    <div class="p-4 border-b border-zinc-800">
+      <h2 class="text-white font-bold">En Çok Ziyaret Edilen Sayfalar (son 30 gün)</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-zinc-800 text-gray-400 text-left">
+          <th class="p-4 font-medium">Sayfa</th>
+          <th class="p-4 font-medium text-right whitespace-nowrap">Görüntülenme</th>
+          <th class="p-4 font-medium text-right whitespace-nowrap">Benzersiz IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!topPages || topPages.length === 0) { %>
+          <tr><td colspan="3" class="p-12 text-center text-gray-500">Henüz veri yok.</td></tr>
+        <% } else { topPages.forEach(function(p) { %>
+          <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+            <td class="p-4 text-zinc-200 font-mono text-xs break-all"><%= p.path %></td>
+            <td class="p-4 text-right text-white font-semibold"><%= p.views %></td>
+            <td class="p-4 text-right text-emerald-400"><%= p.uniques %></td>
+          </tr>
+        <% }); } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Son ziyaretler -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+    <div class="p-4 border-b border-zinc-800">
+      <h2 class="text-white font-bold">Son Ziyaretler</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-zinc-800 text-gray-400 text-left">
+            <th class="p-4 font-medium whitespace-nowrap">Zaman</th>
+            <th class="p-4 font-medium">Sayfa</th>
+            <th class="p-4 font-medium whitespace-nowrap">IP</th>
+            <th class="p-4 font-medium">Tarayıcı</th>
+            <th class="p-4 font-medium">Referrer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!recent || recent.length === 0) { %>
+            <tr><td colspan="5" class="p-12 text-center text-gray-500">Henüz veri yok.</td></tr>
+          <% } else { recent.forEach(function(v) { %>
+            <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+              <td class="p-4 text-zinc-400 whitespace-nowrap text-xs"><%= v.created_at %></td>
+              <td class="p-4 text-zinc-200 font-mono text-xs break-all"><%= v.path %></td>
+              <td class="p-4 text-emerald-400 font-semibold whitespace-nowrap"><%= v.ip %></td>
+              <td class="p-4 text-zinc-400 text-xs max-w-xs truncate"><%= (v.user_agent || '').substring(0, 90) %></td>
+              <td class="p-4 text-zinc-500 text-xs max-w-[160px] truncate"><%= (v.referrer || '-') %></td>
+            </tr>
+          <% }); } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function () {
+    var data = <%- JSON.stringify(chartData) %>;
+    var el = document.getElementById('trafficChart');
+    if (!el || !window.Chart) return;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: 'Görüntülenme',
+            data: data.views,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.15)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          },
+          {
+            label: 'Benzersiz IP',
+            data: data.uniques,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.10)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: true, maxTicksLimit: 15 },
+            grid: { color: 'rgba(63,63,70,0.5)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#9ca3af', precision: 0 },
+            grid: { color: 'rgba(63,63,70,0.5)' }
+          }
+        },
+        plugins: { legend: { labels: { color: '#d4d4d8' } } }
+      }
+    });
+  })();
+</script>

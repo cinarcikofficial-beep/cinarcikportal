@@ -129,6 +129,27 @@ app.use((req, res, next) => {
   next();
 });
 
+// ---- Sayfa trafiği loglama (admin raporları için) ----
+// Statik dosyalar express.static'te kısa yoldan döner; buraya yalnızca sayfa
+// GET'leri ulaşır. /admin trafiği bilinçli olarak hariç tutulur (kendi
+// girişlerimiz istatistikleri bozmasın).
+const { logPageView } = require('./db');
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/admin')) return next();
+  res.on('finish', () => {
+    if (res.statusCode >= 400) return;
+    logPageView({
+      path: req.path,
+      method: req.method,
+      status: res.statusCode,
+      ip: req.ip,
+      user_agent: req.headers['user-agent'] || '',
+      referrer: req.headers.referer || req.headers.referrer || ''
+    });
+  });
+  next();
+});
+
 function isAuthenticated(req, res, next) {
   if (req.session.isAdmin) return next();
   res.redirect('/admin/login');
@@ -1402,6 +1423,44 @@ app.get('/admin/firmalar', isAuthenticated, (req, res) => {
   const { all } = require('./db');
   const companies = all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC');
   res.render('admin/company-list', { companies });
+});
+
+app.get('/admin/raporlar', isAuthenticated, (req, res) => {
+  const { all, get } = require('./db');
+  const now = new Date();
+  const iso = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
+  const dayStart = now.toISOString().slice(0, 10) + ' 00:00:00';
+  const d7 = iso(new Date(now.getTime() - 7 * 24 * 3600 * 1000));
+  const d30 = iso(new Date(now.getTime() - 30 * 24 * 3600 * 1000));
+
+  const stat = (since) => {
+    const r = get('SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ?', [since]);
+    return { views: (r && r.views) || 0, uniques: (r && r.uniques) || 0 };
+  };
+  const totals = get('SELECT COUNT(*) AS total, COUNT(DISTINCT ip) AS totalUniques FROM page_views') || { total: 0, totalUniques: 0 };
+
+  const topPages = all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
+    FROM page_views WHERE created_at >= ? GROUP BY path ORDER BY views DESC LIMIT 20`, [d30]);
+  const daily = all(`SELECT date(created_at) AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
+    FROM page_views WHERE created_at >= ? GROUP BY day ORDER BY day ASC`, [d30]);
+  const recent = all('SELECT * FROM page_views ORDER BY id DESC LIMIT 100');
+
+  const dailyMap = {};
+  daily.forEach(r => { dailyMap[r.day] = r; });
+  const labels = [], viewsSeries = [], uniquesSeries = [];
+  for (let i = 29; i >= 0; i--) {
+    const key = new Date(now.getTime() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    labels.push(key.slice(5));
+    viewsSeries.push((dailyMap[key] && dailyMap[key].views) || 0);
+    uniquesSeries.push((dailyMap[key] && dailyMap[key].uniques) || 0);
+  }
+
+  res.render('admin/raporlar', {
+    today: stat(dayStart), week: stat(d7), month: stat(d30),
+    totalViews: totals.total || 0, totalUniques: totals.totalUniques || 0,
+    topPages, recent,
+    chartData: { labels, views: viewsSeries, uniques: uniquesSeries }
+  });
 });
 
 app.get('/admin/firma-ekle', isAuthenticated, (req, res) => {

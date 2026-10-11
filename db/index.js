@@ -939,6 +939,21 @@ function createTables() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS page_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT,
+      method TEXT,
+      status INTEGER,
+      ip TEXT,
+      user_agent TEXT,
+      referrer TEXT,
+      created_at TEXT
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(path)');
+
   const placeCols = db.exec("PRAGMA table_info(places)");
   if (placeCols[0]) {
     const cols = placeCols[0].values.map(r => r[1]);
@@ -999,12 +1014,15 @@ async function initDb() {
   await getDb();
   sweepExpired();
   setInterval(sweepExpired, 60 * 1000);
+  sweepPageViews();
+  setInterval(sweepPageViews, 60 * 60 * 1000);
   setInterval(() => syncNow('periyodik'), SYNC_HEARTBEAT_MS);
 
   // Kapanışta buluta son bir kez yaz (deploy/Ctrl+C/SIGTERM gibi durumlarda).
   // flushSync, çalışan bir sync varsa onu bekleyip ardından son bir kez senkronlar;
   // böylece in-flight sync yüzünden yazma kaybolmaz.
   const exitFlush = (sig, code) => {
+    flushPageViewBuffer();
     console.log('[db] kapanış öncesi senkron (' + sig + ')...');
     Promise.race([
       flushSync('kapanış:' + sig),
@@ -1034,6 +1052,56 @@ function sweepExpired() {
             WHERE expires_at IS NOT NULL AND expires_at != ''
               AND (datetime(replace(expires_at, 'T', ' ')) <= ?)
               AND status='active'`, [now]);
+    if (db.getRowsModified() > 0) saveDb();
+  } catch (e) {}
+}
+
+// ---- Sayfa goruntuleme loglamasi (buffer'li; her istekte tam DB yazmadan) ----
+const PAGE_VIEW_BUFFER_LIMIT = 50;
+const PAGE_VIEW_FLUSH_MS = 20 * 1000;
+const PAGE_VIEW_RETENTION_DAYS = 90;
+let _pvBuffer = [];
+let _pvFlushTimer = null;
+
+function logPageView(row) {
+  if (!db || !row) return;
+  _pvBuffer.push([
+    String(row.path || '').slice(0, 500),
+    String(row.method || 'GET').slice(0, 10),
+    row.status != null && row.status !== '' ? (parseInt(row.status, 10) || 0) : 0,
+    String(row.ip || '').slice(0, 64),
+    String(row.user_agent || '').slice(0, 500),
+    String(row.referrer || '').slice(0, 500),
+    new Date().toISOString().slice(0, 19).replace('T', ' ')
+  ]);
+  if (_pvBuffer.length >= PAGE_VIEW_BUFFER_LIMIT) {
+    flushPageViewBuffer();
+  } else if (!_pvFlushTimer) {
+    _pvFlushTimer = setTimeout(flushPageViewBuffer, PAGE_VIEW_FLUSH_MS);
+  }
+}
+
+function flushPageViewBuffer() {
+  if (_pvFlushTimer) { clearTimeout(_pvFlushTimer); _pvFlushTimer = null; }
+  if (!db || !_pvBuffer.length) return;
+  const batch = _pvBuffer;
+  _pvBuffer = [];
+  try {
+    const stmt = db.prepare('INSERT INTO page_views (path, method, status, ip, user_agent, referrer, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    batch.forEach(r => stmt.run(r));
+    stmt.free();
+    saveDb();
+  } catch (e) {
+    _pvBuffer = batch.concat(_pvBuffer); // hata durumunda kaybi en aza indir
+  }
+}
+
+function sweepPageViews() {
+  if (!db) return;
+  const cutoff = new Date(Date.now() - PAGE_VIEW_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    .toISOString().slice(0, 19).replace('T', ' ');
+  try {
+    db.run('DELETE FROM page_views WHERE created_at < ?', [cutoff]);
     if (db.getRowsModified() > 0) saveDb();
   } catch (e) {}
 }
@@ -1069,5 +1137,5 @@ function ensureUniqueSlug(base, excludeId, table) {
 
 module.exports = {
   initDb, saveDb, run, get, all, slugify, parseGallery, ensureUniqueSlug, sweepExpired,
-  syncNow, flushSync, mergeCloudBuffer, ensureSyncSchema, writeLocalFile
+  syncNow, flushSync, mergeCloudBuffer, ensureSyncSchema, writeLocalFile, logPageView
 };
