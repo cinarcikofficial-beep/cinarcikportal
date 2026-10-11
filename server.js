@@ -2052,6 +2052,7 @@ let forecastCache = { data: null, ts: 0 };
 let forecastFetching = false;
 let forecastDbLoaded = false;
 const FORECAST_CACHE_MS = 6 * 60 * 60 * 1000; // 6 saat (Open-Meteo rate-limit'e dusmemek icin)
+const FALLBACK_CACHE_MS = 30 * 60 * 1000; // yedek (wttr.in) veri daha kisa sure taze; Open-Meteo'yu hizli dener
 
 // Son iyi tahmin verisini DB'ye kalici yap; Open-Meteo dusen/bloklayan anlarda
 // (429/503) bayat veriyi servis ederek "Tahmin verisi alinamadi" hatasini onle.
@@ -2095,8 +2096,47 @@ function fmtDateLocal(d) {
   return y + '-' + m + '-' + day;
 }
 
+// Yedek saglayici: Open-Meteo tamamen dusukken (429/503) wttr.in'den 3 gunluk
+// tahmin al; "Tahmin verisi alinamadi" hatasini onle. WMO kodlarina cevirip
+// wmoToIcon/wmoToDesc ile tutarli ikon/aciklama uret.
+const WTTR_TO_WMO = {
+  113:0, 116:2, 119:3, 122:3, 143:45, 176:61, 200:95, 227:73, 230:75,
+  248:45, 260:45, 263:51, 266:51, 293:61, 296:61, 299:63, 302:63, 305:65,
+  308:65, 311:66, 314:67, 317:66, 320:67, 323:71, 326:71, 329:73, 332:73,
+  335:75, 338:75, 350:77, 353:80, 356:81, 359:82, 362:80, 365:81, 368:80,
+  371:81, 374:80, 377:81, 386:96, 389:99, 392:96, 395:99
+};
+async function fetchWttrFallback() {
+  const r = await fetch('https://wttr.in/40.6475,29.0736?format=j1', { signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error('wttr HTTP ' + r.status);
+  const j = await r.json();
+  const days = (j.weather || []).slice(0, 3);
+  if (!days.length) throw new Error('wttr veri yok');
+  const todayStr = fmtDateLocal(new Date());
+  return days.map(d => {
+    const date = new Date(d.date + 'T12:00:00');
+    const hourly = d.hourly || [];
+    const noon = hourly[4] || hourly[Math.floor(hourly.length / 2)] || {};
+    const code = WTTR_TO_WMO[parseInt(noon.weatherCode, 10)] !== undefined ? WTTR_TO_WMO[parseInt(noon.weatherCode, 10)] : 3;
+    return {
+      date: d.date,
+      dayName: DAY_NAMES_TR[date.getDay()],
+      dayNum: date.getDate(),
+      month: MONTH_NAMES_TR[date.getMonth()],
+      tempMax: parseInt(d.maxtempC, 10),
+      tempMin: parseInt(d.mintempC, 10),
+      rainChance: parseInt(noon.chanceofrain || 0, 10),
+      wind: Math.round(parseFloat(noon.windspeedKmph || 0) * 0.277778), // km/h -> m/s
+      icon: wmoToIcon(code),
+      description: wmoToDesc(code),
+      isForecast: d.date !== todayStr
+    };
+  });
+}
+
 app.get('/api/weather-forecast', (req, res) => {
-  if (forecastCache.data && forecastCache.data.length && (Date.now() - forecastCache.ts) < FORECAST_CACHE_MS) {
+  const cacheTtl = forecastCache.source === 'wttr' ? FALLBACK_CACHE_MS : FORECAST_CACHE_MS;
+  if (forecastCache.data && forecastCache.data.length && (Date.now() - forecastCache.ts) < cacheTtl) {
     return res.json({ success: true, forecast: forecastCache.data });
   }
   // Cold-boot / restart: DB'den son iyi veriyi bir kez yukle
@@ -2247,7 +2287,21 @@ app.get('/api/weather-forecast', (req, res) => {
         forecastCache = { data: persisted, ts: 0 };
         return res.json({ success: true, forecast: persisted, stale: true });
       }
-      res.json({ success: false, forecast: [], error: err.message });
+      // Hicbayat veri yok — yedek saglayici (wttr.in) ile3 gunluk tahmin doldur
+      fetchWttrFallback()
+        .then(fb => {
+          if (fb && fb.length) {
+            forecastCache = { data: fb, ts: Date.now(), source: 'wttr' };
+            persistForecast(fb);
+            res.json({ success: true, forecast: fb, fallback: true });
+          } else {
+            res.json({ success: false, forecast: [], error: err.message });
+          }
+        })
+        .catch(fbErr => {
+          console.log('Wttr fallback error:', fbErr.message);
+          res.json({ success: false, forecast: [], error: err.message });
+        });
     });
 });
 
