@@ -492,7 +492,7 @@ app.get('/mekan/:id', async (req, res) => {
     const allPlaces = all('SELECT * FROM places WHERE status = "active"');
     let embedMapUrl = '';
     if (place.map_link) {
-      embedMapUrl = convertGoogleMapsToEmbed(place.map_link);
+      embedMapUrl = await getMapEmbedUrl(place.map_link);
     }
     const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
     const lp = req.lang === 'tr' ? '' : '/' + req.lang;
@@ -1392,7 +1392,7 @@ app.get('/rehber/:slug', async (req, res) => {
   ]);
   let embedMapUrl = '';
   if (company.map_link) {
-    embedMapUrl = convertGoogleMapsToEmbed(company.map_link);
+    embedMapUrl = await getMapEmbedUrl(company.map_link);
   }
   res.render('rehber-detail', { company, embedMapUrl, pageTitle: company.name });
 });
@@ -2239,49 +2239,70 @@ app.get('/api/trending-news', async (req, res) => {
   }
 });
 
-function convertGoogleMapsToEmbed(url) {
-  if (!url) return '';
+// ---- Harita koordinat çözümleme & OpenStreetMap embed ----
+// Google Maps keyless embed (output=embed) artik engellendigi icin keysiz,
+// guvenilir OpenStreetMap embed kullanilir. map_link (Google kisa link /
+// Google Maps URL / plus code / adres) koordinata cevrilir ve cache'lenir.
+const _mapCoordCache = new Map();
 
-  // Plus Code detection (e.g. "J4W8+6M Çınarcık, Yalova" or "J4W8+6M" or "J4W8+6M, Yalova")
-  const plusCodeMatch = url.match(/^([A-Z0-9]{4,5}\+[A-Z0-9]{2,3})[,\s]+(.+)$/i);
-  const purePlusCode = url.match(/^([A-Z0-9]{4,5}\+[A-Z0-9]{2,3})$/i);
-  if (plusCodeMatch) {
-    const query = plusCodeMatch[1] + ' ' + plusCodeMatch[2].trim();
-    return 'https://www.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
+function extractMapCoords(str) {
+  if (!str) return null;
+  const patterns = [
+    /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+    /\/search\/(-?\d{1,3}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
+    /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/,
+    /[?&]center=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+    /[?&]q=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+    /[?&]ll=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/
+  ];
+  for (const re of patterns) {
+    const m = str.match(re);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+    }
   }
-  if (purePlusCode) {
-    return 'https://www.google.com/maps?q=' + encodeURIComponent(purePlusCode[1]) + '&output=embed';
-  }
+  return null;
+}
 
-  // Try to extract daddr (destination address) from URL
+async function resolveMapCoords(mapLink) {
+  if (!mapLink) return null;
+  if (_mapCoordCache.has(mapLink)) return _mapCoordCache.get(mapLink);
+  let coords = null;
   try {
-    const urlObj = new URL(url);
-    const daddr = urlObj.searchParams.get('daddr');
-    if (daddr) {
-      return 'https://www.google.com/maps?q=' + encodeURIComponent(daddr) + '&output=embed';
+    if (/^https?:\/\//i.test(mapLink)) {
+      const r = await fetch(mapLink, {
+        redirect: 'follow',
+        headers: { 'user-agent': 'cinarcik-portal/1.0' },
+        signal: AbortSignal.timeout(6000)
+      });
+      coords = extractMapCoords(r.url);
+      if (!coords) coords = extractMapCoords(await r.text());
+    } else {
+      const q = encodeURIComponent(mapLink + ', Çınarcık, Yalova, Türkiye');
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + q, {
+        headers: { 'user-agent': 'cinarcik-portal/1.0' },
+        signal: AbortSignal.timeout(6000)
+      });
+      const arr = await r.json();
+      if (Array.isArray(arr) && arr[0]) coords = { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
     }
-  } catch (e) {}
+  } catch (e) { coords = null; }
+  _mapCoordCache.set(mapLink, coords);
+  return coords;
+}
 
-  // Fallback: use q parameter or address extraction
-  let embedUrl = url;
+function buildOSMEmbedUrl(coords) {
+  if (!coords) return '';
+  const { lat, lng } = coords;
+  const dLat = 0.004, dLng = 0.006;
+  const bbox = (lng - dLng).toFixed(6) + ',' + (lat - dLat).toFixed(6) + ',' + (lng + dLng).toFixed(6) + ',' + (lat + dLat).toFixed(6);
+  return 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lng;
+}
 
-  // If it's a Google Maps URL, try to extract the address and create a clean embed
-  if (url.includes('google.com/maps')) {
-    // Try to get daddr from the URL string
-    const daddrMatch = url.match(/[?&]daddr=([^&]+)/);
-    if (daddrMatch) {
-      const address = decodeURIComponent(daddrMatch[1]);
-      return 'https://www.google.com/maps?q=' + encodeURIComponent(address) + '&output=embed';
-    }
-    // Try to get q parameter
-    const qMatch = url.match(/[?&]q=([^&]+)/);
-    if (qMatch) {
-      const query = decodeURIComponent(qMatch[1]);
-      return 'https://www.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
-    }
-  }
-
-  return embedUrl;
+async function getMapEmbedUrl(mapLink) {
+  if (!mapLink) return '';
+  return buildOSMEmbedUrl(await resolveMapCoords(mapLink));
 }
 
 // ---- Nöbetçi Eczane Otomatik Senkronizasyon ----
