@@ -169,20 +169,8 @@
 
       <!-- Galeri -->
       <% const gal = edit && edit.gallery_images ? (typeof edit.gallery_images === 'string' ? JSON.parse(edit.gallery_images || '[]') : edit.gallery_images) : []; %>
-      <div>
+      <div id="galleryWrap" data-max="10" data-counter-format="(Toplam: %d)">
         <label class="block text-sm font-medium text-zinc-300 mb-2">Galeri Görselleri</label>
-        <% if (Array.isArray(gal) && gal.length > 0) { %>
-          <p class="text-xs text-zinc-500 mb-2">Mevcut Galeri:</p>
-          <div id="existingGalleryGrid" class="mb-4 grid grid-cols-5 sm:grid-cols-6 gap-2">
-            <% gal.forEach((url) => { %>
-              <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" data-url="<%= url %>">
-                <img src="<%= url %>" class="w-full h-20 object-cover">
-                <button type="button" class="gallery-remove absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full flex items-center justify-center" title="Kaldır">×</button>
-              </div>
-              <input type="hidden" name="existing_gallery[]" value="<%= url %>">
-            <% }) %>
-          </div>
-        <% } %>
         <div id="galleryDropzone"
           class="block cursor-pointer rounded-xl border-2 border-dashed border-zinc-600/60 bg-zinc-950/80 hover:border-emerald-400/60 hover:bg-zinc-900/90 transition-all px-4 py-10 text-center">
           <span class="text-4xl block mb-2">📂</span>
@@ -190,8 +178,18 @@
           <span class="text-zinc-500 text-sm block mt-2">Çoklu resim seçebilirsiniz (JPG, PNG, WEBP)</span>
         </div>
         <input type="file" id="galleryInput" name="gallery_images" multiple accept="image/*" class="hidden">
-        <div id="galleryPreviewContainer" class="flex flex-wrap gap-2 mt-3"></div>
+        <input type="hidden" name="gallery_order" id="gallery_order" value="">
+        <div id="galleryPreviewContainer" class="flex flex-wrap gap-3 mt-3">
+          <% gal.forEach((url) => { %>
+            <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" draggable="true" data-kind="existing" data-url="<%= url %>">
+              <img src="<%= img(url) %>" class="w-20 h-20 object-cover">
+              <button type="button" class="gallery-remove absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full flex items-center justify-center" title="Kaldır">×</button>
+              <input type="hidden" name="existing_gallery[]" value="<%= url %>">
+            </div>
+          <% }) %>
+        </div>
         <span id="gallery-counter" class="text-xs text-zinc-500 mt-2 block">(Toplam: <%= gal.length %>)</span>
+        <p class="text-xs text-zinc-600 mt-1">İpucu: görselleri sürükleyip bırakarak sıralayabilirsiniz, kaydettiğinizde bu sıra sitede görünür.</p>
       </div>
 
       <!-- Durum & Sıralama -->
@@ -248,78 +246,10 @@
     });
   }
 
-  var gallInput = document.getElementById('galleryInput');
-  var gallDropzone = document.getElementById('galleryDropzone');
-  var gallPreview = document.getElementById('galleryPreviewContainer');
-  var galleryCounter = document.getElementById('gallery-counter');
-  var galleryDT = new DataTransfer();
-
-  function getExistingCount() {
-    var g = document.getElementById('existingGalleryGrid');
-    return g ? g.querySelectorAll('input[name="existing_gallery[]"]').length : 0;
-  }
-  function updateCounter() {
-    if (galleryCounter) galleryCounter.textContent = '(Toplam: ' + (getExistingCount() + galleryDT.files.length) + ')';
-  }
-  function rebuildPreviews() {
-    if (!gallPreview) return;
-    gallPreview.innerHTML = '';
-    for (var i = 0; i < galleryDT.files.length; i++) {
-      (function(idx) {
-        var file = galleryDT.files[idx];
-        if (!file.type.startsWith('image/')) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-          var wrap = document.createElement('div');
-          wrap.className = 'relative gallery-preview-item group';
-          wrap.innerHTML = '<img src="' + ev.target.result + '" class="w-20 h-20 rounded-lg object-cover border border-zinc-700">' +
-            '<button type="button" class="remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">&times;</button>';
-          wrap.querySelector('.remove-preview').addEventListener('click', function() {
-            galleryDT.items.remove(idx); gallInput.files = galleryDT.files; rebuildPreviews();
-          });
-          gallPreview.appendChild(wrap);
-        };
-        reader.readAsDataURL(file);
-      })(i);
-    }
-    updateCounter();
-  }
-
-  if (gallInput) gallInput.addEventListener('change', function(e) {
-    Array.from(e.target.files).forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
-    gallInput.files = galleryDT.files; rebuildPreviews();
-  });
-  if (gallDropzone) {
-    gallDropzone.addEventListener('click', function() { gallInput.click(); });
-    ['dragover','dragenter'].forEach(function(ev) {
-      gallDropzone.addEventListener(ev, function(e) { e.preventDefault(); gallDropzone.classList.add('border-emerald-400'); });
-    });
-    ['dragleave','drop'].forEach(function(ev) {
-      gallDropzone.addEventListener(ev, function(e) { e.preventDefault(); gallDropzone.classList.remove('border-emerald-400'); });
-    });
-    gallDropzone.addEventListener('drop', function(e) {
-      Array.from(e.dataTransfer.files).forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
-      gallInput.files = galleryDT.files; rebuildPreviews();
-    });
-  }
-
-  var existingGrid = document.getElementById('existingGalleryGrid');
-  if (existingGrid) {
-    existingGrid.addEventListener('click', function(e) {
-      var btn = e.target.closest('.gallery-remove');
-      if (!btn) return;
-      var thumb = btn.closest('.gallery-thumb');
-      if (thumb) {
-        var hidden = thumb.nextElementSibling;
-        if (hidden && hidden.name === 'existing_gallery[]') hidden.remove();
-        thumb.remove(); updateCounter();
-      }
-    });
-  }
-
-  updateCounter();
 })();
 </script>
+
+<%- include('partials/gallery-sort') %>
 
 <%- include('partials/quill') %>
 <script>

@@ -1,0 +1,198 @@
+<script>
+(function () {
+  var wrap = document.getElementById('galleryWrap');
+  if (!wrap) return;
+  var list = document.getElementById('galleryPreviewContainer');
+  var input = document.getElementById('galleryInput');
+  var dropzone = document.getElementById('galleryDropzone');
+  var counter = document.getElementById('gallery-counter');
+  var orderField = document.getElementById('gallery_order');
+  var form = document.getElementById('admin-form');
+  var selectedCountEl = document.getElementById('selected-preview-count');
+  var max = parseInt(wrap.getAttribute('data-max') || '0', 10) || 0;
+  var tpl = wrap.getAttribute('data-counter-format') || '(Toplam: %d)';
+  var dt = new DataTransfer();
+
+  function existingCount() {
+    return list.querySelectorAll('[data-kind="existing"]').length;
+  }
+
+  function updateCounter() {
+    if (counter) counter.textContent = tpl.replace('%d', existingCount() + dt.files.length);
+    if (selectedCountEl) {
+      var n = selectedCountEl.querySelector('.selected-count');
+      if (dt.files.length > 0) {
+        selectedCountEl.classList.remove('hidden');
+        if (n) n.textContent = dt.files.length;
+      } else {
+        selectedCountEl.classList.add('hidden');
+      }
+    }
+  }
+
+  function makeNewNode(idx) {
+    var el = document.createElement('div');
+    el.className = 'relative gallery-preview-item group';
+    el.setAttribute('data-kind', 'new');
+    el.setAttribute('data-idx', idx);
+    el.setAttribute('draggable', 'true');
+    var im = document.createElement('img');
+    im.className = 'w-20 h-20 rounded-lg object-cover border border-zinc-700';
+    im.src = URL.createObjectURL(dt.files[idx]);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity';
+    btn.title = 'Kaldır';
+    btn.innerHTML = '&times;';
+    el.appendChild(im);
+    el.appendChild(btn);
+    return el;
+  }
+
+  // DOM'daki yeni görsel sırasını DataTransfer'e yansıtır (kalıcı kural:
+  // yeni öğelerin DOM sırası == dt sırası).
+  function resyncNew() {
+    var nodes = Array.prototype.slice.call(list.querySelectorAll('[data-kind="new"]'));
+    var ndt = new DataTransfer();
+    nodes.forEach(function (el) {
+      var i = parseInt(el.getAttribute('data-idx'), 10);
+      if (!isNaN(i) && dt.files[i]) ndt.items.add(dt.files[i]);
+    });
+    dt = ndt;
+    nodes.forEach(function (el, k) { el.setAttribute('data-idx', k); });
+    if (input) input.files = dt.files;
+  }
+
+  function addFiles(files) {
+    var arr = files ? Array.prototype.slice.call(files) : [];
+    var accepted = arr.filter(function (f) { return f.type && f.type.indexOf('image/') === 0; });
+    if (!accepted.length) return;
+    if (max > 0 && existingCount() + dt.files.length + accepted.length > max) {
+      var room = Math.max(max - (existingCount() + dt.files.length), 0);
+      accepted = accepted.slice(0, room);
+      if (!accepted.length) {
+        alert('En fazla ' + max + ' görsel ekleyebilirsiniz.');
+        return;
+      }
+      alert('Galeri limiti ' + max + ' görsel, fazlası eklenmedi.');
+    }
+    accepted.forEach(function (f) {
+      dt.items.add(f);
+      list.appendChild(makeNewNode(dt.files.length - 1));
+    });
+    if (input) input.files = dt.files;
+    updateCounter();
+  }
+
+  if (input) {
+    input.addEventListener('change', function (e) {
+      addFiles(e.target.files);
+      e.target.value = '';
+    });
+  }
+
+  if (dropzone) {
+    dropzone.addEventListener('click', function () { if (input) input.click(); });
+    ['dragover', 'dragenter'].forEach(function (ev) {
+      dropzone.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('border-emerald-400', 'bg-zinc-900');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dropzone.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('border-emerald-400', 'bg-zinc-900');
+      });
+    });
+    // Sürüklenen bir galeri öğesi dropzone'a bırakılırsa dosya sayılmaz.
+    dropzone.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+  }
+
+  list.addEventListener('click', function (e) {
+    var ex = e.target.closest('.gallery-remove');
+    if (ex) {
+      var item = ex.closest('[data-kind="existing"]');
+      if (item) item.remove();
+      updateCounter();
+      return;
+    }
+    var rm = e.target.closest('.remove-preview');
+    if (rm) {
+      var node = rm.closest('[data-kind="new"]');
+      if (!node) return;
+      var im = node.querySelector('img');
+      if (im && im.src.indexOf('blob:') === 0) URL.revokeObjectURL(im.src);
+      node.remove();
+      resyncNew();
+      updateCounter();
+    }
+  });
+
+  var dragged = null;
+  list.addEventListener('dragstart', function (e) {
+    var item = e.target.closest('[data-kind]');
+    if (!item) return;
+    dragged = item;
+    item.classList.add('opacity-50');
+    try {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+    } catch (_) {}
+  });
+  list.addEventListener('dragend', function () {
+    if (!dragged) return;
+    dragged.classList.remove('opacity-50');
+    dragged = null;
+    resyncNew();
+  });
+  list.addEventListener('dragover', function (e) {
+    if (!dragged) return;
+    e.preventDefault();
+    var over = e.target.closest('[data-kind]');
+    if (!over || over === dragged) return;
+    var rect = over.getBoundingClientRect();
+    var horizontal = Math.abs(e.clientY - (rect.top + rect.height / 2)) < rect.height / 2;
+    var before = horizontal
+      ? e.clientX < rect.left + rect.width / 2
+      : e.clientY < rect.top + rect.height / 2;
+    if (before) {
+      if (over.previousSibling !== dragged) list.insertBefore(dragged, over);
+    } else {
+      if (over.nextSibling !== dragged) list.insertBefore(dragged, over.nextSibling);
+    }
+  });
+  list.addEventListener('drop', function (e) {
+    if (dragged) e.preventDefault();
+  });
+
+  function serializeOrder() {
+    if (!orderField) return;
+    var order = [];
+    Array.prototype.forEach.call(list.querySelectorAll('[data-kind]'), function (el) {
+      if (el.getAttribute('data-kind') === 'existing') {
+        var url = el.getAttribute('data-url');
+        if (url) order.push(['e', url]);
+      } else {
+        var i = parseInt(el.getAttribute('data-idx'), 10);
+        if (!isNaN(i)) order.push(['n', i]);
+      }
+    });
+    orderField.value = JSON.stringify(order);
+  }
+
+  if (form) {
+    form.addEventListener('submit', function () {
+      resyncNew();
+      serializeOrder();
+      if (input) input.files = dt.files;
+    });
+  }
+
+  updateCounter();
+})();
+</script>

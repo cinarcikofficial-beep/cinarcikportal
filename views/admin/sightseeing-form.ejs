@@ -131,6 +131,8 @@
       list.forEach(function (src, i) {
         var d = document.createElement('div');
         d.className = 'relative rounded-lg overflow-hidden aspect-[4/3] bg-zinc-800 border border-zinc-800';
+        d.setAttribute('data-gal', src);
+        d.setAttribute('draggable', 'true');
         var img = document.createElement('img');
         img.src = src; img.alt = '';
         img.className = 'w-full h-full object-cover';
@@ -151,6 +153,55 @@
         box.appendChild(d);
       });
     }
+
+    function syncOrder() {
+      var urls = [];
+      Array.prototype.forEach.call(box.querySelectorAll('[data-gal]'), function (el) {
+        urls.push(el.getAttribute('data-gal'));
+      });
+      if (urls.length) {
+        eg.value = JSON.stringify(urls);
+        render();
+      }
+    }
+
+    var dragged = null;
+    box.addEventListener('dragstart', function (e) {
+      var item = e.target.closest('[data-gal]');
+      if (!item) return;
+      dragged = item;
+      item.classList.add('opacity-50');
+      try {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+      } catch (_) {}
+    });
+    box.addEventListener('dragend', function () {
+      if (!dragged) return;
+      dragged.classList.remove('opacity-50');
+      dragged = null;
+      syncOrder();
+    });
+    box.addEventListener('dragover', function (e) {
+      if (!dragged) return;
+      e.preventDefault();
+      var over = e.target.closest('[data-gal]');
+      if (!over || over === dragged) return;
+      var rect = over.getBoundingClientRect();
+      var horizontal = Math.abs(e.clientY - (rect.top + rect.height / 2)) < rect.height / 2;
+      var before = horizontal
+        ? e.clientX < rect.left + rect.width / 2
+        : e.clientY < rect.top + rect.height / 2;
+      if (before) {
+        if (over.previousSibling !== dragged) box.insertBefore(dragged, over);
+      } else {
+        if (over.nextSibling !== dragged) box.insertBefore(dragged, over.nextSibling);
+      }
+    });
+    box.addEventListener('drop', function (e) {
+      if (dragged) e.preventDefault();
+    });
+
     render();
   })();
 </script>

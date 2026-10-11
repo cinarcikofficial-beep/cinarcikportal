@@ -625,7 +625,8 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
       } catch (e) { gallery = []; }
     }
     if (req.files && req.files.gallery_files) {
-      req.files.gallery_files.forEach(f => gallery.push(pubUrl(f)));
+      const newUrls = req.files.gallery_files.map(f => pubUrl(f));
+      gallery = applyGalleryOrder(req, gallery, newUrls);
     }
 
     const statusVal = status === 'passive' ? 'passive' : 'active';
@@ -958,7 +959,7 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_files && Array.isArray(req.files.gallery_files)) {
-    req.files.gallery_files.forEach(function(f) { galleryArr.push(pubUrl(f)); });
+    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_files.map(f => pubUrl(f)));
   }
 
   if (!title || !content) {
@@ -1043,6 +1044,44 @@ function pubUrl(file) {
   if (!file) return '';
   if (file.r2Url) return '/uploads/' + path.basename(file.r2Url);
   return '/img/uploads/' + encodeURIComponent(file.filename);
+}
+
+// Formdaki sürükle-bırak sıralaması `gallery_order` alanına JSON olarak yazılır:
+// [["e", mevcutUrl], ["n", yeniDosyaIndeksi], ...]
+// Alan yoksa (eski istemci / JS kapalı) davranış değişmez: mevcutlar önce, yeniler sonra.
+function applyGalleryOrder(req, existingArr, newUrls) {
+  const existing = Array.isArray(existingArr) ? existingArr : [];
+  const fresh = Array.isArray(newUrls) ? newUrls : [];
+  const base = existing.concat(fresh);
+  const raw = req.body ? req.body.gallery_order : '';
+  if (!raw) return base;
+  let order;
+  try { order = JSON.parse(raw); } catch (e) { return base; }
+  if (!Array.isArray(order) || !order.length) return base;
+
+  const out = [];
+  const remain = {};
+  existing.forEach(function(u) { remain[u] = (remain[u] || 0) + 1; });
+  const usedNew = {};
+  order.forEach(function(it) {
+    if (!Array.isArray(it) || it.length < 2) return;
+    if (it[0] === 'e') {
+      const url = String(it[1]);
+      if (remain[url] > 0) { remain[url]--; out.push(url); }
+    } else if (it[0] === 'n') {
+      const i = parseInt(it[1], 10);
+      if (!isNaN(i) && fresh[i] !== undefined && !usedNew[i]) {
+        usedNew[i] = 1;
+        out.push(fresh[i]);
+      }
+    }
+  });
+  // Güvenlik ağı: sırada kalmayan mevcut görseller ve yeni yüklenenler sona eklenir.
+  Object.keys(remain).forEach(function(u) {
+    while (remain[u] > 0) { out.push(u); remain[u]--; }
+  });
+  fresh.forEach(function(u, i) { if (!usedNew[i]) out.push(u); });
+  return out;
 }
 
 function finishUploads(req, res, done) {
@@ -1226,7 +1265,7 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    req.files.gallery_images.forEach(function(f) { galleryArr.push(pubUrl(f)); });
+    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_images.map(f => pubUrl(f)));
   }
 
   if (!name || !category || !description) {
@@ -1380,7 +1419,7 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     }
   }
   if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    req.files.gallery_images.forEach(function(f) { galleryArr.push(pubUrl(f)); });
+    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_images.map(f => pubUrl(f)));
   }
 
   if (!name || !category) {

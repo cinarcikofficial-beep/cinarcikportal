@@ -191,21 +191,8 @@
 
       <!-- 8. Galeri Görselleri (Dropzone Tasarımı) -->
       <% const gal = edit && edit.gallery_images ? (typeof edit.gallery_images === 'string' ? JSON.parse(edit.gallery_images || '[]') : edit.gallery_images) : []; %>
-      <div>
+      <div id="galleryWrap" data-max="10" data-counter-format="(Toplam Yüklü Görsel: %d)">
         <label class="block text-sm font-medium text-zinc-300 mb-2">Galeri Görselleri</label>
-
-        <% if (Array.isArray(gal) && gal.length > 0) { %>
-          <p class="text-xs text-zinc-500 mb-2">Mevcut Galeri Görselleri:</p>
-          <div id="existingGalleryGrid" class="mb-4 grid grid-cols-5 sm:grid-cols-6 gap-2">
-            <% gal.forEach((url, idx) => { %>
-              <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" data-url="<%= url %>">
-                <img src="<%= url %>" class="w-full h-20 object-cover">
-                <button type="button" class="gallery-remove absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full flex items-center justify-center" title="Kaldır">×</button>
-              </div>
-              <input type="hidden" name="existing_gallery[]" value="<%= url %>">
-            <% }) %>
-          </div>
-        <% } %>
 
         <div id="galleryDropzone"
           class="block cursor-pointer rounded-xl border-2 border-dashed border-zinc-600/60 bg-zinc-950/80 hover:border-emerald-400/60 hover:bg-zinc-900/90 transition-all px-4 py-10 text-center">
@@ -214,8 +201,17 @@
           <span class="text-zinc-500 text-sm block mt-2">Maksimum 10 MB · Çoklu Resim Seçebilirsiniz (JPG, PNG, WEBP)</span>
         </div>
         <input type="file" id="galleryInput" name="gallery_images" multiple accept="image/*" class="hidden">
+        <input type="hidden" name="gallery_order" id="gallery_order" value="">
 
-        <div id="galleryPreviewContainer" class="flex flex-wrap gap-2 mt-3"></div>
+        <div id="galleryPreviewContainer" class="flex flex-wrap gap-3 mt-3">
+          <% gal.forEach((url) => { %>
+            <div class="relative gallery-thumb rounded-lg overflow-hidden border border-zinc-700" draggable="true" data-kind="existing" data-url="<%= url %>">
+              <img src="<%= img(url) %>" class="w-20 h-20 object-cover">
+              <button type="button" class="gallery-remove absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-full flex items-center justify-center" title="Kaldır">×</button>
+              <input type="hidden" name="existing_gallery[]" value="<%= url %>">
+            </div>
+          <% }) %>
+        </div>
 
         <div class="mt-2 flex justify-between items-center">
           <span id="gallery-counter" class="text-xs text-zinc-500">(Toplam Yüklü Görsel: <%= gal.length %>)</span>
@@ -223,6 +219,7 @@
             <span class="selected-count">0</span> resim seçildi
           </div>
         </div>
+        <p class="text-xs text-zinc-600 mt-1">İpucu: görselleri sürükleyip bırakarak sıralayabilirsiniz, kaydettiğinizde bu sıra sitede görünür.</p>
       </div>
 
 <!-- 9. Durum, Sıralama ve Yayın Bitişi -->
@@ -313,127 +310,11 @@
     });
   }
 
-  // ===== GALLERY HANDLING =====
-  var gallInput = document.getElementById('galleryInput');
-  var gallDropzone = document.getElementById('galleryDropzone');
-  var gallPreview = document.getElementById('galleryPreviewContainer');
-  var galleryCounter = document.getElementById('gallery-counter');
-  var selectedCountEl = document.getElementById('selected-preview-count');
-
-  var galleryDT = new DataTransfer();
-
-  function getExistingCount() {
-    var existingGrid = document.getElementById('existingGalleryGrid');
-    if (!existingGrid) return 0;
-    return existingGrid.querySelectorAll('input[name="existing_gallery[]"]').length;
-  }
-
-  function updateGalleryCounter() {
-    if (!galleryCounter) return;
-    var newCount = galleryDT.files.length;
-    var totalCount = getExistingCount() + newCount;
-    galleryCounter.textContent = '(Toplam Yüklü Görsel: ' + totalCount + ')';
-  }
-
-  function rebuildPreviews() {
-    if (!gallPreview) return;
-    gallPreview.innerHTML = '';
-    for (var i = 0; i < galleryDT.files.length; i++) {
-      (function(idx) {
-        var file = galleryDT.files[idx];
-        if (!file.type.startsWith('image/')) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-          var wrap = document.createElement('div');
-          wrap.className = 'relative gallery-preview-item group';
-          wrap.setAttribute('data-idx', idx);
-          wrap.innerHTML =
-            '<img src="' + ev.target.result + '" class="w-20 h-20 rounded-lg object-cover border border-zinc-700">' +
-            '<button type="button" class="remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity" title="Kaldır">&times;</button>';
-          wrap.querySelector('.remove-preview').addEventListener('click', function() {
-            galleryDT.items.remove(idx);
-            gallInput.files = galleryDT.files;
-            rebuildPreviews();
-          });
-          gallPreview.appendChild(wrap);
-        };
-        reader.readAsDataURL(file);
-      })(i);
-    }
-    updateGalleryCounter();
-    if (selectedCountEl) {
-      if (galleryDT.files.length > 0) {
-        selectedCountEl.classList.remove('hidden');
-        selectedCountEl.querySelector('.selected-count').textContent = galleryDT.files.length;
-      } else {
-        selectedCountEl.classList.add('hidden');
-      }
-    }
-  }
-
-  function addFiles(files) {
-    var arr = Array.isArray(files) ? files : Array.from(files);
-    arr.forEach(function(f) { if (f.type.startsWith('image/')) galleryDT.items.add(f); });
-    gallInput.files = galleryDT.files;
-    rebuildPreviews();
-  }
-
-  if (gallInput) {
-    gallInput.addEventListener('change', function(e) {
-      addFiles(e.target.files);
-    });
-  }
-
-  if (gallDropzone) {
-    gallDropzone.addEventListener('click', function(e) {
-      if (e.target.tagName !== 'BUTTON') gallInput.click();
-    });
-    ['dragover', 'dragenter'].forEach(function(ev) {
-      gallDropzone.addEventListener(ev, function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        gallDropzone.classList.add('border-emerald-400', 'bg-zinc-900');
-      });
-    });
-    ['dragleave', 'drop'].forEach(function(ev) {
-      gallDropzone.addEventListener(ev, function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        gallDropzone.classList.remove('border-emerald-400', 'bg-zinc-900');
-      });
-    });
-    gallDropzone.addEventListener('drop', function(e) {
-      addFiles(e.dataTransfer.files);
-    });
-  }
-
-  // Existing gallery thumb remove buttons
-  var existingGrid = document.getElementById('existingGalleryGrid');
-  if (existingGrid) {
-    existingGrid.addEventListener('click', function(e) {
-      var btn = e.target.closest('.gallery-remove');
-      if (!btn) return;
-      var thumb = btn.closest('.gallery-thumb');
-      if (!thumb) return;
-      var hiddenInput = thumb.nextElementSibling;
-      if (hiddenInput && hiddenInput.name === 'existing_gallery[]') {
-        hiddenInput.remove();
-      }
-      thumb.remove();
-      updateGalleryCounter();
-    });
-  }
-
-  updateGalleryCounter();
-
   var form = document.getElementById('admin-form');
   var btn = document.getElementById('submit-btn');
   var spinner = document.getElementById('spinner');
   var txt = document.getElementById('submit-text');
   form.addEventListener('submit', function() {
-    if (galleryDT.files.length > 0) {
-      gallInput.files = galleryDT.files;
-    }
     spinner.classList.remove('hidden');
     txt.textContent = 'Kaydediliyor...';
     btn.disabled = true;
@@ -441,6 +322,8 @@
   });
 })();
 </script>
+
+<%- include('partials/gallery-sort') %>
 
 <%- include('partials/quill') %>
 <script>
