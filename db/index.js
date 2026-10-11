@@ -975,7 +975,14 @@ function all(sql, params = []) {
 }
 
 // Dışarıdan tek seferlik senkron tetiklemek için (test/kapanış).
+// Eğer bir sync zaten çalışıyorsa onu bekle, ardından son bir kez senkronla.
+// (Eski davranış: syncing=true iken anında false dönüp kapanış flush'ını
+//  hiç yapmadan process'i öldürüyordu → yazma ephemeral disk'te kayboluyordu.)
 async function flushSync(reason) {
+  const deadline = Date.now() + 7000;
+  while (syncing && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 50));
+  }
   return syncNow(reason || 'manuel');
 }
 
@@ -986,16 +993,25 @@ async function initDb() {
   setInterval(sweepExpired, 60 * 1000);
   setInterval(() => syncNow('periyodik'), SYNC_HEARTBEAT_MS);
 
-  // Kapanışta buluta son bir kez yaz (deploy/Ctrl+C gibi durumlarda).
+  // Kapanışta buluta son bir kez yaz (deploy/Ctrl+C/SIGTERM gibi durumlarda).
+  // flushSync, çalışan bir sync varsa onu bekleyip ardından son bir kez senkronlar;
+  // böylece in-flight sync yüzünden yazma kaybolmaz.
+  const exitFlush = (sig, code) => {
+    console.log('[db] kapanış öncesi senkron (' + sig + ')...');
+    Promise.race([
+      flushSync('kapanış:' + sig),
+      new Promise(resolve => setTimeout(resolve, 8000))
+    ]).catch(() => {}).then(() => process.exit(code));
+  };
   ['SIGINT', 'SIGTERM', 'SIGHUP'].forEach(sig => {
-    process.on(sig, () => {
-      console.log('[db] kapanış öncesi senkron (' + sig + ')...');
-      Promise.race([
-        syncNow('kapanış'),
-        new Promise(resolve => setTimeout(resolve, 4000))
-      ]).catch(() => {}).then(() => process.exit(0));
-    });
+    process.on(sig, () => exitFlush(sig, 0));
   });
+
+  // NOT: uncaughtException/unhandledRejection handler'ı BİLEREK eklenmedi.
+  // Bunları exit ile yakalamak, geçici hatalarda (ör. tablo migration'ı henüz
+  // koşmamışken gelen sorgu) süreci tamamen öldürüyordu. server.js zaten bu
+  // hataları yutup devam ediyor; dayanıklılık asıl olarak admin yazmalarında
+  // flush öncesi yanıt veren Fix B middleware'iyle sağlanıyor.
 
   return db;
 }

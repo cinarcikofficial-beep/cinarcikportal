@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-const { initDb } = require('./db');
+const { initDb, flushSync } = require('./db');
 const { tx, txFields, txArray, txJsonArrayField } = require('./translator');
 
 const app = express();
@@ -65,6 +65,22 @@ app.use('/admin', (req, res, next) => {
       return res.status(403).send('Geçersiz istek kaynağı');
     }
   }
+  next();
+});
+
+// Admin içerik yazmaları (haber/mekan/firma/gezilecek yer...) ancak Turso'ya
+// flush edildikten sonra onaylanır. Böylece yazma, yalnızca ephemeral Render
+// diskinde kalıp process SIGKILL ile öldürülünce (deploy/uuyku) kaybolmaz.
+// syncNow kısa devre yapar (kirli değilse), bu yüzden yazmayan POST'lar ucuzdur.
+app.use('/admin', (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  const originalRedirect = res.redirect.bind(res);
+  res.redirect = function (...args) {
+    Promise.race([
+      flushSync('admin-post'),
+      new Promise(r => setTimeout(r, 3000))
+    ]).catch(() => {}).finally(() => originalRedirect(...args));
+  };
   next();
 });
 
