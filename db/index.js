@@ -542,11 +542,19 @@ function mergeRows(table, cdb, cloudNewer, idMaps) {
         // sayaç kolonları: en büyüğü al, satır sürümünü tazeleme
         v = numVal(loser[c]) > numVal(winner[c]) ? loser[c] : winner[c];
       } else if (winner !== lr) {
-        // FK değeri bulutun id uzayında olabilir; yerel karşılığına çevir
         const parent = fkParentOf(table, c);
-        const idm = parent && idMaps[parent];
-        const mapped = idm ? idm.get(String(cr[c])) : undefined;
-        v = mapped !== undefined ? mapped : lr[c];
+        if (parent) {
+          // FK: bulutun id'si yerel karşılığına çevrilir; eşleme yoksa
+          // (ebeveyn henüz işlenmemiş olabilir) yerelde tut ki sarkan FK kalmasın.
+          const idm = idMaps[parent];
+          const mapped = idm ? idm.get(String(cr[c])) : undefined;
+          v = mapped !== undefined ? mapped : lr[c];
+        } else {
+          // FK olmayan içerik: bulut kazandıysa bulut değeri alınır.
+          // (Eski hata: her durumda lr[c] tutuluyordu → bulut içerik
+          //  değişiklikleri yerale hiç uygulanmıyor, "kayboluyor" görünüyordu.)
+          v = cr[c];
+        }
       } else {
         v = winner[c];
       }
