@@ -2052,7 +2052,7 @@ let forecastCache = { data: null, ts: 0 };
 let forecastFetching = false;
 let forecastDbLoaded = false;
 const FORECAST_CACHE_MS = 6 * 60 * 60 * 1000; // 6 saat (Open-Meteo rate-limit'e dusmemek icin)
-const FALLBACK_CACHE_MS = 30 * 60 * 1000; // yedek (wttr.in) veri daha kisa sure taze; Open-Meteo'yu hizli dener
+const FALLBACK_CACHE_MS = 10 * 60 * 1000; // yedek (wttr.in) veri kisa sure taze; Open-Meteo'yu sik deneyip 16 gunluge gec
 
 // Son iyi tahmin verisini DB'ye kalici yap; Open-Meteo dusen/bloklayan anlarda
 // (429/503) bayat veriyi servis ederek "Tahmin verisi alinamadi" hatasini onle.
@@ -2134,6 +2134,21 @@ async function fetchWttrFallback() {
   });
 }
 
+// Open-Meteo ani kapasite/overload anlarinda (429/503) kisa backoff ile dene;
+// boylece kisa sureli throttle kalkinca 16 gunluk tahmini kacirmayiz.
+async function fetchWithRetry(url, opts, tries) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fetch(url, opts);
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 app.get('/api/weather-forecast', (req, res) => {
   const cacheTtl = forecastCache.source === 'wttr' ? FALLBACK_CACHE_MS : FORECAST_CACHE_MS;
   if (forecastCache.data && forecastCache.data.length && (Date.now() - forecastCache.ts) < cacheTtl) {
@@ -2168,7 +2183,7 @@ app.get('/api/weather-forecast', (req, res) => {
     + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max'
     + '&timezone=Europe/Istanbul&forecast_days=16';
 
-  fetch(forecastUrl, { signal: AbortSignal.timeout(10000) })
+  fetchWithRetry(forecastUrl, { signal: AbortSignal.timeout(10000) }, 3)
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(async w => {
       const d = w.daily;
