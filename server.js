@@ -2049,7 +2049,26 @@ async function fetchTickerData() {
 
 // Hava durumu tahmin rotası (Haftalık / 15 Gün / Aylık)
 let forecastCache = { data: null, ts: 0 };
-const FORECAST_CACHE_MS = 30 * 60 * 1000;
+let forecastFetching = false;
+let forecastDbLoaded = false;
+const FORECAST_CACHE_MS = 6 * 60 * 60 * 1000; // 6 saat (Open-Meteo rate-limit'e dusmemek icin)
+
+// Son iyi tahmin verisini DB'ye kalici yap; Open-Meteo dusen/bloklayan anlarda
+// (429/503) bayat veriyi servis ederek "Tahmin verisi alinamadi" hatasini onle.
+function loadCachedForecast() {
+  try {
+    const { get } = require('./db');
+    const r = get('SELECT value FROM app_cache WHERE key = ?', ['weather_forecast']);
+    return (r && r.value) ? JSON.parse(r.value) : null;
+  } catch (e) { return null; }
+}
+function persistForecast(data) {
+  try {
+    const { run } = require('./db');
+    run('INSERT OR REPLACE INTO app_cache (key, value, updated_at) VALUES (?, ?, ?)',
+      ['weather_forecast', JSON.stringify(data), new Date().toISOString()]);
+  } catch (e) {}
+}
 
 const WMO_ICONS = {
   0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
@@ -2077,9 +2096,22 @@ function fmtDateLocal(d) {
 }
 
 app.get('/api/weather-forecast', (req, res) => {
-  if (forecastCache.data && (Date.now() - forecastCache.ts) < FORECAST_CACHE_MS) {
+  if (forecastCache.data && forecastCache.data.length && (Date.now() - forecastCache.ts) < FORECAST_CACHE_MS) {
     return res.json({ success: true, forecast: forecastCache.data });
   }
+  // Cold-boot / restart: DB'den son iyi veriyi bir kez yukle
+  if (!forecastDbLoaded) {
+    forecastDbLoaded = true;
+    if (!forecastCache.data) {
+      const persisted = loadCachedForecast();
+      if (persisted && persisted.length) forecastCache = { data: persisted, ts: 0 };
+    }
+  }
+  // Tek-ucus: baska bir refresh donuyorsa bayat veriyi hemen servis et
+  if (forecastFetching && forecastCache.data && forecastCache.data.length) {
+    return res.json({ success: true, forecast: forecastCache.data, stale: true });
+  }
+  forecastFetching = true;
 
   // Bugünün tarihi ve ayın son günü
   const now = new Date();
@@ -2199,12 +2231,21 @@ app.get('/api/weather-forecast', (req, res) => {
       }
 
       forecastCache = { data: forecast, ts: Date.now() };
+      persistForecast(forecast);
+      forecastFetching = false;
       res.json({ success: true, forecast });
     })
     .catch(err => {
       console.log('Forecast fetch error:', err.message);
-      if (forecastCache.data) {
-        return res.json({ success: true, forecast: forecastCache.data });
+      forecastFetching = false;
+      // Refresh basarisiz — bayat (bellek veya DB) veri varsa onu servis et
+      if (forecastCache.data && forecastCache.data.length) {
+        return res.json({ success: true, forecast: forecastCache.data, stale: true });
+      }
+      const persisted = loadCachedForecast();
+      if (persisted && persisted.length) {
+        forecastCache = { data: persisted, ts: 0 };
+        return res.json({ success: true, forecast: persisted, stale: true });
       }
       res.json({ success: false, forecast: [], error: err.message });
     });

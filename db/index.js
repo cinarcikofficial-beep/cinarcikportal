@@ -954,6 +954,14 @@ function createTables() {
   db.run('CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at)');
   db.run('CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(path)');
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS app_cache (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT
+    )
+  `);
+
   const placeCols = db.exec("PRAGMA table_info(places)");
   if (placeCols[0]) {
     const cols = placeCols[0].values.map(r => r[1]);
