@@ -4,9 +4,12 @@ Son güncelleme: Ekim 2026
 
 ## 1. Genel Bakış
 
-Çınarcık yerel portalı; haber, duyuru, mekân rehberi, gezi noktaları, vapur/saat
-bilgisi, hava durumu ve döviz/altın ticker'ı içeren çok dilli (TR/EN/RU/AR)
-bir Express uygulaması. Tamamı ücretsiz (free tier) servislerle çalışır.
+Çınarcık yerel portalı; haber, duyuru (liste + içerik sayfası), mekân rehberi,
+gezi noktaları, firma rehberi, vapur/saat bilgisi, hava durumu ve döviz/altın
+ticker'ı içeren çok dilli (TR/EN/RU/AR) bir Express uygulaması. Ayrıca
+OpenStreetMap tabanlı haritalar ve admin tarafında trafik raporları
+(sayfa görüntülenme + ziyaretçi IP) bulunur. Tamamı ücretsiz (free tier)
+servislerle çalışır.
 
 ```
 Ziyaretçi
@@ -73,7 +76,9 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
   R2 custom domain bağlama ise hesap/dialog kısıtlarıyla sorunlu — kendi
   domain'inden proxy hem erişilebilir hem de hesap derdi yok.
 - 87 mevcut görsel R2'ye taşındı; `public/img/uploads` klasörü (git'te) fallback
-  olarak duruyor.
+  olarak duruyor. Ayrıca mojibake/bos-lu dosya adları temizlendi (15 nesne
+  yeniden adlandırıldı; `scripts/migrate-r2-names.js`, eski anahtarlar yedek
+  olarak silinmedi).
 - Env: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
   (`R2_PUBLIC_URL` artık kullanılmıyor).
 
@@ -96,10 +101,14 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
   sürümüne yönlendirir
 
 ### 4.2 Admin güvenliği
-1. Basic auth (tarayıcı popup) — `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS`
-2. Kullanıcı adı + bcrypt şifre
-3. 2FA: 6 haneli kod e-posta ile gönderilir (`ADMIN_2FA_EMAIL`)
-4. Kod doğrulanınca session yenilenir (`regenerate`) → `/admin`
+1. Kullanıcı adı + bcrypt şifre (`users` tablosu)
+2. 2FA: 6 haneli kod e-posta ile gönderilir (`ADMIN_2FA_EMAIL`)
+3. Kod doğrulanınca session yenilenir (`regenerate`) → `req.session.isAdmin`
+
+> **Not:** `server.js` içinde `adminBasicAuth` (HTTP Basic, `ADMIN_BASIC_*`)
+> tanımlı ama hiçbir yere mount edilmediği için **aktif değildir** (ölü kod).
+> Asıl koruma session + bcrypt + 2FA katmanlarıdır; `ADMIN_BASIC_USER/PASS`
+> env değişkenleri şu an etkisizdir.
 
 ## 5. Harici Servisler
 
@@ -113,6 +122,8 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | Yahoo Finance (query1/query2) | USD, EUR, gram altın, BIST 100 | açık (ana kaynak) |
 | er-api.com | Döviz yedek kaynak | açık (fallback) |
 | Google News RSS | "Diğer haberler" akışı | açık API |
+| **OpenStreetMap** (`openstreetmap.org/export/embed.html`) | Mekân/firma/iletişim harita embed'i (Google keyless embed engellendiği için) | açık, anahtarsız |
+| **Nominatim** (`nominatim.openstreetmap.org`) | Harita koordinat çözümleme (adres/plus code → lat/lng) | açık (düşük hacim) |
 
 ### 5.1 Neden SMTP değil?
 Render, **Free plan'da giden SMTP portlarını (25/465/587) engelliyor**
@@ -145,11 +156,34 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 - **Saat**: `updated` alanı `Europe/Istanbul` zaman diliminde üretilir
   (Render UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
 
+### 5.4 Haritalar (OpenStreetMap)
+
+Mekân, firma ve iletişim sayfalarındaki konum haritaları **OpenStreetMap
+embed** ile gösterilir. Eskiden Google Maps keyless `output=embed` kullanılıyordu;
+Google bu anahtarsız embed'i engellediği için "www.google.com refused to connect"
+hatası alınıyordu (ayrıca mekân `map_link`'leri `maps.app.goo.gl` kısa linkiydi,
+ham haliyle iframe'e konunca reddediliyordu).
+
+- `server.js → getMapEmbedUrl(map_link)`: `map_link`'i koordinata çevirip
+  `openstreetmap.org/export/embed.html?bbox=...&marker=lat,lng` URL'i üretir.
+- **Koordinat çözümleme** (`resolveMapCoords`, in-memory cache'li):
+  - URL ise → redirect takibi + `@lat,lng` / `/search/lat,lng` / `!3d..!4d`
+    kalıplarından koordinat çıkarımı.
+  - Plus code / adres ise → **Nominatim** geocoding.
+- Koordinat çözülemezse harita gizlenir (kırık iframe kalmaz).
+- İletişim sayfası (`views/contact.ejs`) sabit Çınarcık koordinatlı OSM embed
+  kullanır. Harita olan sayfalar: mekân (`place-detail`), firma (`rehber-detail`),
+  iletişim (`contact`). Gezilecek yerler sayfası harita yerine yalnızca bağlantı gösterir.
+
 ## 6. Bilinen Sınırlamalar ve Riskler
 
 1. **Veri kalıcılığı — çözüldü**
    - DB: **Turso (libSQL)** `db/index.js` üzerinden snapshot senkronu
      (açılışta indirme, yazmalarda debounce ile upload) — bkz. `TURSO_*` env.
+   - Dayanıklılık sertleştirmeleri: `flushSync` in-flight sync'i bekler;
+     `/admin` POST middleware `res.redirect`'i flush tamamlanmadan göndermez;
+     sinyal (SIGINT/SIGTERM/SIGHUP) yakalayıcıları ~8 sn flush verir;
+     `mergeRows` bulut/yerel çakışmasında kazananı doğru seçer.
    - Görseller: **Cloudflare R2** (bkz. 3.3).
    - Geriye kalan: Render diski yalnızca yerel fallback; her deploy'ta sıfırlanır,
      anlamlı veri kaybı yoktur.
@@ -158,6 +192,9 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 4. **Doğrudan SMTP yok**: yalnız Brevo/HTTP API üzerinden mail gönderilebilir.
 5. **Eşzamanlılık**: disk + SQLite nedeniyle tek instance ile çalışmalı
    (autoscale/çoklu instance desteklenmez).
+6. **Trafik logları / gizlilik**: `page_views` tablosu **90 gün** sonra otomatik
+   temizlenir. IP adresleri kişisel veridir (KVKK); yalnızca korumalı admin
+   raporları altında tutulur, kamuya gösterilmez (bkz. §9).
 
 ## 7. Ortam Değişkenleri
 
@@ -170,7 +207,7 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 | `GOOGLE_CLIENT_SECRET` | Dashboard (secret) | OAuth client secret |
 | `RECAPTCHA_SITE_KEY` | render.yaml | reCAPTCHA site key |
 | `RECAPTCHA_SECRET_KEY` | Dashboard (secret) | reCAPTCHA secret |
-| `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS` | render.yaml / secret | Basic auth |
+| `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS` | render.yaml / secret | Basic auth — **aktif değil** (ölü kod, bkz. §4.2) |
 | `ADMIN_PASSWORD` | Dashboard (secret) | İlk admin kullanıcısı şifresi |
 | `ADMIN_2FA_EMAIL` | render.yaml | 2FA kodunun gideceği adres |
 | `EMAIL_API_KEY` | Dashboard (secret) | Brevo API key (`xkeysib-...`) |
@@ -194,3 +231,22 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 - **Mail testi**: Render → Logs → `[2fa]` satırı
 - **EJS şablon kontrolü**: `npm run lint:ejs`
 - **Tailwind yeniden derleme**: `npm run build:css`
+
+## 9. Trafik Raporları (Admin)
+
+Ziyaretçi trafiği loglanır ve korumalı bir admin sayfasında gösterilir.
+
+- **Loglama** (`server.js`): `GET` istekleri `res.on('finish')` ile kaydedilir.
+  Statik dosyalar `express.static`'te kısa yoldan döner (loglanmaz); `/admin/*`
+  trafiği bilinçli olarak hariç tutulur. `trust proxy` sayesinde `req.ip`
+  Render proxy'sinin ardından gerçek istemci IP'sini verir.
+- **Veri**: `page_views` tablosu (`db/index.js`) — `path`, `method`, `status`,
+  `ip`, `user_agent`, `referrer`, `created_at`.
+- **Performans**: `logPageView` buffer'lı çalışır (50 satırda veya ~20 sn'de bir
+  `saveDb()`); her istekte tam DB yazması önlenir.
+- **Saklama**: `sweepPageViews` **90 günde bir** `created_at`'i 90 günden eski
+  satırları siler (tombstone patlamasını önlemek için ham `db.run` kullanır).
+- **Rapor sayfası**: `GET /admin/raporlar` (`isAuthenticated` korumalı) — özet
+  kartları (bugün/7/30 gün/toplam görüntülenme + benzersiz IP), Chart.js ile son
+  30 günlük grafik, en çok ziyaret edilen sayfalar ve son ziyaretler tabloları.
+  Dashboard'a 📊 "Raporlar" kartı ile erişilir.
