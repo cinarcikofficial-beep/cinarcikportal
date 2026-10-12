@@ -239,10 +239,11 @@
 
       // Hava Durumu (tıklanabilir)
       h += '<span class="ticker-item ticker-weather" onclick="openWeatherModal()" style="cursor:pointer" title="Tahmini gör">';
-      h += '<span class="text-zinc-500">Çınarcık</span> ';
-      h += '<span class="text-white font-semibold">' + (d.weather.icon || '') + ' ' + d.weather.temp + '</span> ';
-      h += '<span class="text-zinc-400">' + d.weather.description + '</span>';
-      h += ' <span class="text-zinc-600 text-[10px]">▸</span>';
+      h += '<span class="text-emerald-200/90">Çınarcık</span> ';
+      h += '<span class="w-ic">' + (d.weather.icon || '') + '</span> ';
+      h += '<span class="text-white font-bold">' + d.weather.temp + '</span> ';
+      h += '<span class="text-emerald-100/70">' + d.weather.description + '</span>';
+      h += ' <span class="text-emerald-300/70 text-[10px]">▸</span>';
       h += '</span>';
       h += '<span class="ticker-sep">|</span>';
       // Döviz

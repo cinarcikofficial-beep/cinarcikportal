@@ -1136,13 +1136,51 @@ a.card.place-card { padding: 0; }
   user-select: none;
 }
 .ticker-weather {
-  transition: background 0.2s, border-radius 0.2s;
-  padding: 2px 6px;
-  margin: -2px 0;
-  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  margin: -1px 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(45, 212, 191, 0.1));
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 .ticker-weather:hover {
-  background: rgba(255,255,255,0.06);
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.3), rgba(45, 212, 191, 0.18));
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+}
+.ticker-weather::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  transform: skewX(-20deg);
+  animation: weatherShine 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes weatherShine {
+  0% { left: -70%; }
+  60% { left: 130%; }
+  100% { left: 130%; }
+}
+.ticker-weather .w-ic {
+  display: inline-block;
+  animation: weatherBob 2.6s ease-in-out infinite;
+}
+@keyframes weatherBob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-weather::after, .ticker-weather .w-ic { animation: none; }
 }
 @media (max-width: 640px) {
   #ticker-bar { font-size: 11px; }
