@@ -155,10 +155,9 @@ function isAuthenticated(req, res, next) {
   res.redirect('/admin/login');
 }
 
-async function sendAdmin2FACode(code) {
-  const to = process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com';
-  const subject = 'Admin doğrulama kodu';
-  const text = 'Admin paneli giriş doğrulama kodunuz: ' + code + '\n\nBu kod 10 dakika geçerlidir.';
+// Ortak mail gönderici: Brevo/SendGrid HTTP API → SMTP fallback → konsol
+async function sendPortalMail({ to, subject, text, replyTo, logTag }) {
+  const tag = logTag || 'mail';
   const apiKey = process.env.EMAIL_API_KEY;
 
   // 1) HTTP e-posta API (Render free plan SMTP portlarını engelliyor — 443 açık)
@@ -176,6 +175,7 @@ async function sendAdmin2FACode(code) {
         subject,
         textContent: text
       };
+      if (replyTo) payload.replyTo = { email: replyTo };
     } else {
       url = 'https://api.sendgrid.com/v3/mail/send';
       headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey };
@@ -185,10 +185,11 @@ async function sendAdmin2FACode(code) {
         subject,
         content: [{ type: 'text/plain', value: text }]
       };
+      if (replyTo) payload.reply_to = { email: replyTo };
     }
     const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
     if (!resp.ok) throw new Error(provider + ' HTTP ' + resp.status + ': ' + (await resp.text()).slice(0, 300));
-    console.log('[2fa] ' + provider + ' ile gönderildi →', to);
+    console.log('[' + tag + '] ' + provider + ' ile gönderildi →', to);
     return;
   }
 
@@ -197,7 +198,7 @@ async function sendAdmin2FACode(code) {
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
   if (!smtpHost || !smtpUser || !smtpPass) {
-    console.log('[2fa] SMTP ayarı yok — kod konsola yazıldı: ' + code);
+    console.log('[' + tag + '] SMTP ayarı yok — e-posta konsola yazıldı:\n' + text);
     return;
   }
   const nodemailer = require('nodemailer');
@@ -213,8 +214,18 @@ async function sendAdmin2FACode(code) {
   await transporter.sendMail({
     from: smtpUser,
     to,
+    replyTo: replyTo || undefined,
     subject,
     text
+  });
+}
+
+async function sendAdmin2FACode(code) {
+  await sendPortalMail({
+    to: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com',
+    subject: 'Admin doğrulama kodu',
+    text: 'Admin paneli giriş doğrulama kodunuz: ' + code + '\n\nBu kod 10 dakika geçerlidir.',
+    logTag: '2fa'
   });
 }
 
@@ -863,6 +874,14 @@ app.post('/iletisim', async (req, res) => {
   run('INSERT INTO contact_messages (name, email, subject, message) VALUES (?,?,?,?)',
     [name, email, subject, message]);
   req.session.captchaCodes = [];
+  // Yöneticiye anında bildirim (sayfayı bekletmeden, fire-and-forget)
+  sendPortalMail({
+    to: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com',
+    subject: '📧 Yeni iletişim mesajı: ' + (subject || '(konu yok)'),
+    text: 'Ad: ' + name + '\nE-posta: ' + email + '\nKonu: ' + (subject || '-') + '\n\nMesaj:\n' + message,
+    replyTo: email,
+    logTag: 'iletisim'
+  }).catch(e => console.error('[iletisim] bildirim maili gönderilemedi:', e.message));
   res.redirect('/iletisim?sent=1');
 });
 
