@@ -35,13 +35,22 @@
 </style>
 
 <!-- 🖼️ Çınarcık Görsel Hero -->
+<%
+  const heroCtas = [
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('ferrySchedule'), href: '#sefer-saatleri' }],
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('pharmacies'), href: '#nobetci-eczaneler' }],
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('places'), href: '/mekanlar' }],
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('sightseeing'), href: '/gezilecek-yerler' }],
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('guide'), href: '/rehber' }]
+  ];
+%>
 <section id="hero" class="relative w-full h-[420px] md:h-[540px] overflow-hidden bg-zinc-950">
   <div id="hero-bgs">
-    <div class="hero-bg on" data-title="<%= t('heroSlide1Title') %>" data-sub="<%= t('heroSlide1Sub') %>" style="background-image:url('/images/cinar/1.webp');"></div>
-    <div class="hero-bg" data-title="<%= t('heroSlide2Title') %>" data-sub="<%= t('heroSlide2Sub') %>" style="background-image:url('/images/cinar/2.webp');"></div>
-    <div class="hero-bg" data-title="<%= t('heroSlide3Title') %>" data-sub="<%= t('heroSlide3Sub') %>" style="background-image:url('/images/cinar/3.webp');"></div>
-    <div class="hero-bg" data-title="<%= t('heroSlide4Title') %>" data-sub="<%= t('heroSlide4Sub') %>" style="background-image:url('/images/cinar/4.webp'); background-position: center 40%;"></div>
-    <div class="hero-bg" data-title="<%= t('heroSlide5Title') %>" data-sub="<%= t('heroSlide5Sub') %>" style="background-image:url('/images/cinar/5.webp');"></div>
+    <div class="hero-bg on" data-title="<%= t('heroSlide1Title') %>" data-sub="<%= t('heroSlide1Sub') %>" data-cta="<%= JSON.stringify(heroCtas[0]) %>" style="background-image:url('/images/cinar/1.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide2Title') %>" data-sub="<%= t('heroSlide2Sub') %>" data-cta="<%= JSON.stringify(heroCtas[1]) %>" style="background-image:url('/images/cinar/2.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide3Title') %>" data-sub="<%= t('heroSlide3Sub') %>" data-cta="<%= JSON.stringify(heroCtas[2]) %>" style="background-image:url('/images/cinar/3.webp');"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide4Title') %>" data-sub="<%= t('heroSlide4Sub') %>" data-cta="<%= JSON.stringify(heroCtas[3]) %>" style="background-image:url('/images/cinar/4.webp'); background-position: center 40%;"></div>
+    <div class="hero-bg" data-title="<%= t('heroSlide5Title') %>" data-sub="<%= t('heroSlide5Sub') %>" data-cta="<%= JSON.stringify(heroCtas[4]) %>" style="background-image:url('/images/cinar/5.webp');"></div>
   </div>
   <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent"></div>
 
@@ -50,7 +59,7 @@
       <span class="inline-block bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-r-md tracking-wider uppercase shadow-lg"><%= t('heroSlide3Title') %></span>
       <h1 id="hero-title" class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase drop-shadow-md leading-tight"><%= t('heroSlide1Title') %></h1>
       <p id="hero-sub" class="text-zinc-300 text-sm sm:text-base max-w-xl"><%= t('heroSlide1Sub') %></p>
-      <div class="flex flex-wrap gap-3 pt-1">
+      <div id="hero-ctas" class="flex flex-wrap gap-3 pt-1">
         <a href="/haberler" class="bg-emerald-600 hover:bg-emerald-500 transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('news') %> →</a>
         <a href="#sefer-saatleri" class="bg-white/10 hover:bg-white/20 backdrop-blur-md transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('ferrySchedule') %></a>
       </div>
@@ -414,8 +423,26 @@
   var content = document.getElementById('hero-content');
   var title = document.getElementById('hero-title');
   var sub = document.getElementById('hero-sub');
+  var ctas = document.getElementById('hero-ctas');
   var current = 0;
   var timer = null;
+
+  function renderCta(i) {
+    if (!ctas) return;
+    var raw = slides[i].getAttribute('data-cta');
+    if (!raw) return;
+    var items;
+    try { items = JSON.parse(raw); } catch (e) { return; }
+    if (!items || !items.length) return;
+    var html = '';
+    items.forEach(function(b) {
+      var cls = b.primary
+        ? 'bg-emerald-600 hover:bg-emerald-500 transition font-bold px-5 py-2.5 rounded-lg text-sm'
+        : 'bg-white/10 hover:bg-white/20 backdrop-blur-md transition font-bold px-5 py-2.5 rounded-lg text-sm';
+      html += '<a href="' + b.href + '" class="' + cls + '">' + b.label + '</a>';
+    });
+    ctas.innerHTML = html;
+  }
 
   slides.forEach(function(_, i) {
     var d = document.createElement('button');
@@ -435,6 +462,7 @@
     setTimeout(function() {
       if (title) title.textContent = slides[current].getAttribute('data-title') || "<%= t('cinarcik') %>";
       if (sub) sub.textContent = slides[current].getAttribute('data-sub') || '';
+      renderCta(current);
       if (content) content.style.opacity = '1';
     }, 300);
   }
@@ -451,6 +479,7 @@
   hero.addEventListener('mouseenter', function() { clearInterval(timer); });
   hero.addEventListener('mouseleave', restart);
 
+  renderCta(0);
   restart();
 })();
 </script>
