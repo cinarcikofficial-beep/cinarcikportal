@@ -1413,9 +1413,14 @@ app.get('/rehber/:slug', async (req, res) => {
   ]);
   let embedMapUrl = '';
   let directionsUrl = '';
+  if (company.map_embed) {
+    // Admin'in yapistirdigi Google embed kodu (tam iframe veya saf src).
+    const srcMatch = String(company.map_embed).match(/src=["']([^"']+)["']/i);
+    embedMapUrl = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
+  }
   if (company.map_link) {
     const mapInfo = await getMapInfo(company.map_link, company.address);
-    embedMapUrl = mapInfo.embedUrl;
+    if (!embedMapUrl) embedMapUrl = mapInfo.embedUrl;
     directionsUrl = mapInfo.directionsUrl;
   }
   res.render('rehber-detail', { company, embedMapUrl, directionsUrl, pageTitle: company.name });
@@ -1485,7 +1490,8 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
   });
 }, (req, res) => {
   const { run, get, slugify, ensureUniqueSlug } = require('./db');
-  const { name, category, sector, address, phone, website, email, working_hours, map_link, google_reviews_url, description, status, is_featured, sort_order, edit_id } = req.body;
+  const { name, category, sector, address, phone, website, email, working_hours, map_link, map_embed, google_reviews_url, description, status, is_featured, sort_order, edit_id } = req.body;
+  const mapEmbedVal = String(map_embed || '').trim();
 
   let logo_url = (req.files && req.files.logo && req.files.logo[0]) ? pubUrl(req.files.logo[0]) : '';
 
@@ -1524,13 +1530,13 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     if (existing.name !== name) {
       slug = ensureUniqueSlug(slugify(name), parseInt(edit_id), 'companies');
     }
-    run(`UPDATE companies SET name=?, slug=?, category=?, sector=?, address=?, phone=?, website=?, email=?, working_hours=?, map_link=?, google_reviews_url=?, description=?, logo_url=?, gallery_images=?, features=?, is_featured=?, status=?, sort_order=? WHERE id=?`,
-      [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0, edit_id]);
+    run(`UPDATE companies SET name=?, slug=?, category=?, sector=?, address=?, phone=?, website=?, email=?, working_hours=?, map_link=?, map_embed=?, google_reviews_url=?, description=?, logo_url=?, gallery_images=?, features=?, is_featured=?, status=?, sort_order=? WHERE id=?`,
+      [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0, edit_id]);
     return res.redirect('/admin/firmalar?updated=1');
   } else {
     const slug = ensureUniqueSlug(slugify(name), null, 'companies');
-    run(`INSERT INTO companies (name, slug, category, sector, address, phone, website, email, working_hours, map_link, google_reviews_url, description, logo_url, gallery_images, features, is_featured, status, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0]);
+    run(`INSERT INTO companies (name, slug, category, sector, address, phone, website, email, working_hours, map_link, map_embed, google_reviews_url, description, logo_url, gallery_images, features, is_featured, status, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0]);
     return res.redirect('/admin/firmalar?created=1');
   }
 });

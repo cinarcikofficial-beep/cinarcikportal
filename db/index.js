@@ -894,6 +894,7 @@ function createTables() {
       email TEXT DEFAULT '',
       working_hours TEXT DEFAULT '',
       map_link TEXT DEFAULT '',
+      map_embed TEXT DEFAULT '',
       description TEXT DEFAULT '',
       logo_url TEXT DEFAULT '',
       gallery_images TEXT DEFAULT '[]',
@@ -987,6 +988,7 @@ function createTables() {
   if (companyCols[0]) {
     const cols = companyCols[0].values.map(r => r[1]);
     if (!cols.includes('google_reviews_url')) db.run("ALTER TABLE companies ADD COLUMN google_reviews_url TEXT DEFAULT ''");
+    if (!cols.includes('map_embed')) db.run("ALTER TABLE companies ADD COLUMN map_embed TEXT DEFAULT ''");
   }
 }
 
