@@ -21,6 +21,15 @@ const VOLATILE_COLS = {
   places: ['rating', 'review_count', 'google_rating', 'google_review_count']
 };
 
+// Sayaçların "sıfırlama anı": <sayaç>_reset_at kolonu. Birleşimde bu işaretçinin
+// epoch'u daha yeniyse sayaç o taraftan alınır (eski yüksek değer sıfırlamayı
+// diriltmesin); aynı epokta maksimum kuralı geçerlidir.
+const RESET_EPOCH_COLS = new Set(['views_reset_at']);
+
+// Volatile sayacın sıfırlama işareti kolonu (ad _reset_at ekiyle türetilmez;
+// views_count → views_reset_at).
+const VOLATILE_RESET_COL = { news: { views_count: 'views_reset_at' } };
+
 // Satırın "kimliği": iki kopyada kimlik farklıysa bu, aynı satırın iki sürümü
 // değil, aynı id ile çakışan **iki ayrı kayıttır** → biri yeni id'ye taşınır.
 const IDENTITY_COLS = {
@@ -231,7 +240,10 @@ function ensureSyncSchema() {
     db.run('CREATE TRIGGER IF NOT EXISTS trg_' + t + '_sync_ai AFTER INSERT ON ' + quoteId(t) +
       ' BEGIN UPDATE ' + quoteId(t) + ' SET sync_updated_at = ' + stamp +
       ', sync_guid = COALESCE(sync_guid, lower(hex(randomblob(12)))) WHERE ' + whereNew + '; END');
-    db.run('CREATE TRIGGER IF NOT EXISTS trg_' + t + '_sync_au AFTER UPDATE OF ' + stampCols.map(quoteId).join(', ') +
+    // UPDATE tetikleyicisi IF NOT EXISTS ile kurulursa eski sütun listesiyle
+    // kalır (ör. views_reset_at eklendikçe); şemayla birlikte yeniden kurulur.
+    db.run('DROP TRIGGER IF EXISTS trg_' + t + '_sync_au');
+    db.run('CREATE TRIGGER trg_' + t + '_sync_au AFTER UPDATE OF ' + stampCols.map(quoteId).join(', ') +
       ' ON ' + quoteId(t) +
       ' BEGIN UPDATE ' + quoteId(t) + ' SET sync_updated_at = ' + stamp + ' WHERE ' + whereOld + '; END');
   }
@@ -538,9 +550,17 @@ function mergeRows(table, cdb, cloudNewer, idMaps) {
       if (pk.includes(c)) continue;                        // kimlik kolonları asla değişmez
       if (c === 'sync_guid' && lr.sync_guid) continue;      // guid bir kez atanır
       let v;
-      if (volatile.includes(c)) {
-        // sayaç kolonları: en büyüğü al, satır sürümünü tazeleme
-        v = numVal(loser[c]) > numVal(winner[c]) ? loser[c] : winner[c];
+      if (RESET_EPOCH_COLS.has(c)) {
+        // sıfırlama işaretçileri: epoch'u daha yeni olan taraf korunur
+        v = tsMs(lr[c]) >= tsMs(cr[c]) ? lr[c] : cr[c];
+      } else if (volatile.includes(c)) {
+        // sayaç kolonları: sıfırlama epoch'u farklıysa daha yeni sıfırlama
+        // kazanır; aynı epokta en büyük değer alınır, satır sürümü tazelmez
+        const rcol = (VOLATILE_RESET_COL[table] || {})[c];
+        const lrR = rcol ? tsMs(lr[rcol]) : 0;
+        const crR = rcol ? tsMs(cr[rcol]) : 0;
+        if (lrR !== crR) v = lrR > crR ? lr[c] : cr[c];
+        else v = numVal(loser[c]) > numVal(winner[c]) ? loser[c] : winner[c];
       } else if (winner !== lr) {
         const parent = fkParentOf(table, c);
         if (parent) {
@@ -754,6 +774,7 @@ function createTables() {
       status TEXT DEFAULT 'active',
       expires_at TEXT DEFAULT NULL,
       views_count INTEGER DEFAULT 0,
+      views_reset_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -772,6 +793,7 @@ function createTables() {
     if (!cols.includes('status')) db.run("ALTER TABLE news ADD COLUMN status TEXT DEFAULT 'active'");
     if (!cols.includes('expires_at')) db.run("ALTER TABLE news ADD COLUMN expires_at TEXT");
     if (!cols.includes('views_count')) db.run("ALTER TABLE news ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('views_reset_at')) db.run("ALTER TABLE news ADD COLUMN views_reset_at TEXT DEFAULT NULL");
     if (!cols.includes('updated_at')) db.run("ALTER TABLE news ADD COLUMN updated_at DATETIME DEFAULT NULL");
     if (!cols.includes('category')) db.run("ALTER TABLE news ADD COLUMN category TEXT DEFAULT 'Gündem'");
   }

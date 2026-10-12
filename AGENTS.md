@@ -28,13 +28,17 @@ Kalan:
 1. **[BEKLIYOR]** Render env: `EMAIL_API_KEY` (Brevo → API keys & MCP) + `EMAIL_FROM=iletisim@marmaraninincisi.com` → redeploy.
 2. **[TEST]** Siteden iletişim formu testi → bildirim maili + gönderen iletisim@ kontrolü. Gönderen spam'e düşüyorsa Brevo'da DNS kayıtları Verified mı bakılacak.
 
-## Aktif iş 2 — Haber görüntülenme sıfırlama (YARIM)
-Kullanıcı isteği: **her habere ayrı sıfırlama butonu** (her satırda) + mevcut toplu buton çalışmıyor.
-İnceleme sonucu:
-- Toplu rota var: `POST /admin/haberler/goruntulenme-sifirla` (server.js:980) → `UPDATE news SET views_count = 0` + flush middleware var; kodda bariz hata yok. Neden "yapmıyor" araştırılmadı (olasılıklar: Turso senkronü geri yazıyor, confirm iptal, Render eski kod — Render redeploy edildi mi?).
-- Butonlar: `views/admin/news-list.ejs:18` (toplu, views sütunu YOK başlıkta toplam var) ve `views/admin/dashboard.ejs:209` (toplu, satırda views_count sütunu var :285 ama satır bazlı buton yok).
-- news-list satır butonları: :82-87 (düzenle/önizle/toggle/sil).
-Sonraki adımlar: (1) her iki tabloya satır bazlı `POST /admin/haberler/:id/goruntulenme-sifirla` butonu + rota; (2) toplu butonun gerçekten çalışmadığını canlıda doğrula (kullanıcıya sor).
+## Aktif iş 2 — Haber görüntülenme sıfırlama (TAMAM, canlı test bekliyor)
+Kullanıcı isteği: her habere ayrı sıfırlama butonu + toplu buton "yapmıyordu".
+**Kök neden:** `db/index.js` `VOLATILE_COLS` birleşimi `views_count` için iki taraftan **max** alıyordu → sıfırlama yerelde yapılsa bile Turso'daki/repo db dosyasındaki eski yüksek değer sonraki sync/restart'ta geri geliyordu (toplu buton anlık çalışıyor gibi görünüyordu).
+**Yapılan fix:**
+- `news.views_reset_at` kolonu (migration + CREATE TABLE). Sıfırlama rotaları `views_count=0, views_reset_at=datetime('now')` yazıyor.
+- Merge: `views_reset_at` epoch'u daha yeni taraftan sayaç alınır; aynı epokta max kuralı korunur (`RESET_EPOCH_COLS`, `VOLATILE_RESET_COL` — dikkat: rcol adı `_reset_at` ekiyle türetilmiyor, `views_count` → `views_reset_at`).
+- `ensureSyncSchema`: `_sync_au` trigger'ı DROP+CREATE (eski sütun listesi IF NOT EXISTS ile kalmasın).
+- Rotalar: bulk `POST /admin/haberler/goruntulenme-sifirla` güncellendi; yeni satır bazlı `POST /admin/haberler/:id/goruntulenme-sifirla` (Referer korumalı redirect).
+- Butonlar: dashboard views hücresine 🔄 + news-list'e "👁 Görüntelenme" sütunu eklendi (boş satır colspan'leri 7 yapıldı).
+- 4 senaryolu merge smoke testi geçti (dirilme yok / aynı epok max / epoksuz max regresyonu / yeni yerel epoch kazanıyor).
+**Kalan:** Render redeploy + canlıda test. NOT: Turso ile senkron çalışan **eski koddaki** her instance (ör. lokal çalışan eski server) sıfırlamayı diriltmeye devam eder — lokal sunucu da yeni kodla restart edilmeli.
 
 ## Diğer notlar
 - `/admin` POST'larında CSRF Origin kontrolü var; admin yazma sonrası Turso `flushSync`.

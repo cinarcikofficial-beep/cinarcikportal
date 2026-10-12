@@ -980,9 +980,25 @@ app.post('/admin/haberler/toggle/:id', isAuthenticated, (req, res) => {
 app.post('/admin/haberler/goruntulenme-sifirla', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM news').t || 0;
-  run('UPDATE news SET views_count = 0');
+  run("UPDATE news SET views_count = 0, views_reset_at = datetime('now'), updated_at = datetime('now')");
   console.log(`[admin] Görüntelenme sayıları sıfırlandı (toplam ${total} görüntülenme) - ${req.session.adminUser || 'admin'}`);
   res.redirect('/admin/haberler');
+});
+
+app.post('/admin/haberler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM news WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run("UPDATE news SET views_count = 0, views_reset_at = datetime('now'), updated_at = datetime('now') WHERE id = ?", [item.id]);
+    console.log(`[admin] Haber görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin/haberler';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
 });
 
 app.get('/admin/haber-ekle', isAuthenticated, (req, res) => {
