@@ -69,6 +69,7 @@ html.light .login-btn, html.light button[type="submit"].bg-emerald-600 { color: 
 html.light .news-card-date { color: #d97706; }
 html.light .announce-tag.tag-ilan { background: #dbeafe; color: #1d4ed8; }
 html.light .announce-tag.tag-duyuru { background: #dcfce7; color: #15803d; }
+html.light .announce-tag.tag-etkinlik { background: #fef3c7; color: #b45309; }
 
 /* ---- Light mode: rich text & kart içerikleri ---- */
 html.light .rich-desc h1, html.light .rich-desc h2, html.light .rich-desc h3 { color: #0f172a !important; }
@@ -146,6 +147,7 @@ a.card.place-card { padding: 0; }
 }
 .announce-tag.tag-ilan { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 .announce-tag.tag-duyuru { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.announce-tag.tag-etkinlik { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 
 /* Okunabilirlik: gri metinleri biraz aydınlat */
 .text-zinc-400 { color: #c4c4cd !important; }

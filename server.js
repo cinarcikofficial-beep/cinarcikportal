@@ -1359,12 +1359,13 @@ function requireGoogleAuthPage(req, res, next) {
 }
 
 app.get('/ilan-ver', requireGoogleAuthPage, (req, res) => {
-  res.render('ilan-ver', { user: req.session.googleUser, error: null, form: {} });
+  const code = issueCaptcha(req);
+  res.render('ilan-ver', { user: req.session.googleUser, error: null, form: {}, captchaImage: svgDataUri(code) });
 });
 
 app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
   withUpload(upload.single('image'))(req, res, function(err) {
-    if (err) return res.render('ilan-ver', { user: req.session.googleUser, error: 'Görsel yüklenemedi.', form: req.body || {} });
+    if (err) return res.render('ilan-ver', { user: req.session.googleUser, error: 'Görsel yüklenemedi.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
     next();
   });
 }, (req, res) => {
@@ -1372,14 +1373,27 @@ app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
   const user = req.session.googleUser;
   const title = String(req.body.title || '').trim();
   const content = String(req.body.content || '').trim();
-  const category = req.body.category === 'duyuru' ? 'duyuru' : 'ilan';
+  const category = ['duyuru', 'ilan', 'etkinlik'].includes(req.body.category) ? req.body.category : 'ilan';
+  const captcha = String(req.body.captcha || '').trim().toUpperCase();
 
   if (title.length < 5 || content.length < 20) {
-    return res.render('ilan-ver', { user, error: 'Başlık en az 5, içerik en az 20 karakter olmalıdır.', form: req.body || {} });
+    return res.render('ilan-ver', { user, error: 'Başlık en az 5, içerik en az 20 karakter olmalıdır.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+  }
+  if (!captchaOk(req, captcha)) {
+    return res.render('ilan-ver', { user, error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
   }
   const image = req.file ? pubUrl(req.file) : '';
   run("INSERT INTO announcements (title, content, category, image, status, user_name, user_email) VALUES (?,?,?,?,?,?,?)",
     [title.slice(0, 120), content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '']);
+  req.session.captchaCodes = [];
+  const turMap = { ilan: 'ilan', duyuru: 'duyuru', etkinlik: 'etkinlik' };
+  sendPortalMail({
+    to: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com',
+    subject: '📝 Yeni ' + (turMap[category] || 'ilan') + ' başvurusu: ' + title.slice(0, 60),
+    text: 'Tür: ' + (turMap[category] || 'ilan') + '\nBaşlık: ' + title + '\nGönderen: ' + (user.name || '') + ' <' + (user.email || '') + '>\nGörsel: ' + (image || '-') + '\n\nİçerik:\n' + content,
+    replyTo: user.email || '',
+    logTag: 'ilan-ver'
+  }).catch(e => console.error('[ilan-ver] bildirim maili gönderilemedi:', e.message));
   res.redirect('/duyurular?gonderildi=1');
 });
 
