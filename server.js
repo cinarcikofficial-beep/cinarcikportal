@@ -277,7 +277,11 @@ app.get('/sitemap.xml', (req, res) => {
       .forEach(s => addEntry('/gezilecek-yer/' + s.id, (s.created_at || '').slice(0, 10)));
   } catch (e) { console.error('sitemap sightseeing:', e.message); }
 
-  // Firma rehberi artık tek sayfa (/rehber) — firma detayları için ayrı sayfa girdisi yok
+  // Firma rehberi
+  try {
+    all("SELECT slug, id, created_at FROM companies WHERE status='active'")
+      .forEach(c => addEntry('/rehber/' + (c.slug || c.id), (c.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap companies:', e.message); }
 
   const urls = entries.map(e => {
     const alternates = langs.map(l =>
@@ -1392,16 +1396,10 @@ app.get('/rehber', async (req, res) => {
   res.render('rehber', { companies, selectedType: type });
 });
 
-// Eski firma sayfa linkleri tek sayfaya yönlendirilir (detay modalda açılır)
-app.get('/rehber/:slug', (req, res) => {
-  res.redirect('/rehber?firma=' + encodeURIComponent(req.params.slug));
-});
-
-// Firma detay verisi (rehber sayfasındaki modal için)
-app.get('/api/firma/:slug', async (req, res) => {
+app.get('/rehber/:slug', async (req, res) => {
   const { get } = require('./db');
   const company = get("SELECT * FROM companies WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
-  if (!company || !company.id) return res.status(404).json({ error: 'not_found' });
+  if (!company || !company.id) return res.redirect('/rehber');
   const parseJSON = (data) => {
     if (!data) return [];
     if (typeof data === 'object') return data;
@@ -1417,7 +1415,7 @@ app.get('/api/firma/:slug', async (req, res) => {
   if (company.map_link) {
     embedMapUrl = await getMapEmbedUrl(company.map_link);
   }
-  res.json({ company, embedMapUrl });
+  res.render('rehber-detail', { company, embedMapUrl, pageTitle: company.name });
 });
 
 // Admin firma yönetimi

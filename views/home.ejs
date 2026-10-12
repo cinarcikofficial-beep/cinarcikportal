@@ -150,7 +150,7 @@
   </div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <% companies.forEach(c => { %>
-    <a href="/rehber?firma=<%= c.slug || c.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+    <a href="/rehber/<%= c.slug || c.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
       <div class="h-52 flex items-center justify-center bg-gradient-to-br from-zinc-950 to-zinc-900 relative overflow-hidden">
         <% if (c.logo_url) { %>
           <img src="<%= img(c.logo_url) %>" alt="<%= c.name %>" class="max-w-[85%] max-h-[80%] object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg">
@@ -161,7 +161,7 @@
       <div class="p-4 text-center">
         <h3 class="text-base font-bold tracking-tight text-white group-hover:text-emerald-400 transition-colors line-clamp-2"><%= c.name %></h3>
         <% if (c.sector) { %>
-          <p class="text-zinc-500 text-xs mt-1"><%= c.sector %></p>
+          <p class="text-white font-bold text-sm mt-1"><%= c.sector %></p>
         <% } %>
       </div>
     </a>
