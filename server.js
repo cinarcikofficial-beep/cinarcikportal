@@ -1418,9 +1418,18 @@ app.get('/rehber/:slug', async (req, res) => {
     // Admin'in yapistirdigi Google embed kodu (tam iframe veya saf src).
     const srcMatch = String(company.map_embed).match(/src=["']([^"']+)["']/i);
     embedMapUrl = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
-    // Yol tarifi, embed'deki tam konuma gitsin (Nominatim adresi bazen farkli nokta).
-    const embedCoords = extractMapCoords(embedMapUrl);
-    if (embedCoords) directionsUrl = dirFromCoords(embedCoords);
+    // pb icindeki place key (0x...:0x...) cid'ye cevrilir; yol tarifi tam firmanin
+    // pin'ine gider (kamera merkezi degil).
+    const placeKey = decodeURIComponent(embedMapUrl).match(/!1s(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
+    if (placeKey) {
+      try {
+        directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=cid:' + BigInt(placeKey[2]).toString();
+      } catch (e) { directionsUrl = ''; }
+    }
+    if (!directionsUrl) {
+      const embedCoords = extractMapCoords(embedMapUrl);
+      if (embedCoords) directionsUrl = dirFromCoords(embedCoords);
+    }
   }
   if (company.map_link) {
     const mapInfo = await getMapInfo(company.map_link, company.address);
