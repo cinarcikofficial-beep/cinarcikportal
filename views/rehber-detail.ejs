@@ -59,6 +59,10 @@
                 <%= company.working_hours %>
               </span>
             <% } %>
+            <% if (Number(company.views_count) > 0) { %>
+              <span class="text-zinc-600">•</span>
+              <span class="text-zinc-400 text-xs font-medium">👁️ <%= company.views_count %> <%= t('views') %></span>
+            <% } %>
           </div>
         </div>
       </div>

@@ -137,6 +137,10 @@
             <p class="text-zinc-500 text-xs mb-1">📅 <%= t('addedLabel') %></p>
             <p class="text-white font-semibold"><%= item.created_at ? new Date(item.created_at + (String(item.created_at).includes('T') ? '' : 'Z')).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) : '—' %></p>
           </div>
+          <div class="bg-zinc-950/70 border border-zinc-800/70 rounded-xl p-3.5">
+            <p class="text-zinc-500 text-xs mb-1">👁️ <%= t('views') %></p>
+            <p class="text-white font-semibold"><%= Number(item.views_count) || 0 %></p>
+          </div>
         </div>
         <% if (item.map_link) { %>
         <a href="<%= item.map_link %>" target="_blank" rel="noopener"

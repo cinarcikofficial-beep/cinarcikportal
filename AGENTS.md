@@ -39,6 +39,16 @@ Kullanıcı isteği: (a) her habere ayrı sıfırlama butonu + toplu buton "yapm
 - Butonlar: dashboard views hücresine 🔄 + news-list'e "👁 Görüntelenme" sütunu eklendi (boş satır colspan'leri 7 yapıldı).
 - **Duyuru/ilan:** `announcements` + `views_count`/`views_reset_at` (migration + CREATE). `/duyuru/:id` detayda `views_count+1`. Dashboard Duyuru sekmesi: 👁 sütunu + satır 🔄 + header'da toplu buton (`POST /admin/duyurular/goruntulenme-sifirla` → redirect `/admin?tab=announcements`; satır bazlı `/admin/duyurular/:id/...` Referer korumalı). `VOLATILE_COLS`/`VOLATILE_RESET_COL` announcements'a eklendi. NOT: announcements tablosunda `updated_at` kolonu YOK — reset SQL'inde kullanma (trigger `views_reset_at` sayesinde `sync_updated_at`'i tazeliyor).
 - 8 senaryolu merge smoke testi geçti (news N1-N3 + announcements A1-A4, aynı kök neden senaryoları dahil).
+
+## Aktif iş 3 — Firma + gezilecek yer görüntülenme (TAMAM, push/canlı test bekliyor)
+Kullanıcı isteği: firma, haber, duyuru, ilan, gezilecek yerlerde tıklanma sayıları hem public hem admin'de görünsün + sıfırlanabilsin. (Haber + duyuru/ilan yukarıda tamamlandı.)
+Yapılan:
+- **Şema:** `companies` + `sightseeing` → `views_count`/`views_reset_at` (CREATE + migration); `VOLATILE_COLS`/`VOLATILE_RESET_COL` bu tablolara da eklendi (epoch'lu merge aynı davranış).
+- **Artırım:** `/rehber/:slug` ve `/gezilecek-yer/:id` detay rotalarında `views_count+1`.
+- **Public gösterim:** `announcement-detail.ejs` (👁️ X görüntülenme), `rehber-detail.ejs` (meta satırına • ile), `sightseeing-detail.ejs` (künye kartına yeni hücre). Haberlerde public zaten vardı. Not: liste kartlarına (duyuru/rehber/gezilecek listeleri) eklenmedi — istenirse haber listesindeki gibi eklenebilir.
+- **Admin:** dashboard Firma sekmesi + `company-list.ejs` → 👁 sütunu + satır 🔄 + toplu buton; `admin/sightseeing.ejs` → bilgi satırında sayaç + satır 🔄 + header toplu buton. Boş satır colspan'leri güncellendi (company-list 7, dashboard companies 6).
+- **Rotalar:** `POST /admin/firmalar[/ :id]/goruntulenme-sifirla` (Referer korumalı; bulk fallback `/admin?tab=companies`) + `POST /admin/gezilecek-yerler[/ :id]/goruntulenme-sifirla` (fallback `/admin/gezilecek-yerler`). DİKKAT: sightseeing/announcements tablolarında `updated_at` YOK — reset SQL'inde kullanma.
+- 4 tablo × 4 senaryo = 24 assertion'luk merge smoke testi geçti; lint + node --check temiz.
 **Kalan:** Render redeploy + canlıda test. NOT: Turso ile senkron çalışan **eski koddaki** her instance (ör. lokal çalışan eski server) sıfırlamayı diriltmeye devam eder — lokal sunucu da yeni kodla restart edilmeli.
 
 ## Diğer notlar

@@ -19,6 +19,8 @@ const TOMBSTONE_TTL_MS = 60 * 24 * 60 * 60 * 1000;
 const VOLATILE_COLS = {
   news: ['views_count'],
   announcements: ['views_count'],
+  companies: ['views_count'],
+  sightseeing: ['views_count'],
   places: ['rating', 'review_count', 'google_rating', 'google_review_count']
 };
 
@@ -31,7 +33,9 @@ const RESET_EPOCH_COLS = new Set(['views_reset_at']);
 // views_count → views_reset_at).
 const VOLATILE_RESET_COL = {
   news: { views_count: 'views_reset_at' },
-  announcements: { views_count: 'views_reset_at' }
+  announcements: { views_count: 'views_reset_at' },
+  companies: { views_count: 'views_reset_at' },
+  sightseeing: { views_count: 'views_reset_at' }
 };
 
 // Satırın "kimliği": iki kopyada kimlik farklıysa bu, aynı satırın iki sürümü
@@ -882,6 +886,8 @@ function createTables() {
       map_link TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 999,
       status TEXT DEFAULT 'active',
+      views_count INTEGER DEFAULT 0,
+      views_reset_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -889,6 +895,8 @@ function createTables() {
   if (sightCols[0]) {
     const cols = sightCols[0].values.map(r => r[1]);
     if (!cols.includes('gallery_images')) db.run("ALTER TABLE sightseeing ADD COLUMN gallery_images TEXT DEFAULT '[]'");
+    if (!cols.includes('views_count')) db.run("ALTER TABLE sightseeing ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('views_reset_at')) db.run("ALTER TABLE sightseeing ADD COLUMN views_reset_at TEXT DEFAULT NULL");
   }
   db.run(`
     CREATE TABLE IF NOT EXISTS places (
@@ -938,6 +946,8 @@ function createTables() {
       is_featured INTEGER DEFAULT 0,
       status TEXT DEFAULT 'active',
       sort_order INTEGER DEFAULT 0,
+      views_count INTEGER DEFAULT 0,
+      views_reset_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -1025,6 +1035,8 @@ function createTables() {
     const cols = companyCols[0].values.map(r => r[1]);
     if (!cols.includes('google_reviews_url')) db.run("ALTER TABLE companies ADD COLUMN google_reviews_url TEXT DEFAULT ''");
     if (!cols.includes('map_embed')) db.run("ALTER TABLE companies ADD COLUMN map_embed TEXT DEFAULT ''");
+    if (!cols.includes('views_count')) db.run("ALTER TABLE companies ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('views_reset_at')) db.run("ALTER TABLE companies ADD COLUMN views_reset_at TEXT DEFAULT NULL");
   }
 }
 

@@ -602,9 +602,10 @@ app.get('/gezilecek-yerler', async (req, res) => {
 });
 
 app.get('/gezilecek-yer/:id', async (req, res) => {
-  const { get, all, parseGallery } = require('./db');
+  const { get, all, run, parseGallery } = require('./db');
   const item = get("SELECT * FROM sightseeing WHERE id = ? AND status = 'active'", [req.params.id]);
   if (!item || !item.id) return res.redirect('/gezilecek-yerler');
+  run("UPDATE sightseeing SET views_count = views_count + 1 WHERE id = ?", [item.id]);
   item.gallery = parseGallery(item.gallery_images);
   const others = all("SELECT id, title, summary, image, category, location FROM sightseeing WHERE id != ? AND status = 'active' ORDER BY sort_order ASC, created_at DESC", [parseInt(req.params.id) || -1]);
   await Promise.all([
@@ -727,6 +728,31 @@ app.post('/admin/gezilecek-yer-toggle/:id', isAuthenticated, (req, res) => {
   const nextStatus = row && row.status === 'active' ? 'passive' : 'active';
   run('UPDATE sightseeing SET status = ? WHERE id = ?', [nextStatus, req.params.id]);
   res.redirect('/admin/gezilecek-yerler');
+});
+
+// Gezilecek yer görüntülenme sıfırlama (toplu + satır bazlı)
+app.post('/admin/gezilecek-yerler/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM sightseeing').t || 0;
+  run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now')");
+  console.log(`[admin] Gezilecek yer görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  res.redirect('/admin/gezilecek-yerler');
+});
+
+app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM sightseeing WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
+    console.log(`[admin] Gezilecek yer görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin/gezilecek-yerler';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
 });
 
 // ---- İletişim (Bize Ulaşın) ----
@@ -1504,9 +1530,10 @@ app.get('/rehber', async (req, res) => {
 });
 
 app.get('/rehber/:slug', async (req, res) => {
-  const { get } = require('./db');
+  const { get, run } = require('./db');
   const company = get("SELECT * FROM companies WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!company || !company.id) return res.redirect('/rehber');
+  run("UPDATE companies SET views_count = views_count + 1 WHERE id = ?", [company.id]);
   const parseJSON = (data) => {
     if (!data) return [];
     if (typeof data === 'object') return data;
@@ -1674,6 +1701,36 @@ app.post('/admin/firma-toggle/:id', isAuthenticated, (req, res) => {
     run("UPDATE companies SET status = ? WHERE id = ?", [item.status === 'active' ? 'passive' : 'active', item.id]);
   }
   res.redirect('/admin/firmalar');
+});
+
+// Firma görüntülenme sıfırlama (toplu + satır bazlı)
+app.post('/admin/firmalar/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM companies').t || 0;
+  run("UPDATE companies SET views_count = 0, views_reset_at = datetime('now')");
+  console.log(`[admin] Firma görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  let back = '/admin?tab=companies';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
+});
+
+app.post('/admin/firmalar/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM companies WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run("UPDATE companies SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
+    console.log(`[admin] Firma görüntülenmesi sıfırlandı: "${item.name}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin/firmalar';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
 });
 
 // ==================== GOOGLE OAuth & YORUM SİSTEMİ ====================
