@@ -145,9 +145,9 @@
             <% allNews.slice(0, 12).forEach(n => { %>
               <a href="/haber/<%= n.slug || n.id %>" class="group block news-card-item" data-category="<%= n.category || 'Gündem' %>">
                 <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg hover:border-zinc-700 transition-all h-full flex flex-col">
-                  <div class="relative h-auto max-h-[250px] overflow-hidden bg-zinc-900/60 flex items-center justify-center">
+                  <div class="relative h-48 overflow-hidden bg-zinc-900/60">
                     <% const img = n.main_image_url || '/img/fallback.webp'; %>
-                    <img src="<%= img %>" alt="<%= n.title %>" class="max-h-[250px] w-auto h-auto object-contain mx-auto group-hover:scale-105 transition-transform duration-300">
+                    <img src="<%= img %>" alt="<%= n.title %>" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300">
                     <div class="absolute top-2 left-2 flex items-center gap-1.5">
                       <span class="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
                         <%= n.badge_text || t('newsBadge') %>
