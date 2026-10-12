@@ -1413,7 +1413,7 @@ app.get('/rehber/:slug', async (req, res) => {
   ]);
   let embedMapUrl = '';
   if (company.map_link) {
-    embedMapUrl = await getMapEmbedUrl(company.map_link);
+    embedMapUrl = await getMapEmbedUrl(company.map_link, company.address);
   }
   res.render('rehber-detail', { company, embedMapUrl, pageTitle: company.name });
 });
@@ -2437,11 +2437,48 @@ function extractMapCoords(str) {
   return null;
 }
 
-async function resolveMapCoords(mapLink) {
+function buildAddressVariants(address) {
+  const base = String(address || '').trim();
+  if (!base) return [];
+  const noDaire = base.replace(/,?\s*D:\S+/gi, '').replace(/\s+/g, ' ').trim();
+  const noMahalle = noDaire.split(',').slice(1).join(',').trim();
+  const sade = noMahalle.replace(/,\s*\d{5}\s*[^,]*/g, '').replace(/,\s*$/, '').trim();
+  return [noDaire, noMahalle, sade].filter(function(v) { return v && v.length > 3; });
+}
+
+async function nominatimSearch(terms) {
+  for (const term of terms) {
+    if (!term) continue;
+    try {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(term), {
+        headers: { 'user-agent': 'cinarcik-portal/1.0' },
+        signal: AbortSignal.timeout(6000)
+      });
+      const arr = await r.json();
+      if (Array.isArray(arr) && arr[0]) {
+        const lat = parseFloat(arr[0].lat), lng = parseFloat(arr[0].lon);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+      }
+    } catch (e) { /* sonraki adaya geç */ }
+    await new Promise(res => setTimeout(res, 1100));
+  }
+  return null;
+}
+
+async function resolveMapCoords(mapLink, extraQuery) {
   if (!mapLink) return null;
-  if (_mapCoordCache.has(mapLink)) return _mapCoordCache.get(mapLink);
+  const cacheKey = mapLink + '|' + (extraQuery || '');
+  if (_mapCoordCache.has(cacheKey)) return _mapCoordCache.get(cacheKey);
   let coords = null;
   try {
+    const town = 'Çınarcık, Yalova, Türkiye';
+    const buildTerms = (q) => {
+      const terms = [];
+      buildAddressVariants(extraQuery).forEach(function(v) { terms.push(v + ', ' + town); });
+      if (q) terms.push(q + ', ' + town);
+      terms.push(extraQuery || '', q || '');
+      return terms.filter(Boolean);
+    };
     if (/^https?:\/\//i.test(mapLink)) {
       const r = await fetch(mapLink, {
         redirect: 'follow',
@@ -2450,17 +2487,18 @@ async function resolveMapCoords(mapLink) {
       });
       coords = extractMapCoords(r.url);
       if (!coords) coords = extractMapCoords(await r.text());
+      // share.google / google search linkleri koordinat icermiyor; q parametresinden
+      // firma adi alinir ve adres varyantlariyla Nominatim'den konum cozulur.
+      if (!coords) {
+        let q = '';
+        try { q = new URL(r.url).searchParams.get('q') || ''; } catch (e) { q = ''; }
+        coords = await nominatimSearch(buildTerms(q));
+      }
     } else {
-      const q = encodeURIComponent(mapLink + ', Çınarcık, Yalova, Türkiye');
-      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + q, {
-        headers: { 'user-agent': 'cinarcik-portal/1.0' },
-        signal: AbortSignal.timeout(6000)
-      });
-      const arr = await r.json();
-      if (Array.isArray(arr) && arr[0]) coords = { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+      coords = await nominatimSearch(buildTerms(mapLink));
     }
   } catch (e) { coords = null; }
-  _mapCoordCache.set(mapLink, coords);
+  _mapCoordCache.set(cacheKey, coords);
   return coords;
 }
 
@@ -2472,9 +2510,9 @@ function buildOSMEmbedUrl(coords) {
   return 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lng;
 }
 
-async function getMapEmbedUrl(mapLink) {
+async function getMapEmbedUrl(mapLink, extraQuery) {
   if (!mapLink) return '';
-  return buildOSMEmbedUrl(await resolveMapCoords(mapLink));
+  return buildOSMEmbedUrl(await resolveMapCoords(mapLink, extraQuery));
 }
 
 // ---- Nöbetçi Eczane Otomatik Senkronizasyon ----
