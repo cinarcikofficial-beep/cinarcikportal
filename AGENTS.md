@@ -1,56 +1,34 @@
 # Çınarcık Portal — Çalışma Notları
 
 ## Genel
-- Stack: Express + EJS (server-side render), sql.js + Turso sync, Tailwind CDN.
-- Canlı: https://marmaraninincisi.com (Render free plan)
+- Stack: Express + EJS (server-side render), sql.js + Turso sync, Tailwind CDN (JIT — arbitrary value'lar (`h-48`, `min-h-[3.5rem]`) çalışıyor).
+- Canlı: https://marmaraninincisi.com (Render free plan; push → otomatik redeploy)
 - Git remote: https://github.com/cinarcikofficial-beep/cinarcikportal.git (branch: main)
-- İletişim dili: Türkçe. commit/push sadece kullanıcı açıkça isteyince; commit mesajları İngilizce/ASCII olabilir.
+- İletişim dili: Türkçe. commit/push sadece kullanıcı açıkça isteyince; commit mesajları ASCII.
+- Görsel deposu: Cloudflare R2 aktif (`uploads/` key'leri; local mirror yükleme sonrası silinir). DB'de URL'ler hep göreli: `/uploads/x` (R2) veya `/img/uploads/x` (lokal fallback).
 
 ## Kritik konvansiyonlar
-- Her EJS/JS değişikliği sonrası: `npm run lint:ejs` (FAIL olmamalı).
+- Her EJS/JS değişikliği sonrası: `npm run lint:ejs` + `node --check server.js` (FAIL olmamalı).
 - `db/cinarcik.db` repo'da version'lanıyor; şema migration'ları `db/index.js`'te `PRAGMA table_info` + `ALTER TABLE` ile.
 - `initDb()` async — scriptlerde `await initDb()` gerekir.
-- Mail altyapısı: `sendPortalMail()` (server.js) — önce Brevo/SendGrid HTTP API (`EMAIL_API_KEY`), fallback Gmail SMTP (`SMTP_USER`/`SMTP_PASS`), yoksa konsol.
-- Admin girişi OTP'li ayrı session (`isAdmin`); Google girişi yorum/ilan için (`isGoogleAuth`/`googleUser`), sadece @gmail.com.
+- Mail altyapısı: `sendPortalMail()` (server.js) — önce Brevo HTTP API (`EMAIL_API_KEY`), fallback Gmail SMTP, yoksa konsol. Admin bildirimleri `ADMIN_2FA_EMAIL`'e, reply-to = ziyaretçi.
+- Admin girişi OTP'li ayrı session (`isAdmin`); Google girişi yorum/ilan için (`isGoogleAuth`), sadece @gmail.com. Admin yazma sonrası Turso `flushSync`; `/admin` POST'larında CSRF Origin kontrolü.
 - Public listeleme sorgularında `status='active'` filtresi şart (news, places, announcements).
+- Sıfırlama/redirect rotalarında Referer koruması: `new URL(req.get('Referer'))` host eşleşmese fallback'e dön.
+- `sightseeing`/`announcements` tablolarında `updated_at` YOK — SQL'lerinde kullanma.
 
-## Tamamlananlar
-- Firma rehberi: kartlar contain-logo, ad + bold sektör; `/rehber/:slug` detay sayfası; `map_embed` alanı (admin form + DB) ile Google harita; yol tarifi kaldırıldı.
-- Kullanıcı ilan/duyuru akışı: `/ilan-ver` (Google girişli form) → `status='pending'` → admin panelde Onayla/Reddet (`/admin/duyuru-onay|reddet/:id`). Bekleyenler public'te görünmüyor. 4 dil etiketleri eklendi.
-- İletişim formu: `POST /iletisim` artık `ADMIN_2FA_EMAIL`'e fire-and-forget bildirim maili atıyor (reply-to = ziyaretçi).
+## Tamamlananlar (özet — detay git log'da)
+- **Görüntülenme sayaçları (haber/duyuru/firma/gezilecek yer):** `views_count` + `views_reset_at` epoch'lu merge (`VOLATILE_COLS`/`RESET_EPOCH_COLS`/`VOLATILE_RESET_COL`); kök neden: MAX birleşimi sıfırlamayı diriltiyordu. Admin'de 👁 sütun + satır/toplu 🔄 (`/admin/<plural>[/ :id]/goruntulenme-sifirla`). Public detaylarda 👁 gösterim. 4 tablo × 4 senaryo merge testi geçti. **Push edildi (10cc578), canlı test bekliyor.**
+- **Duyuru sayfası UI:** görseller sabit `h-64`; kartlar `items-stretch` + başlık `line-clamp-2 min-h-[3.5rem]` ile eşit hizalı; alttaki tekrar subtitle kaldırıldı; İlan Ver butonu eski sade haline döndü + `ilan-flash` (1sn glow). (b6139ec, e60839d)
+- **Ticker hava durumu:** emerald gradient pill + `weatherShine` süpürme + `weatherBob` ikon nabzı (`style.css` `.ticker-weather`). (1c746d9)
+- **Hero slider CTA akışı:** her slaytta `data-cta` JSON → `hero-ctas` JS ile yeniden basılıyor (Haberler + sırayla Sefer/Nöbetçi Eczane/Mekanlar/Gezilecek Yerler/Firma Rehberi). (b24a61a)
+- **İlan Ver akışı:** kategori `ilan|duyuru|etkinlik` (4 dil + amber `tag-etkinlik` rozeti light/dark + admin formu); formda iletişim ile aynı session captcha'sı (`issueCaptcha`/`captchaOk`); başarılı gönderimde admin'e `sendPortalMail` (logTag `ilan-ver`); formdaki "onaydan sonra yayınlanır" uyarısı kaldırıldı (bilgi success mesajında). (fc1a58f + 1 commit daha)
+- **Medya temizliği:** `deleteUploadedMedia()` + `galleryJsonUrls()` (server.js, `pubUrl` yanı) — sadece `/uploads/*` ve `/img/uploads/*`; local unlink + R2 DELETE (fire-and-forget). 6 silme rotasına bağlı: haber-sil (main+gallery), duyuru-sil & reddet (image), mekan-sil (main+gallery), firma-sil (logo_url), gezilecek-yer-sil (image+gallery) + `/admin/gallery-delete` R2 fix. Dış URL'lere dokunmaz. Not: geçmiş orphan dosyalar temizlenmedi. (b2054b0)
+- **UI dokunuşları:** `/haberler` grid görselleri `h-48 object-cover` (eşit); mekanlar `.btn-inspect` dolu emerald gradient + glow + hover lift. (d03ddcd, 25a1384)
+- Firma rehberi detay/map_embed, iletişim formu bildirimi, kullanıcı ilan akışı — önceki oturumlar.
 
-## Aktif iş 1 — Gmail alias (iletişim@marmaraninincisi.com'dan gönderim)
-Durum: NS'ler Cloudflare'de. `iletisim@`'a gelen mail Gmail'e (cinarcikofficial@gmail.com) yönlü (Cloudflare Email Routing hazır).
-SMTP key üretildi (Login: `bd6830001@smtp-brevo.com`, key kullanıcıda/paylaşıldı). Sender `Admin <iletisim@...>` eklenmiş.
-Kullanıcı "Authorized IPs → SMTP keys"i Deactivate etti (IP kısıtı kapalı) ve Gmail → Accounts and Import → Send mail as'e eklediğini söyledi.
-From alanından gönderme talimatı verildi (Compose → From → iletisim@).
-Kalan:
-1. **[YAPILDI — push bekliyor]** `render.yaml`: `EMAIL_API_KEY` value olarak girildi (repo `.env`'deki Brevo key — `.env` zaten track'li) + `EMAIL_FROM` düzeltildi → `iletisim@marmaraninincisi.com` (önceki değer `cinarcikofficial@gmail.com`'du, blueprint sync bunu ezerdi).
-2. **[TEST]** Push + redeploy sonrası siteden iletişim formu testi → bildirim maili + gönderen iletisim@ kontrolü. Gönderen spam'e düşüyorsa Brevo'da DNS kayıtları Verified mı bakılacak.
-
-## Aktif iş 2 — Haber + duyuru görüntülenme sıfırlama (TAMAM, push/canlı test bekliyor)
-Kullanıcı isteği: (a) her habere ayrı sıfırlama butonu + toplu buton "yapmıyordu"; (b) duyuru/ilan tablosuna da görüntülenme sayacı + admin'de gösterim + sıfırlama.
-**Kök neden:** `db/index.js` `VOLATILE_COLS` birleşimi `views_count` için iki taraftan **max** alıyordu → sıfırlama yerelde yapılsa bile Turso'daki/repo db dosyasındaki eski yüksek değer sonraki sync/restart'ta geri geliyordu (toplu buton anlık çalışıyor gibi görünüyordu).
-**Yapılan fix:**
-- `news.views_reset_at` kolonu (migration + CREATE TABLE). Sıfırlama rotaları `views_count=0, views_reset_at=datetime('now')` yazıyor.
-- Merge: `views_reset_at` epoch'u daha yeni taraftan sayaç alınır; aynı epokta max kuralı korunur (`RESET_EPOCH_COLS`, `VOLATILE_RESET_COL` — dikkat: rcol adı `_reset_at` ekiyle türetilmiyor, `views_count` → `views_reset_at`).
-- `ensureSyncSchema`: `_sync_au` trigger'ı DROP+CREATE (eski sütun listesi IF NOT EXISTS ile kalmasın).
-- Rotalar: bulk `POST /admin/haberler/goruntulenme-sifirla` güncellendi; yeni satır bazlı `POST /admin/haberler/:id/goruntulenme-sifirla` (Referer korumalı redirect).
-- Butonlar: dashboard views hücresine 🔄 + news-list'e "👁 Görüntelenme" sütunu eklendi (boş satır colspan'leri 7 yapıldı).
-- **Duyuru/ilan:** `announcements` + `views_count`/`views_reset_at` (migration + CREATE). `/duyuru/:id` detayda `views_count+1`. Dashboard Duyuru sekmesi: 👁 sütunu + satır 🔄 + header'da toplu buton (`POST /admin/duyurular/goruntulenme-sifirla` → redirect `/admin?tab=announcements`; satır bazlı `/admin/duyurular/:id/...` Referer korumalı). `VOLATILE_COLS`/`VOLATILE_RESET_COL` announcements'a eklendi. NOT: announcements tablosunda `updated_at` kolonu YOK — reset SQL'inde kullanma (trigger `views_reset_at` sayesinde `sync_updated_at`'i tazeliyor).
-- 8 senaryolu merge smoke testi geçti (news N1-N3 + announcements A1-A4, aynı kök neden senaryoları dahil).
-
-## Aktif iş 3 — Firma + gezilecek yer görüntülenme (TAMAM, push/canlı test bekliyor)
-Kullanıcı isteği: firma, haber, duyuru, ilan, gezilecek yerlerde tıklanma sayıları hem public hem admin'de görünsün + sıfırlanabilsin. (Haber + duyuru/ilan yukarıda tamamlandı.)
-Yapılan:
-- **Şema:** `companies` + `sightseeing` → `views_count`/`views_reset_at` (CREATE + migration); `VOLATILE_COLS`/`VOLATILE_RESET_COL` bu tablolara da eklendi (epoch'lu merge aynı davranış).
-- **Artırım:** `/rehber/:slug` ve `/gezilecek-yer/:id` detay rotalarında `views_count+1`.
-- **Public gösterim:** `announcement-detail.ejs` (👁️ X görüntülenme), `rehber-detail.ejs` (meta satırına • ile), `sightseeing-detail.ejs` (künye kartına yeni hücre). Haberlerde public zaten vardı. Not: liste kartlarına (duyuru/rehber/gezilecek listeleri) eklenmedi — istenirse haber listesindeki gibi eklenebilir.
-- **Admin:** dashboard Firma sekmesi + `company-list.ejs` → 👁 sütunu + satır 🔄 + toplu buton; `admin/sightseeing.ejs` → bilgi satırında sayaç + satır 🔄 + header toplu buton. Boş satır colspan'leri güncellendi (company-list 7, dashboard companies 6).
-- **Rotalar:** `POST /admin/firmalar[/ :id]/goruntulenme-sifirla` (Referer korumalı; bulk fallback `/admin?tab=companies`) + `POST /admin/gezilecek-yerler[/ :id]/goruntulenme-sifirla` (fallback `/admin/gezilecek-yerler`). DİKKAT: sightseeing/announcements tablolarında `updated_at` YOK — reset SQL'inde kullanma.
-- 4 tablo × 4 senaryo = 24 assertion'luk merge smoke testi geçti; lint + node --check temiz.
-**Kalan:** Render redeploy + canlıda test. NOT: Turso ile senkron çalışan **eski koddaki** her instance (ör. lokal çalışan eski server) sıfırlamayı diriltmeye devam eder — lokal sunucu da yeni kodla restart edilmeli.
-
-## Diğer notlar
-- `/admin` POST'larında CSRF Origin kontrolü var; admin yazma sonrası Turso `flushSync`.
-- Render free plan SMTP portlarını engelliyor → HTTP API öncelikli.
+## Açık kalanlar / test bekleyen
+1. **Canlı doğrulama (push edildi, redeploy sonrası):** görüntülenme sayaçları (artır + sıfırla + 0'da kal), ilan-ver captcha/etkinlik/mail, silme sonrası R2 loglarında `[r2] silindi`, UI (duyuru eşit kart + flash buton, ticker pill, hero CTA akışı, haberler grid, mekanlar İncele). CSS cache → hard refresh.
+2. **Gmail alias (Aktif iş 1):** render.yaml `EMAIL_FROM` + `EMAIL_API_KEY` push edildi; iletişim formu testi + gönderen spam'e düşerse Brevo DNS Verified kontrolü.
+3. **Opsiyonel:** R2 bucket'ında kullanılmayan orphan dosyaları süpüren script; `content_translations` hash-cache süpürmesi.
+4. Render free plan SMTP portları engelli → HTTP API öncelikli. Lokal eski kodlu instance Turso'ya eski veri basabilir — lokal sunucu yeni koddan restart edilmeli.
