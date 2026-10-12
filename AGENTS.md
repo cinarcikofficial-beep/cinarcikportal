@@ -19,13 +19,22 @@
 - Kullanıcı ilan/duyuru akışı: `/ilan-ver` (Google girişli form) → `status='pending'` → admin panelde Onayla/Reddet (`/admin/duyuru-onay|reddet/:id`). Bekleyenler public'te görünmüyor. 4 dil etiketleri eklendi.
 - İletişim formu: `POST /iletisim` artık `ADMIN_2FA_EMAIL`'e fire-and-forget bildirim maili atıyor (reply-to = ziyaretçi).
 
-## Aktif iş / sonraki adımlar (iletişim@marmaraninincisi.com)
+## Aktif iş 1 — Gmail alias (iletişim@marmaraninincisi.com'dan gönderim)
 Durum: NS'ler Cloudflare'de. `iletisim@`'a gelen mail Gmail'e (cinarcikofficial@gmail.com) yönlü (Cloudflare Email Routing hazır).
-Kullanıcı `iletisim@`'dan gönderebilsin diye:
-1. **[BEKLIYOR]** Brevo → Senders & IP → Sender Domains → `marmaraninincisi.com` → CNAME/TXT kayıtları Cloudflare DNS'e (CNAME'ler DNS only) → Verify → Senders → iletisim@ ekle → Gmail'e gelen doğrulama linki.
-2. **[BEKLIYOR]** Brevo → SMTP & API → SMTP Key üret.
-3. **[BEKLIYOR]** Gmail → Settings → Accounts and Import → Send mail as → `iletisim@` + `smtp-relay.brevo.com:587` + Brevo hesabı e-postası + SMTP key.
-4. **[BEKLIYOR]** Render env: `EMAIL_API_KEY` (Brevo API key, yoksa) + `EMAIL_FROM=iletisim@marmaraninincisi.com` → redeploy.
+SMTP key üretildi (Login: `bd6830001@smtp-brevo.com`, key kullanıcıda/paylaşıldı). Sender `Admin <iletisim@...>` eklenmiş.
+Kullanıcı "Authorized IPs → SMTP keys"i Deactivate etti (IP kısıtı kapalı) ve Gmail → Accounts and Import → Send mail as'e eklediğini söyledi.
+From alanından gönderme talimatı verildi (Compose → From → iletisim@).
+Kalan:
+1. **[BEKLIYOR]** Render env: `EMAIL_API_KEY` (Brevo → API keys & MCP) + `EMAIL_FROM=iletisim@marmaraninincisi.com` → redeploy.
+2. **[TEST]** Siteden iletişim formu testi → bildirim maili + gönderen iletisim@ kontrolü. Gönderen spam'e düşüyorsa Brevo'da DNS kayıtları Verified mı bakılacak.
+
+## Aktif iş 2 — Haber görüntülenme sıfırlama (YARIM)
+Kullanıcı isteği: **her habere ayrı sıfırlama butonu** (her satırda) + mevcut toplu buton çalışmıyor.
+İnceleme sonucu:
+- Toplu rota var: `POST /admin/haberler/goruntulenme-sifirla` (server.js:980) → `UPDATE news SET views_count = 0` + flush middleware var; kodda bariz hata yok. Neden "yapmıyor" araştırılmadı (olasılıklar: Turso senkronü geri yazıyor, confirm iptal, Render eski kod — Render redeploy edildi mi?).
+- Butonlar: `views/admin/news-list.ejs:18` (toplu, views sütunu YOK başlıkta toplam var) ve `views/admin/dashboard.ejs:209` (toplu, satırda views_count sütunu var :285 ama satır bazlı buton yok).
+- news-list satır butonları: :82-87 (düzenle/önizle/toggle/sil).
+Sonraki adımlar: (1) her iki tabloya satır bazlı `POST /admin/haberler/:id/goruntulenme-sifirla` butonu + rota; (2) toplu butonun gerçekten çalışmadığını canlıda doğrula (kullanıcıya sor).
 
 ## Diğer notlar
 - `/admin` POST'larında CSRF Origin kontrolü var; admin yazma sonrası Turso `flushSync`.
