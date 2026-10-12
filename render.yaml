@@ -50,7 +50,7 @@ services:
       - key: EMAIL_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: cinarcikofficial@gmail.com
+        value: iletisim@marmaraninincisi.com
       - key: TURSO_URL
         value: libsql://cinarcikportal-kkaplan.aws-eu-west-1.turso.io
       - key: TURSO_TOKEN

@@ -457,9 +457,10 @@ app.get('/duyurular', async (req, res) => {
 });
 
 app.get('/duyuru/:id', async (req, res) => {
-  const { get } = require('./db');
+  const { get, run } = require('./db');
   const announcement = get("SELECT * FROM announcements WHERE id = ? AND status = 'active'", [req.params.id]);
   if (!announcement || !announcement.id) return res.redirect('/duyurular');
+  run("UPDATE announcements SET views_count = views_count + 1 WHERE id = ?", [announcement.id]);
   await txFields(announcement, ['title', 'content'], req.lang);
   res.render('announcement-detail', { announcement, pageTitle: announcement.title });
 });
@@ -1296,6 +1297,31 @@ app.post('/admin/duyuru-reddet/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
+});
+
+// Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
+app.post('/admin/duyurular/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM announcements').t || 0;
+  run("UPDATE announcements SET views_count = 0, views_reset_at = datetime('now')");
+  console.log(`[admin] Duyuru/ilan görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  res.redirect('/admin?tab=announcements');
+});
+
+app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM announcements WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run("UPDATE announcements SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
+    console.log(`[admin] Duyuru/ilan görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin?tab=announcements';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
 });
 
 // ==================== KULLANICI İLAN/İLAN VERME ====================

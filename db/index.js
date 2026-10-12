@@ -18,6 +18,7 @@ const TOMBSTONE_TTL_MS = 60 * 24 * 60 * 60 * 1000;
 // birleşimde iki taraftan da en büyüğü alınır (ör. sayfa görüntülenme sayısı).
 const VOLATILE_COLS = {
   news: ['views_count'],
+  announcements: ['views_count'],
   places: ['rating', 'review_count', 'google_rating', 'google_review_count']
 };
 
@@ -28,7 +29,10 @@ const RESET_EPOCH_COLS = new Set(['views_reset_at']);
 
 // Volatile sayacın sıfırlama işareti kolonu (ad _reset_at ekiyle türetilmez;
 // views_count → views_reset_at).
-const VOLATILE_RESET_COL = { news: { views_count: 'views_reset_at' } };
+const VOLATILE_RESET_COL = {
+  news: { views_count: 'views_reset_at' },
+  announcements: { views_count: 'views_reset_at' }
+};
 
 // Satırın "kimliği": iki kopyada kimlik farklıysa bu, aynı satırın iki sürümü
 // değil, aynı id ile çakışan **iki ayrı kayıttır** → biri yeni id'ye taşınır.
@@ -807,6 +811,8 @@ function createTables() {
       status TEXT DEFAULT 'active',
       user_name TEXT DEFAULT '',
       user_email TEXT DEFAULT '',
+      views_count INTEGER DEFAULT 0,
+      views_reset_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -817,6 +823,8 @@ function createTables() {
     if (!cols.includes('status')) db.run("ALTER TABLE announcements ADD COLUMN status TEXT DEFAULT 'active'");
     if (!cols.includes('user_name')) db.run("ALTER TABLE announcements ADD COLUMN user_name TEXT DEFAULT ''");
     if (!cols.includes('user_email')) db.run("ALTER TABLE announcements ADD COLUMN user_email TEXT DEFAULT ''");
+    if (!cols.includes('views_count')) db.run("ALTER TABLE announcements ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('views_reset_at')) db.run("ALTER TABLE announcements ADD COLUMN views_reset_at TEXT DEFAULT NULL");
   }
   db.run(`
     CREATE TABLE IF NOT EXISTS pharmacies (
