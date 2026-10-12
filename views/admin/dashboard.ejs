@@ -48,7 +48,7 @@
         </div>
         <p class="text-4xl font-black text-white leading-none mb-2"><%= announcements.length %></p>
         <p class="text-sm font-bold text-zinc-100">Aktif Duyuru</p>
-        <p class="text-xs text-zinc-500 mt-0.5">Şu anda yayında olan duyurular</p>
+        <p class="text-xs text-zinc-500 mt-0.5">Toplam ilan ve duyuru (onay bekleyenler dahil)</p>
       </div>
 
       <div class="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-sky-500/60 hover:-translate-y-0.5 transition-all shadow-lg cursor-pointer" onclick="switchTab('places')">
@@ -324,18 +324,37 @@
             </thead>
             <tbody>
               <% announcements.forEach(item => { %>
-              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
-                <td class="p-4 text-white font-medium line-clamp-1"><%= item.title %></td>
+              <%
+                const isPending = item.status === 'pending';
+              %>
+              <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors <%= isPending ? 'bg-amber-950/20' : '' %>">
+                <td class="p-4">
+                  <span class="text-white font-medium line-clamp-1 block"><%= item.title %></span>
+                  <% if (item.user_email) { %>
+                    <span class="text-xs text-zinc-500 block mt-0.5">👤 <%= item.user_name || '' %> · <%= item.user_email %></span>
+                  <% } %>
+                </td>
                 <td class="p-4 text-zinc-400"><%= new Date(item.created_at).toLocaleDateString('tr-TR') %></td>
                 <td class="p-4">
                   <span class="inline-block px-2 py-1 rounded text-xs font-medium bg-sky-500/10 text-sky-400">
                     <%= item.category === 'ilan' ? 'İlan' : 'Duyuru' %>
                   </span>
                 </td>
-                <td class="p-4"><span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">Aktif</span></td>
+                <td class="p-4">
+                  <% if (isPending) { %>
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">⏳ Onay Bekliyor</span>
+                  <% } else { %>
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">Aktif</span>
+                  <% } %>
+                </td>
                 <td class="p-4 text-right space-x-1">
-                  <a href="/admin/duyuru-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
-                  <form method="POST" action="/admin/duyuru-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                  <% if (isPending) { %>
+                    <form method="POST" action="/admin/duyuru-onay/<%= item.id %>" style="display:inline"><button type="submit" class="inline-flex items-center justify-center h-8 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all text-xs font-bold" title="Onayla">✓ Onayla</button></form>
+                    <form method="POST" action="/admin/duyuru-reddet/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('İlan reddedilsin mi? Silinecek.')" class="inline-flex items-center justify-center h-8 px-3 bg-red-950/60 hover:bg-red-900 text-red-300 rounded-lg border border-red-800/50 transition-all text-xs font-bold" title="Reddet">✕ Reddet</button></form>
+                  <% } else { %>
+                    <a href="/admin/duyuru-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
+                    <form method="POST" action="/admin/duyuru-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                  <% } %>
                 </td>
               </tr>
               <% }) %>

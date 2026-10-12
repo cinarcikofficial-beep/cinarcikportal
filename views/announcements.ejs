@@ -12,6 +12,15 @@
 </style>
 
 <section class="section">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <p class="text-sm text-zinc-500"><%= t('annSubtitle') %></p>
+    <a href="/ilan-ver" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20">
+      ✏️ <%= t('postListing') %>
+    </a>
+  </div>
+  <% if (typeof submitted !== 'undefined' && submitted) { %>
+    <div class="bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-sm rounded-xl px-4 py-3 mb-6"><%= t('listingSubmitted') %></div>
+  <% } %>
   <% if (announcements.length === 0) { %>
   <div class="empty-state">
     <div class="empty-icon">📢</div>

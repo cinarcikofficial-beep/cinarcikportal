@@ -297,7 +297,7 @@ app.get('/sitemap.xml', (req, res) => {
 
 app.get('/', async (req, res) => {
   const { all } = require('./db');
-  const announcements = all('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 4');
+  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC LIMIT 4");
   // Ana sayfa manşeti: /haberler ile birebir aynı kaynak ve sıralama,
   // böylece admin'de yapılan her değişiklik ana sayfada da aynen görünür.
   const newsWhere = `status='active'
@@ -440,14 +440,14 @@ app.get('/api/news/:slug', (req, res) => {
 
 app.get('/duyurular', async (req, res) => {
   const { all } = require('./db');
-  const announcements = all('SELECT * FROM announcements ORDER BY created_at DESC');
+  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC");
   await txArray(announcements, ['title', 'content'], req.lang);
-  res.render('announcements', { announcements });
+  res.render('announcements', { announcements, submitted: req.query.gonderildi === '1' });
 });
 
 app.get('/duyuru/:id', async (req, res) => {
   const { get } = require('./db');
-  const announcement = get('SELECT * FROM announcements WHERE id = ?', [req.params.id]);
+  const announcement = get("SELECT * FROM announcements WHERE id = ? AND status = 'active'", [req.params.id]);
   if (!announcement || !announcement.id) return res.redirect('/duyurular');
   await txFields(announcement, ['title', 'content'], req.lang);
   res.render('announcement-detail', { announcement, pageTitle: announcement.title });
@@ -923,7 +923,7 @@ app.get('/admin/logout', (req, res) => {
 
 app.get('/admin', isAuthenticated, async (req, res) => {
   const { all, get } = require('./db');
-  const announcements = all('SELECT * FROM announcements ORDER BY created_at DESC');
+  const announcements = all('SELECT * FROM announcements ORDER BY CASE WHEN status = \'pending\' THEN 0 ELSE 1 END, created_at DESC');
   const places = all('SELECT * FROM places ORDER BY created_at DESC');
   const news = all("SELECT * FROM news ORDER BY headline_order ASC, created_at DESC");
   const newsCount = get('SELECT COUNT(*) as cnt FROM news');
@@ -1248,6 +1248,52 @@ app.post('/admin/duyuru-sil/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
+});
+
+// Kullanıcı ilan/duyuru onay akışı
+app.post('/admin/duyuru-onay/:id', isAuthenticated, (req, res) => {
+  const { run } = require('./db');
+  run("UPDATE announcements SET status = 'active' WHERE id = ?", [req.params.id]);
+  res.redirect('/admin');
+});
+
+app.post('/admin/duyuru-reddet/:id', isAuthenticated, (req, res) => {
+  const { run } = require('./db');
+  run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
+  res.redirect('/admin');
+});
+
+// ==================== KULLANICI İLAN/İLAN VERME ====================
+
+function requireGoogleAuthPage(req, res, next) {
+  if (req.session.isGoogleAuth && req.session.googleUser) return next();
+  req.session.returnTo = req.originalUrl;
+  res.redirect('/auth/google');
+}
+
+app.get('/ilan-ver', requireGoogleAuthPage, (req, res) => {
+  res.render('ilan-ver', { user: req.session.googleUser, error: null, form: {} });
+});
+
+app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
+  withUpload(upload.single('image'))(req, res, function(err) {
+    if (err) return res.render('ilan-ver', { user: req.session.googleUser, error: 'Görsel yüklenemedi.', form: req.body || {} });
+    next();
+  });
+}, (req, res) => {
+  const { run } = require('./db');
+  const user = req.session.googleUser;
+  const title = String(req.body.title || '').trim();
+  const content = String(req.body.content || '').trim();
+  const category = req.body.category === 'duyuru' ? 'duyuru' : 'ilan';
+
+  if (title.length < 5 || content.length < 20) {
+    return res.render('ilan-ver', { user, error: 'Başlık en az 5, içerik en az 20 karakter olmalıdır.', form: req.body || {} });
+  }
+  const image = req.file ? pubUrl(req.file) : '';
+  run("INSERT INTO announcements (title, content, category, image, status, user_name, user_email) VALUES (?,?,?,?,?,?,?)",
+    [title.slice(0, 120), content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '']);
+  res.redirect('/duyurular?gonderildi=1');
 });
 
 app.get('/admin/hakkinda', isAuthenticated, (req, res) => {
@@ -1706,7 +1752,7 @@ app.get('/auth/google/callback', async (req, res) => {
 app.get('/auth/google/logout', (req, res) => {
   req.session.isGoogleAuth = false;
   req.session.googleUser = null;
-  res.redirect('/');
+  res.redirect(safeReturnPath(req.query.return) || '/');
 });
 
 // OAuth hata sayfası

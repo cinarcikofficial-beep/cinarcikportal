@@ -781,7 +781,10 @@ function createTables() {
       title TEXT NOT NULL,
       content TEXT NOT NULL,
       category TEXT DEFAULT 'duyuru',
-      image TEXT DEFAULT '',
+      image  TEXT DEFAULT '',
+      status TEXT DEFAULT 'active',
+      user_name TEXT DEFAULT '',
+      user_email TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -789,6 +792,9 @@ function createTables() {
   if (annCols[0]) {
     const cols = annCols[0].values.map(r => r[1]);
     if (!cols.includes('image')) db.run("ALTER TABLE announcements ADD COLUMN image TEXT DEFAULT ''");
+    if (!cols.includes('status')) db.run("ALTER TABLE announcements ADD COLUMN status TEXT DEFAULT 'active'");
+    if (!cols.includes('user_name')) db.run("ALTER TABLE announcements ADD COLUMN user_name TEXT DEFAULT ''");
+    if (!cols.includes('user_email')) db.run("ALTER TABLE announcements ADD COLUMN user_email TEXT DEFAULT ''");
   }
   db.run(`
     CREATE TABLE IF NOT EXISTS pharmacies (
