@@ -1413,15 +1413,19 @@ app.get('/rehber/:slug', async (req, res) => {
   ]);
   let embedMapUrl = '';
   let directionsUrl = '';
+  const dirFromCoords = (c) => 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
   if (company.map_embed) {
     // Admin'in yapistirdigi Google embed kodu (tam iframe veya saf src).
     const srcMatch = String(company.map_embed).match(/src=["']([^"']+)["']/i);
     embedMapUrl = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
+    // Yol tarifi, embed'deki tam konuma gitsin (Nominatim adresi bazen farkli nokta).
+    const embedCoords = extractMapCoords(embedMapUrl);
+    if (embedCoords) directionsUrl = dirFromCoords(embedCoords);
   }
   if (company.map_link) {
     const mapInfo = await getMapInfo(company.map_link, company.address);
     if (!embedMapUrl) embedMapUrl = mapInfo.embedUrl;
-    directionsUrl = mapInfo.directionsUrl;
+    if (!directionsUrl) directionsUrl = mapInfo.directionsUrl;
   }
   res.render('rehber-detail', { company, embedMapUrl, directionsUrl, pageTitle: company.name });
 });
@@ -2432,6 +2436,7 @@ function extractMapCoords(str) {
     /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
     /\/search\/(-?\d{1,3}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
     /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/,
+    /!2d(-?\d{1,3}\.\d+)!3d(-?\d{1,3}\.\d+)/, // Google embed pb: 2d=boylam, 3d=enlem
     /[?&]center=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
     /[?&]q=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
     /[?&]ll=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/
@@ -2439,7 +2444,9 @@ function extractMapCoords(str) {
   for (const re of patterns) {
     const m = str.match(re);
     if (m) {
-      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      let lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      // pb formatinda sira lng, lat olabilir (!2d lng !3d lat)
+      if (re === patterns[3]) { const tmp = lat; lat = lng; lng = tmp; }
       if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
     }
   }
