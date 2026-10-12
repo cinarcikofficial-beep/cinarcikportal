@@ -717,7 +717,9 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
 });
 
 app.post('/admin/gezilecek-yer-sil/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT image, gallery_images FROM sightseeing WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia([item.image].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM sightseeing WHERE id = ?', [req.params.id]);
   res.redirect('/admin/gezilecek-yerler');
 });
@@ -1100,7 +1102,9 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
 });
 
 app.post('/admin/haber-sil/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT main_image_url, gallery_images FROM news WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia([item.main_image_url].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM news WHERE id = ?', [req.params.id]);
   res.redirect('/admin/haberler');
 });
@@ -1151,6 +1155,43 @@ function pubUrl(file) {
   if (!file) return '';
   if (file.r2Url) return '/uploads/' + path.basename(file.r2Url);
   return '/img/uploads/' + encodeURIComponent(file.filename);
+}
+
+// Yüklenmiş medya dosyalarını local diskten ve (R2 aktifse) R2'den siler.
+// Sadece kendi yüklemelerimiz (/uploads/*, /img/uploads/*) silinir; dış URL'lere dokunulmaz.
+function galleryJsonUrls(json) {
+  try {
+    const arr = JSON.parse(json || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+
+function deleteUploadedMedia(input) {
+  const list = Array.isArray(input) ? input : [input];
+  const seen = {};
+  list.forEach(function(raw) {
+    const url = String(raw || '').trim();
+    if (!url || seen[url]) return;
+    seen[url] = 1;
+    if (url.indexOf('/uploads/') !== 0 && url.indexOf('/img/uploads/') !== 0) return;
+    const name = path.basename(url.split('?')[0]);
+    if (!name || name === '.' || name === '..') return;
+    try {
+      const fsx = require('fs');
+      const localPath = path.join(__dirname, 'public', 'img', 'uploads', name);
+      if (fsx.existsSync(localPath)) fsx.unlinkSync(localPath);
+    } catch (e) {
+      console.warn('[media] local silinemedi (' + name + '):', e.message);
+    }
+    if (R2) {
+      R2.client.fetch('https://' + R2.account + '.r2.cloudflarestorage.com/' + R2.bucket + '/uploads/' + name, { method: 'DELETE' })
+        .then(function(r) {
+          if (r.ok || r.status === 204) console.log('[r2] silindi: uploads/' + name);
+          else console.warn('[r2] silme yanıtı ' + r.status + ': ' + name);
+        })
+        .catch(function(e) { console.warn('[r2] silinemedi (' + name + '):', e.message); });
+    }
+  });
 }
 
 // Formdaki sürükle-bırak sıralaması `gallery_order` alanına JSON olarak yazılır:
@@ -1307,7 +1348,9 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
 });
 
 app.post('/admin/duyuru-sil/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT image FROM announcements WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia(item.image);
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
 });
@@ -1320,7 +1363,9 @@ app.post('/admin/duyuru-onay/:id', isAuthenticated, (req, res) => {
 });
 
 app.post('/admin/duyuru-reddet/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT image FROM announcements WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia(item.image);
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
 });
@@ -1501,20 +1546,15 @@ app.post('/admin/gallery-delete', isAuthenticated, (req, res) => {
 
   const filtered = galleryArr.filter(g => g !== image_url);
   run('UPDATE places SET gallery_images = ? WHERE id = ?', [JSON.stringify(filtered), place_id]);
-
-  const fs = require('fs');
-  const uploadsDir = path.join(__dirname, 'public', 'img', 'uploads');
-  const safeName = path.basename(String(image_url || ''));
-  const filePath = path.join(uploadsDir, safeName);
-  if (filePath.startsWith(uploadsDir) && fs.existsSync(filePath)) {
-    fs.unlink(filePath, () => {});
-  }
+  deleteUploadedMedia(image_url);
 
   res.json({ success: true, gallery: filtered });
 });
 
 app.post('/admin/mekan-sil/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT main_image_url, gallery_images FROM places WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia([item.main_image_url].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM places WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
 });
@@ -1703,7 +1743,9 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
 });
 
 app.post('/admin/firma-sil/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const item = get('SELECT logo_url FROM companies WHERE id = ?', [req.params.id]);
+  if (item) deleteUploadedMedia(item.logo_url);
   run('DELETE FROM companies WHERE id = ?', [req.params.id]);
   res.redirect('/admin/firmalar');
 });
