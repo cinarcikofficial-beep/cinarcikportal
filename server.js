@@ -1412,10 +1412,13 @@ app.get('/rehber/:slug', async (req, res) => {
     txJsonArrayField(company, 'features', req.lang)
   ]);
   let embedMapUrl = '';
+  let directionsUrl = '';
   if (company.map_link) {
-    embedMapUrl = await getMapEmbedUrl(company.map_link, company.address);
+    const mapInfo = await getMapInfo(company.map_link, company.address);
+    embedMapUrl = mapInfo.embedUrl;
+    directionsUrl = mapInfo.directionsUrl;
   }
-  res.render('rehber-detail', { company, embedMapUrl, pageTitle: company.name });
+  res.render('rehber-detail', { company, embedMapUrl, directionsUrl, pageTitle: company.name });
 });
 
 // Admin firma yönetimi
@@ -2513,6 +2516,22 @@ function buildOSMEmbedUrl(coords) {
 async function getMapEmbedUrl(mapLink, extraQuery) {
   if (!mapLink) return '';
   return buildOSMEmbedUrl(await resolveMapCoords(mapLink, extraQuery));
+}
+
+// Firma konumu: harita embed + Google yol tarifi icin koordinatli link.
+// share.google linkleri Google tarafindan CAPTCHA/engel ile karsilastirilabildigi
+// icin, koordinat cozulmusse direkt google.com/maps/dir linki kullanilir.
+async function getMapInfo(mapLink, extraQuery) {
+  const info = { embedUrl: '', directionsUrl: '' };
+  if (!mapLink) return info;
+  const coords = await resolveMapCoords(mapLink, extraQuery);
+  if (coords) {
+    info.embedUrl = buildOSMEmbedUrl(coords);
+    info.directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + coords.lat + ',' + coords.lng;
+  } else {
+    info.directionsUrl = mapLink;
+  }
+  return info;
 }
 
 // ---- Nöbetçi Eczane Otomatik Senkronizasyon ----
