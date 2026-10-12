@@ -45,26 +45,25 @@
     </div>
   <% } else { %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="company-grid">
-      <% companies.forEach((company, idx) => { 
-        const features = typeof company.features === 'string' ? JSON.parse(company.features || '[]') : (company.features || []);
+      <% companies.forEach((company, idx) => {
         const gallery = typeof company.gallery_images === 'string' ? JSON.parse(company.gallery_images || '[]') : (company.gallery_images || []);
         const img = company.logo_url || (gallery[0] || '');
+        const emoji = company.category === 'İnşaat' ? '🏗️' : company.category === 'Güzellik Merkezi' ? '💆' : company.category === 'Market' ? '🛒' : company.category === 'Sağlık' ? '🏥' : company.category === 'Eğitim' ? '📚' : company.category === 'Hizmet' ? '🔧' : company.category === 'Emlak' ? '🏠' : '🏢';
       %>
-        <a href="/rehber/<%= company.slug || company.id %>"
-          class="company-card group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all shadow-lg hover:shadow-xl fade-in-up"
+        <button type="button"
+          class="company-card group text-left w-full bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all shadow-lg hover:shadow-xl fade-in-up"
           style="animation-delay: <%= idx * 50 %>ms"
+          data-slug="<%= company.slug || company.id %>"
           data-category="<%= company.category || 'Genel' %>"
           data-name="<%= (company.name || '').toLowerCase() %>"
           data-sector="<%= (company.sector || '').toLowerCase() %>">
 
-          <!-- Image -->
-          <div class="h-44 overflow-hidden bg-zinc-800 relative">
+          <!-- Logo -->
+          <div class="h-52 flex items-center justify-center bg-gradient-to-br from-zinc-950 to-zinc-900 relative overflow-hidden">
             <% if (img) { %>
-              <img src="<%= img %>" alt="<%= company.name %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <img src="<%= img %>" alt="<%= company.name %>" class="max-w-[85%] max-h-[80%] object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg">
             <% } else { %>
-              <div class="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-zinc-800 to-zinc-900">
-                <%= company.category === 'İnşaat' ? '🏗️' : company.category === 'Güzellik Merkezi' ? '💆' : company.category === 'Market' ? '🛒' : company.category === 'Sağlık' ? '🏥' : company.category === 'Eğitim' ? '📚' : company.category === 'Hizmet' ? '🔧' : company.category === 'Emlak' ? '🏠' : '🏢' %>
-              </div>
+              <span class="text-6xl opacity-80 group-hover:scale-110 transition-transform duration-300"><%= emoji %></span>
             <% } %>
             <% if (company.is_featured == 1) { %>
               <span class="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg"><%= t('featured') %></span>
@@ -72,49 +71,48 @@
             <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full"><%= company.category || t('general') %></span>
           </div>
 
-          <!-- Body -->
-          <div class="p-5">
-            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors line-clamp-1 mb-1"><%= company.name %></h3>
+          <!-- İsim -->
+          <div class="px-4 py-4 text-center">
+            <h3 class="text-white font-bold text-base group-hover:text-emerald-400 transition-colors line-clamp-2"><%= company.name %></h3>
             <% if (company.sector) { %>
-              <p class="text-zinc-500 text-xs mb-3"><%= company.sector %></p>
-            <% } %>
-
-            <div class="space-y-1.5 mb-4">
-              <% if (company.phone) { %>
-                <div class="flex items-center gap-2 text-zinc-400 text-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  <span><%= company.phone %></span>
-                </div>
-              <% } %>
-              <% if (company.address) { %>
-                <div class="flex items-center gap-2 text-zinc-400 text-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                  <span class="line-clamp-1"><%= company.address %></span>
-                </div>
-              <% } %>
-              <% if (company.working_hours) { %>
-                <div class="flex items-center gap-2 text-zinc-400 text-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span><%= company.working_hours %></span>
-                </div>
-              <% } %>
-            </div>
-
-            <% if (features.length > 0) { %>
-              <div class="flex flex-wrap gap-1.5">
-                <% features.slice(0, 3).forEach(f => { %>
-                  <span class="bg-zinc-800 text-zinc-400 text-[10px] px-2 py-0.5 rounded-full border border-zinc-700/50">✓ <%= f %></span>
-                <% }) %>
-                <% if (features.length > 3) { %>
-                  <span class="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5 rounded-full">+<%= features.length - 3 %></span>
-                <% } %>
-              </div>
+              <p class="text-zinc-500 text-xs mt-1"><%= company.sector %></p>
             <% } %>
           </div>
-        </a>
+        </button>
       <% }) %>
     </div>
   <% } %>
+</div>
+
+<!-- FİRMA DETAY MODAL -->
+<div id="company-modal" class="fixed inset-0 z-[100] hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" data-close></div>
+  <div class="relative h-full overflow-y-auto p-3 sm:p-6 flex items-start sm:items-center justify-center">
+    <div class="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden my-auto">
+      <div class="relative p-5 sm:p-6 border-b border-zinc-800 bg-zinc-950/70">
+        <button type="button" data-close aria-label="<%= t('close') %>"
+          class="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-800 hover:bg-red-600 text-zinc-300 hover:text-white transition-colors flex items-center justify-center text-lg leading-none">&times;</button>
+        <div class="flex items-center gap-4 pr-12">
+          <div id="m-logo" class="w-24 h-24 sm:w-28 sm:h-28 shrink-0 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center overflow-hidden"></div>
+          <div class="min-w-0">
+            <h2 id="m-name" class="text-xl sm:text-2xl font-black text-white tracking-tight line-clamp-2"></h2>
+            <p id="m-sector" class="text-zinc-400 text-sm mt-1"></p>
+            <div id="m-badges" class="flex flex-wrap items-center gap-2 mt-2"></div>
+          </div>
+        </div>
+      </div>
+      <div id="m-body" class="p-5 sm:p-6"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GÖRSEL YIZLEYİCİ -->
+<div id="m-viewer" class="fixed inset-0 z-[110] hidden items-center justify-center bg-black/95">
+  <button type="button" id="m-viewer-close" class="absolute top-5 right-6 text-white text-3xl bg-white/10 hover:bg-white/20 w-12 h-12 rounded-full transition-colors z-10">&times;</button>
+  <button type="button" id="m-viewer-prev" class="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-white text-xl bg-white/10 hover:bg-white/20 px-4 py-3 rounded-full transition-colors z-10">&#10094;</button>
+  <button type="button" id="m-viewer-next" class="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 text-white text-xl bg-white/10 hover:bg-white/20 px-4 py-3 rounded-full transition-colors z-10">&#10095;</button>
+  <img id="m-viewer-img" src="" alt="" class="max-w-[90vw] max-h-[85vh] rounded-xl shadow-2xl">
+  <span id="m-viewer-count" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white text-sm bg-black/60 px-4 py-1.5 rounded-full"></span>
 </div>
 
 <script>
@@ -146,6 +144,225 @@
       filter();
     });
   });
+
+  // ===== Firma detay modal =====
+  var L = {
+    loading: <%- JSON.stringify(t('loading')) %>,
+    error: <%- JSON.stringify(t('errorOccurred')) %>,
+    close: <%- JSON.stringify(t('close')) %>,
+    featured: <%- JSON.stringify(t('featured')) %>,
+    general: <%- JSON.stringify(t('general')) %>,
+    about: <%- JSON.stringify(t('aboutSection')) %>,
+    features: <%- JSON.stringify(t('featuresSection')) %>,
+    photos: <%- JSON.stringify(t('photos')) %>,
+    contact: <%- JSON.stringify(t('contactInfo')) %>,
+    phone: <%- JSON.stringify(t('phoneLabel')) %>,
+    address: <%- JSON.stringify(t('addressLabel')) %>,
+    email: <%- JSON.stringify(t('emailLabel')) %>,
+    website: <%- JSON.stringify(t('websiteLabel')) %>,
+    hours: <%- JSON.stringify(t('workingHours')) %>,
+    reviews: <%- JSON.stringify(t('googleReviewsView')) %>,
+    directions: <%- JSON.stringify(t('directions')) %>
+  };
+
+  var modal = document.getElementById('company-modal');
+  var mBody = document.getElementById('m-body');
+  var mName = document.getElementById('m-name');
+  var mSector = document.getElementById('m-sector');
+  var mLogo = document.getElementById('m-logo');
+  var mBadges = document.getElementById('m-badges');
+  var viewer = document.getElementById('m-viewer');
+  var viewerImg = document.getElementById('m-viewer-img');
+  var viewerCount = document.getElementById('m-viewer-count');
+  var viewerImgs = [];
+  var viewerIdx = 0;
+  var currentSlug = '';
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = (s == null ? '' : String(s));
+    return d.innerHTML;
+  }
+
+  function sectionTitle(text) {
+    return '<h3 class="text-[11px] font-bold tracking-widest uppercase text-zinc-500 mb-3">' + esc(text) + '</h3>';
+  }
+
+  function row(icon, label, inner) {
+    return '<div class="flex items-start gap-3">' +
+      '<div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">' + icon + '</div>' +
+      '<div class="min-w-0"><p class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider mb-0.5">' + esc(label) + '</p>' + inner + '</div></div>';
+  }
+
+  var icons = {
+    phone: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    pin: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+    mail: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+    web: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    clock: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+
+  function showViewer(imgs, idx) {
+    if (!imgs.length) return;
+    viewerImgs = imgs;
+    viewerIdx = idx || 0;
+    updateViewer();
+    viewer.classList.remove('hidden');
+    viewer.classList.add('flex');
+  }
+
+  function updateViewer() {
+    viewerImg.src = viewerImgs[viewerIdx] || '';
+    viewerCount.textContent = (viewerIdx + 1) + ' / ' + viewerImgs.length;
+  }
+
+  function hideViewer() {
+    viewer.classList.add('hidden');
+    viewer.classList.remove('flex');
+  }
+
+  document.getElementById('m-viewer-close').addEventListener('click', hideViewer);
+  document.getElementById('m-viewer-prev').addEventListener('click', function(e) { e.stopPropagation(); viewerIdx = (viewerIdx - 1 + viewerImgs.length) % viewerImgs.length; updateViewer(); });
+  document.getElementById('m-viewer-next').addEventListener('click', function(e) { e.stopPropagation(); viewerIdx = (viewerIdx + 1) % viewerImgs.length; updateViewer(); });
+  viewer.addEventListener('click', function(e) { if (e.target === viewer || e.target === viewerImg) hideViewer(); });
+
+  function renderCompany(c, embedMapUrl) {
+    var gallery = Array.isArray(c.gallery_images) ? c.gallery_images.filter(Boolean) : [];
+    var features = Array.isArray(c.features) ? c.features.filter(Boolean) : [];
+
+    // Header
+    if (c.logo_url) {
+      mLogo.innerHTML = '<img src="' + esc(c.logo_url) + '" alt="' + esc(c.name) + '" class="w-full h-full object-contain p-2">';
+    } else {
+      mLogo.innerHTML = '<span class="text-4xl">🏢</span>';
+    }
+    mName.textContent = c.name || '';
+    mSector.textContent = c.sector || '';
+    var badges = '';
+    badges += '<span class="bg-zinc-800 text-zinc-300 text-xs font-medium px-3 py-1 rounded-full border border-zinc-700/50">' + esc(c.category || L.general) + '</span>';
+    if (c.is_featured == 1) badges += '<span class="bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-emerald-500/20">' + esc(L.featured) + '</span>';
+    mBadges.innerHTML = badges;
+
+    var html = '';
+
+    if (c.working_hours) {
+      html += '<div>' + row(icons.clock, L.hours, '<p class="text-zinc-300 text-sm font-medium">' + esc(c.working_hours) + '</p>') + '</div>';
+    }
+
+    if (c.description) {
+      var isHtml = /<[a-z][\s\S]*>/i.test(c.description);
+      html += '<div>' + sectionTitle(L.about) + '<div class="rich-desc text-zinc-300 leading-relaxed text-[15px]">' + (isHtml ? c.description : esc(c.description)) + '</div></div>';
+    }
+
+    if (features.length) {
+      html += '<div>' + sectionTitle(L.features) + '<div class="flex flex-wrap gap-2">';
+      features.forEach(function(f) {
+        html += '<span class="inline-flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 text-zinc-300 text-sm font-medium px-3.5 py-2 rounded-xl"><span class="text-emerald-500 text-xs">✓</span> ' + esc(f) + '</span>';
+      });
+      html += '</div></div>';
+    }
+
+    if (gallery.length) {
+      html += '<div>' + sectionTitle(L.photos + ' (' + gallery.length + ')') + '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
+      gallery.forEach(function(g, i) {
+        html += '<button type="button" class="m-photo aspect-square rounded-xl overflow-hidden border border-zinc-800/80 hover:scale-[1.02] transition-transform" data-i="' + i + '"><img src="' + esc(g) + '" alt="" class="w-full h-full object-cover"></button>';
+      });
+      html += '</div></div>';
+    }
+
+    var rows = '';
+    if (c.phone) rows += row(icons.phone, L.phone, '<a href="tel:' + esc(c.phone) + '" class="text-white font-semibold text-sm hover:text-emerald-400 transition-colors">' + esc(c.phone) + '</a>');
+    if (c.address) rows += row(icons.pin, L.address, '<p class="text-zinc-300 text-sm leading-relaxed">' + esc(c.address) + '</p>');
+    if (c.email) rows += row(icons.mail, L.email, '<a href="mailto:' + esc(c.email) + '" class="text-zinc-300 text-sm break-all hover:text-emerald-400 transition-colors">' + esc(c.email) + '</a>');
+    if (c.website) rows += row(icons.web, L.website, '<a href="' + esc(c.website) + '" target="_blank" rel="noopener" class="text-zinc-300 text-sm break-all hover:text-emerald-400 transition-colors">' + esc(String(c.website).replace(/^https?:\/\//, '')) + '</a>');
+
+    if (rows) {
+      html += '<div>' + sectionTitle(L.contact) + '<div class="space-y-5">' + rows + '</div>';
+      if (c.google_reviews_url || c.map_link) {
+        html += '<div class="flex flex-wrap gap-2 mt-4">';
+        if (c.google_reviews_url) {
+          html += '<a href="' + esc(c.google_reviews_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' + esc(L.reviews) + '</a>';
+        }
+        if (c.map_link) {
+          html += '<a href="' + esc(c.map_link) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-4 py-2.5 rounded-xl transition-all">' + esc(L.directions) + '</a>';
+        }
+        html += '</div>';
+      }
+      if (embedMapUrl) {
+        html += '<div class="mt-5 rounded-xl overflow-hidden border border-zinc-800/80 h-44"><iframe width="100%" height="100%" style="border:0" loading="lazy" allowfullscreen src="' + esc(embedMapUrl) + '"></iframe></div>';
+      }
+      html += '</div>';
+    }
+
+    mBody.innerHTML = html;
+
+    Array.prototype.forEach.call(mBody.querySelectorAll('.m-photo'), function(btn) {
+      btn.addEventListener('click', function() {
+        showViewer(gallery, parseInt(btn.dataset.i, 10) || 0);
+      });
+    });
+  }
+
+  function openModal(slug, push) {
+    if (!slug) return;
+    currentSlug = slug;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    mName.textContent = '';
+    mSector.textContent = '';
+    mBadges.innerHTML = '';
+    mLogo.innerHTML = '<div class="w-full h-full animate-pulse bg-zinc-900"></div>';
+    mBody.innerHTML = '<div class="py-14 text-center text-zinc-500 text-sm">' + esc(L.loading) + '</div>';
+
+    fetch('/api/firma/' + encodeURIComponent(slug))
+      .then(function(r) { if (!r.ok) throw new Error('fail'); return r.json(); })
+      .then(function(data) { renderCompany(data.company, data.embedMapUrl || ''); })
+      .catch(function() { mBody.innerHTML = '<div class="py-14 text-center text-zinc-500 text-sm">' + esc(L.error) + '</div>'; });
+
+    if (push !== false) {
+      var url = new URL(window.location.href);
+      url.searchParams.set('firma', slug);
+      history.pushState({ firma: slug }, '', url);
+    }
+  }
+
+  function closeModal(push) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    hideViewer();
+    if (push !== false) {
+      var url = new URL(window.location.href);
+      url.searchParams.delete('firma');
+      history.pushState({}, '', url.pathname);
+    }
+  }
+
+  cards.forEach(function(card) {
+    card.addEventListener('click', function() { openModal(card.dataset.slug); });
+  });
+
+  modal.querySelectorAll('[data-close]').forEach(function(el) {
+    el.addEventListener('click', function() { closeModal(); });
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      if (!viewer.classList.contains('hidden')) { hideViewer(); return; }
+      if (!modal.classList.contains('hidden')) closeModal();
+    } else if (!viewer.classList.contains('hidden')) {
+      if (e.key === 'ArrowLeft') { viewerIdx = (viewerIdx - 1 + viewerImgs.length) % viewerImgs.length; updateViewer(); }
+      if (e.key === 'ArrowRight') { viewerIdx = (viewerIdx + 1) % viewerImgs.length; updateViewer(); }
+    }
+  });
+
+  window.addEventListener('popstate', function() {
+    var slug = new URL(window.location.href).searchParams.get('firma');
+    if (slug) openModal(slug, false);
+    else closeModal(false);
+  });
+
+  var initial = new URL(window.location.href).searchParams.get('firma');
+  if (initial) openModal(initial, false);
 })();
 </script>
 

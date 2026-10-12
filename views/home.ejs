@@ -150,22 +150,19 @@
   </div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <% companies.forEach(c => { %>
-    <a href="/rehber/<%= c.slug || c.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
-      <% if (c.logo_url) { %><div class="card-image" style="background-image:url('<%= img(c.logo_url) %>')"></div><% } else { %><div class="card-image" style="background-image:url('/img/fallback.webp')"></div><% } %>
-      <div class="p-4">
-        <span class="inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-2.5 py-0.5 text-xs font-medium text-pink-400"><%= c.category || t('company') %></span>
-        <h3 class="mt-2 mb-1 text-lg font-bold tracking-tight text-white"><%= c.name %></h3>
-        <p class="text-sm leading-relaxed text-zinc-400 line-clamp-2"><%= String(c.description || '').replace(/<[^>]*>/g, ' ') || t('firmDetailInfo') %></p>
-        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
-          <% if (c.address) { %>
-          <span class="text-zinc-500 line-clamp-1" title="<%= c.address %>">📍 <%= c.address %></span>
-          <% } else if (c.sector) { %>
-          <span class="text-zinc-500 line-clamp-1">🏢 <%= c.sector %></span>
-          <% } else { %>
-          <span class="text-zinc-500">🏢 <%= t('company') %></span>
-          <% } %>
-          <span class="shrink-0 font-medium text-zinc-400 transition-all group-hover:text-emerald-400 group-hover:drop-shadow-[0_0_6px_rgba(16,185,129,0.55)]"><%= t('viewDetails') %></span>
-        </div>
+    <a href="/rehber?firma=<%= c.slug || c.id %>" class="card place-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all">
+      <div class="h-52 flex items-center justify-center bg-gradient-to-br from-zinc-950 to-zinc-900 relative overflow-hidden">
+        <% if (c.logo_url) { %>
+          <img src="<%= img(c.logo_url) %>" alt="<%= c.name %>" class="max-w-[85%] max-h-[80%] object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg">
+        <% } else { %>
+          <span class="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🏢</span>
+        <% } %>
+      </div>
+      <div class="p-4 text-center">
+        <h3 class="text-base font-bold tracking-tight text-white group-hover:text-emerald-400 transition-colors line-clamp-2"><%= c.name %></h3>
+        <% if (c.sector) { %>
+          <p class="text-zinc-500 text-xs mt-1"><%= c.sector %></p>
+        <% } %>
       </div>
     </a>
     <% }) %>
