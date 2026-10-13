@@ -27,6 +27,7 @@
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-zinc-800 text-gray-400 text-left">
+          <th class="p-4 font-medium text-center whitespace-nowrap">Sıra</th>
           <th class="p-4 font-medium whitespace-nowrap">Görsel</th>
           <th class="p-4 font-medium">Başlık &amp; Rozet</th>
           <th class="p-4 font-medium whitespace-nowrap">Kategori</th>
@@ -37,7 +38,7 @@
         </tr>
       </thead>
       <tbody>
-        <% news.forEach(item => {
+        <% news.forEach((item, idx) => {
           const now = new Date().toISOString();
           const isExpired = item.expires_at && item.expires_at.trim() && item.expires_at <= now;
           let statusLabel, statusClass;
@@ -53,6 +54,21 @@
           }
         %>
         <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+          <td class="p-4 text-center whitespace-nowrap">
+            <span class="inline-block px-2 py-1 rounded-lg bg-zinc-800 text-zinc-300 text-xs font-semibold mr-1"><%= idx + 1 %></span>
+            <form method="POST" action="/admin/sirala" style="display:inline">
+              <input type="hidden" name="tablo" value="news">
+              <input type="hidden" name="id" value="<%= item.id %>">
+              <input type="hidden" name="yon" value="yukari">
+              <button type="submit" <%= idx === 0 ? 'disabled' : '' %> class="inline-flex items-center justify-center w-6 h-6 align-middle bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 rounded transition-all text-[10px] ml-0.5" title="Yukarı Taşı">▲</button>
+            </form>
+            <form method="POST" action="/admin/sirala" style="display:inline">
+              <input type="hidden" name="tablo" value="news">
+              <input type="hidden" name="id" value="<%= item.id %>">
+              <input type="hidden" name="yon" value="asagi">
+              <button type="submit" <%= idx === news.length - 1 ? 'disabled' : '' %> class="inline-flex items-center justify-center w-6 h-6 align-middle bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 rounded transition-all text-[10px]" title="Aşağı Taşı">▼</button>
+            </form>
+          </td>
           <td class="p-4">
             <% if (item.main_image_url) { %>
               <img src="<%= item.main_image_url %>" alt="" class="w-12 h-12 rounded-lg object-cover border border-zinc-800" />
@@ -95,7 +111,7 @@
         </tr>
         <% }) %>
         <% if (news.length === 0) { %>
-        <tr><td colspan="7" class="p-12 text-center text-gray-500">Henüz haber eklenmemiş.</td></tr>
+        <tr><td colspan="8" class="p-12 text-center text-gray-500">Henüz haber eklenmemiş.</td></tr>
         <% } %>
       </tbody>
     </table>

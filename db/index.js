@@ -780,6 +780,7 @@ function createTables() {
       gallery_images TEXT DEFAULT '[]',
       is_headline INTEGER DEFAULT 1,
       headline_order INTEGER DEFAULT 999,
+      sort_order INTEGER DEFAULT 999,
       status TEXT DEFAULT 'active',
       expires_at TEXT DEFAULT NULL,
       views_count INTEGER DEFAULT 0,
@@ -799,6 +800,7 @@ function createTables() {
     if (!cols.includes('gallery_images')) db.run("ALTER TABLE news ADD COLUMN gallery_images TEXT DEFAULT '[]'");
     if (!cols.includes('is_headline')) db.run("ALTER TABLE news ADD COLUMN is_headline INTEGER DEFAULT 1");
     if (!cols.includes('headline_order')) db.run("ALTER TABLE news ADD COLUMN headline_order INTEGER DEFAULT 999");
+    if (!cols.includes('sort_order')) db.run("ALTER TABLE news ADD COLUMN sort_order INTEGER DEFAULT 999");
     if (!cols.includes('status')) db.run("ALTER TABLE news ADD COLUMN status TEXT DEFAULT 'active'");
     if (!cols.includes('expires_at')) db.run("ALTER TABLE news ADD COLUMN expires_at TEXT");
     if (!cols.includes('views_count')) db.run("ALTER TABLE news ADD COLUMN views_count INTEGER DEFAULT 0");
@@ -816,6 +818,7 @@ function createTables() {
       status TEXT DEFAULT 'active',
       user_name TEXT DEFAULT '',
       user_email TEXT DEFAULT '',
+      sort_order INTEGER DEFAULT 999,
       views_count INTEGER DEFAULT 0,
       views_reset_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -828,6 +831,7 @@ function createTables() {
     if (!cols.includes('status')) db.run("ALTER TABLE announcements ADD COLUMN status TEXT DEFAULT 'active'");
     if (!cols.includes('user_name')) db.run("ALTER TABLE announcements ADD COLUMN user_name TEXT DEFAULT ''");
     if (!cols.includes('user_email')) db.run("ALTER TABLE announcements ADD COLUMN user_email TEXT DEFAULT ''");
+    if (!cols.includes('sort_order')) db.run("ALTER TABLE announcements ADD COLUMN sort_order INTEGER DEFAULT 999");
     if (!cols.includes('views_count')) db.run("ALTER TABLE announcements ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('views_reset_at')) db.run("ALTER TABLE announcements ADD COLUMN views_reset_at TEXT DEFAULT NULL");
   }

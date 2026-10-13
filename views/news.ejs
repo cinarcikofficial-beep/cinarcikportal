@@ -196,7 +196,7 @@
             <span class="text-red-500">🔥</span> <%= t('mostRead') %>
           </h3>
           <div class="space-y-3">
-            <% regularNews.slice(0, 5).forEach((n, i) => { %>
+            <% mostRead.forEach((n, i) => { %>
               <div class="flex items-start gap-3 group">
                 <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-red-600/10 text-red-600 font-black text-sm flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all">
                   <%= i + 1 %>

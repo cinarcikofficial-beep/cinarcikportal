@@ -48,6 +48,18 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0 flex-wrap">
+          <form method="POST" action="/admin/sirala" style="display:inline">
+            <input type="hidden" name="tablo" value="sightseeing">
+            <input type="hidden" name="id" value="<%= s.id %>">
+            <input type="hidden" name="yon" value="yukari">
+            <button type="submit" class="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition" title="Yukarı Taşı">▲</button>
+          </form>
+          <form method="POST" action="/admin/sirala" style="display:inline">
+            <input type="hidden" name="tablo" value="sightseeing">
+            <input type="hidden" name="id" value="<%= s.id %>">
+            <input type="hidden" name="yon" value="asagi">
+            <button type="submit" class="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition" title="Aşağı Taşı">▼</button>
+          </form>
           <a href="/admin/gezilecek-yer-ekle?edit=<%= s.id %>"
             class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✏️ Düzenle</a>
           <form method="POST" action="/admin/gezilecek-yerler/<%= s.id %>/goruntulenme-sifirla" style="display:inline"><button type="submit"

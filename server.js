@@ -308,7 +308,7 @@ app.get('/sitemap.xml', (req, res) => {
 
 app.get('/', async (req, res) => {
   const { all } = require('./db');
-  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC LIMIT 4");
+  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 4");
   // Ana sayfa manşeti: /haberler ile birebir aynı kaynak ve sıralama,
   // böylece admin'de yapılan her değişiklik ana sayfada da aynen görünür.
   const newsWhere = `status='active'
@@ -316,7 +316,7 @@ app.get('/', async (req, res) => {
   const headlines = all(`SELECT * FROM news WHERE ${newsWhere} AND (is_headline=1 OR is_headline IS NULL)
       ORDER BY headline_order ASC, created_at DESC LIMIT 10`);
   const regularNews = all(`SELECT * FROM news WHERE ${newsWhere}
-      ORDER BY headline_order ASC, created_at DESC LIMIT 20`);
+      ORDER BY sort_order ASC, created_at DESC LIMIT 20`);
   const places = all(`
     SELECT p.*, ROUND(AVG(r.rating), 1) AS avg_rating, COUNT(r.id) AS review_count
     FROM places p
@@ -365,12 +365,13 @@ app.get('/', async (req, res) => {
 app.get('/haberler', async (req, res) => {
   const { all } = require('./db');
   const headlines = all("SELECT * FROM news WHERE status='active' AND is_headline=1 AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY headline_order ASC, created_at DESC LIMIT 10");
-  const regularNews = all("SELECT * FROM news WHERE status='active' AND (is_headline=0 OR is_headline IS NULL) AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY created_at DESC");
+  const regularNews = all("SELECT * FROM news WHERE status='active' AND (is_headline=0 OR is_headline IS NULL) AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY sort_order ASC, created_at DESC");
   await Promise.all([
     txArray(headlines, ['title', 'summary'], req.lang),
     txArray(regularNews, ['title', 'summary'], req.lang)
   ]);
-  res.render('news', { headlines, regularNews });
+  const mostRead = regularNews.slice().sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0)).slice(0, 5);
+  res.render('news', { headlines, regularNews, mostRead });
 });
 
 app.get('/haber/:slug', async (req, res) => {
@@ -451,7 +452,7 @@ app.get('/api/news/:slug', (req, res) => {
 
 app.get('/duyurular', async (req, res) => {
   const { all } = require('./db');
-  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY created_at DESC");
+  const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC");
   await txArray(announcements, ['title', 'content'], req.lang);
   res.render('announcements', { announcements, submitted: req.query.gonderildi === '1' });
 });
@@ -972,9 +973,9 @@ app.get('/admin/logout', (req, res) => {
 
 app.get('/admin', isAuthenticated, async (req, res) => {
   const { all, get } = require('./db');
-  const announcements = all('SELECT * FROM announcements ORDER BY CASE WHEN status = \'pending\' THEN 0 ELSE 1 END, created_at DESC');
-  const places = all('SELECT * FROM places ORDER BY created_at DESC');
-  const news = all("SELECT * FROM news ORDER BY headline_order ASC, created_at DESC");
+  const announcements = all("SELECT * FROM announcements ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, sort_order ASC, created_at DESC");
+  const places = all('SELECT * FROM places ORDER BY sort_order ASC, is_featured DESC, created_at DESC');
+  const news = all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC");
   const newsCount = get('SELECT COUNT(*) as cnt FROM news');
   const companies = all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC');
   const pendingComments = get("SELECT COUNT(*) as cnt FROM comments WHERE status = 'pending'");
@@ -994,8 +995,62 @@ app.get('/admin', isAuthenticated, async (req, res) => {
 
 app.get('/admin/haberler', isAuthenticated, (req, res) => {
   const { all } = require('./db');
-  const news = all('SELECT * FROM news ORDER BY headline_order ASC, created_at DESC');
+  const news = all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC');
   res.render('admin/news-list', { news });
+});
+
+// ---- Admin sıralama (▲/▼ taşıma) ----
+// Her liste satırındaki yönlendirme butonları bu rotaya POST eder.
+// Taşıma sonrası listedeki tüm kayıtlar 1..n olarak yeniden numaralanır;
+// böylece eski kayıtlardaki eşit sort_order değerleri de çözülür.
+const REORDERABLE = {
+  news: {
+    orderBy: 'sort_order ASC, created_at DESC',
+    back: '/admin/haberler'
+  },
+  announcements: {
+    orderBy: "CASE WHEN status = 'pending' THEN 0 ELSE 1 END, sort_order ASC, created_at DESC",
+    back: '/admin?tab=announcements'
+  },
+  places: {
+    orderBy: 'sort_order ASC, is_featured DESC, created_at DESC',
+    back: '/admin?tab=places'
+  },
+  companies: {
+    orderBy: 'sort_order ASC, created_at DESC',
+    back: '/admin?tab=companies'
+  },
+  sightseeing: {
+    orderBy: 'sort_order ASC, created_at DESC',
+    back: '/admin/gezilecek-yerler'
+  }
+};
+
+app.post('/admin/sirala', isAuthenticated, (req, res) => {
+  const { all, run } = require('./db');
+  const { tablo, id, yon } = req.body;
+  const conf = REORDERABLE[tablo];
+  let back = (conf && conf.back) || '/admin';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  if (!conf || (yon !== 'yukari' && yon !== 'asagi')) return res.redirect(back);
+  const rowId = parseInt(id, 10);
+  if (!rowId) return res.redirect(back);
+  const items = all(`SELECT id FROM ${tablo} ORDER BY ${conf.orderBy}`);
+  const idx = items.findIndex(i => i.id === rowId);
+  if (idx < 0) return res.redirect(back);
+  const swap = yon === 'yukari' ? idx - 1 : idx + 1;
+  if (swap < 0 || swap >= items.length) return res.redirect(back);
+  const ids = items.map(i => i.id);
+  const tmp = ids[idx];
+  ids[idx] = ids[swap];
+  ids[swap] = tmp;
+  ids.forEach((newId, pos) => {
+    run(`UPDATE ${tablo} SET sort_order = ? WHERE id = ?`, [pos + 1, newId]);
+  });
+  res.redirect(back);
 });
 
 app.post('/admin/haberler/toggle/:id', isAuthenticated, (req, res) => {

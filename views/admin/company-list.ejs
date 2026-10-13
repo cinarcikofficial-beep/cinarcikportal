@@ -37,6 +37,7 @@
         <table class="w-full text-left text-sm text-zinc-300">
           <thead>
             <tr class="bg-zinc-900/80 text-zinc-400 font-semibold uppercase text-xs border-b border-zinc-800">
+              <th class="p-4 text-center whitespace-nowrap">Sıra</th>
               <th class="p-4">Logo</th>
               <th class="p-4">Firma Adı</th>
               <th class="p-4">Kategori</th>
@@ -47,8 +48,23 @@
             </tr>
           </thead>
           <tbody id="company-table-body">
-            <% companies.forEach(item => { %>
+            <% companies.forEach((item, idx) => { %>
             <tr class="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors" data-name="<%= (item.name || '').toLowerCase() %>">
+              <td class="p-4 text-center whitespace-nowrap">
+                <span class="inline-block px-2 py-1 rounded-lg bg-zinc-800 text-zinc-300 text-xs font-semibold mr-1"><%= idx + 1 %></span>
+                <form method="POST" action="/admin/sirala" style="display:inline">
+                  <input type="hidden" name="tablo" value="companies">
+                  <input type="hidden" name="id" value="<%= item.id %>">
+                  <input type="hidden" name="yon" value="yukari">
+                  <button type="submit" <%= idx === 0 ? 'disabled' : '' %> class="inline-flex items-center justify-center w-6 h-6 align-middle bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 rounded transition-all text-[10px] ml-0.5" title="Yukarı Taşı">▲</button>
+                </form>
+                <form method="POST" action="/admin/sirala" style="display:inline">
+                  <input type="hidden" name="tablo" value="companies">
+                  <input type="hidden" name="id" value="<%= item.id %>">
+                  <input type="hidden" name="yon" value="asagi">
+                  <button type="submit" <%= idx === companies.length - 1 ? 'disabled' : '' %> class="inline-flex items-center justify-center w-6 h-6 align-middle bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400 rounded transition-all text-[10px]" title="Aşağı Taşı">▼</button>
+                </form>
+              </td>
               <td class="p-4">
                 <% if (item.logo_url) { %>
                   <img src="<%= item.logo_url %>" alt="" class="w-12 h-12 rounded-lg object-cover border border-zinc-800">
@@ -86,7 +102,7 @@
             </tr>
             <% }) %>
             <% if (companies.length === 0) { %>
-              <tr><td colspan="7" class="p-12 text-center text-zinc-500">Henüz firma eklenmemiş.</td></tr>
+              <tr><td colspan="8" class="p-12 text-center text-zinc-500">Henüz firma eklenmemiş.</td></tr>
             <% } %>
           </tbody>
         </table>
