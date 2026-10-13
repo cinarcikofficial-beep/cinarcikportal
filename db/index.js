@@ -21,7 +21,7 @@ const VOLATILE_COLS = {
   announcements: ['views_count'],
   companies: ['views_count'],
   sightseeing: ['views_count'],
-  places: ['rating', 'review_count', 'google_rating', 'google_review_count']
+  places: ['rating', 'review_count', 'google_rating', 'google_review_count', 'views_count']
 };
 
 // Sayaçların "sıfırlama anı": <sayaç>_reset_at kolonu. Birleşimde bu işaretçinin
@@ -35,7 +35,8 @@ const VOLATILE_RESET_COL = {
   news: { views_count: 'views_reset_at' },
   announcements: { views_count: 'views_reset_at' },
   companies: { views_count: 'views_reset_at' },
-  sightseeing: { views_count: 'views_reset_at' }
+  sightseeing: { views_count: 'views_reset_at' },
+  places: { views_count: 'views_reset_at' }
 };
 
 // Satırın "kimliği": iki kopyada kimlik farklıysa bu, aynı satırın iki sürümü
@@ -921,6 +922,8 @@ function createTables() {
         display_until TEXT DEFAULT NULL,
         sort_order INTEGER DEFAULT 0,
         google_reviews_url TEXT DEFAULT '',
+        views_count INTEGER DEFAULT 0,
+        views_reset_at TEXT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -1028,6 +1031,8 @@ function createTables() {
     if (!cols.includes('display_until')) db.run("ALTER TABLE places ADD COLUMN display_until TEXT DEFAULT NULL");
     if (!cols.includes('sort_order')) db.run("ALTER TABLE places ADD COLUMN sort_order INTEGER DEFAULT 0");
     if (!cols.includes('google_reviews_url')) db.run("ALTER TABLE places ADD COLUMN google_reviews_url TEXT DEFAULT ''");
+    if (!cols.includes('views_count')) db.run("ALTER TABLE places ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('views_reset_at')) db.run("ALTER TABLE places ADD COLUMN views_reset_at TEXT DEFAULT NULL");
   }
 
   const companyCols = db.exec("PRAGMA table_info(companies)");

@@ -496,7 +496,7 @@ app.get('/mekanlar', async (req, res) => {
 
 app.get('/mekan/:id', async (req, res) => {
   try {
-    const { get, all } = require('./db');
+    const { get, all, run } = require('./db');
     const placeId = req.params.id;
     const place = get('SELECT * FROM places WHERE id = ?', [placeId]);
     if (!place) {
@@ -507,6 +507,7 @@ app.get('/mekan/:id', async (req, res) => {
         pageTitle: 'Mekan Bulunamadı'
       });
     }
+    run("UPDATE places SET views_count = views_count + 1 WHERE id = ?", [place.id]);
     const parseJSON = (data) => {
       if (!data) return [];
       if (typeof data === 'object') return data;
@@ -1557,6 +1558,36 @@ app.post('/admin/mekan-sil/:id', isAuthenticated, (req, res) => {
   if (item) deleteUploadedMedia([item.main_image_url].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM places WHERE id = ?', [req.params.id]);
   res.redirect('/admin');
+});
+
+// Mekan görüntülenme sıfırlama (toplu + satır bazlı)
+app.post('/admin/mekanlar/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM places').t || 0;
+  run("UPDATE places SET views_count = 0, views_reset_at = datetime('now')");
+  console.log(`[admin] Mekan görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  let back = '/admin?tab=places';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
+});
+
+app.post('/admin/mekanlar/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM places WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run("UPDATE places SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
+    console.log(`[admin] Mekan görüntülenmesi sıfırlandı: "${item.name}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin?tab=places';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  res.redirect(back);
 });
 
 // ==================== FİMA REHBERİ ====================

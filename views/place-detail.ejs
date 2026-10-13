@@ -138,6 +138,11 @@
 
       <!-- Right: Contact Info -->
       <div class="space-y-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <h4 class="text-zinc-400 text-xs uppercase mb-2"><%= t('views') %></h4>
+          <p class="text-white font-medium">👁️ <%= Number(place.views_count) || 0 %></p>
+        </div>
+
         <% if (place.working_hours) { %>
           <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <h4 class="text-zinc-400 text-xs uppercase mb-2"><%= t('workingHours') %></h4>
