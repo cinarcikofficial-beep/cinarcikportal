@@ -370,7 +370,7 @@ app.get('/haberler', async (req, res) => {
     txArray(headlines, ['title', 'summary'], req.lang),
     txArray(regularNews, ['title', 'summary'], req.lang)
   ]);
-  const mostRead = regularNews.slice().sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0)).slice(0, 5);
+  const mostRead = headlines.concat(regularNews).sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0)).slice(0, 5);
   res.render('news', { headlines, regularNews, mostRead });
 });
 
