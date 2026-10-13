@@ -170,31 +170,42 @@
   </div>
 
   <main class="main-content"><%- typeof body !== 'undefined' ? body : '' %></main>
-  <footer class="bg-zinc-800 text-gray-300 py-8" role="contentinfo">
+  <footer class="bg-zinc-900 border-t border-zinc-800 text-gray-300 pt-10 pb-6" role="contentinfo">
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
-      <div class="space-y-2">
-        <div>
-          <h3>Marmara'nın İncisi</h3>
-          <p><%= t('footerTag') %></p>
-        </div>
+      <div class="space-y-3">
+        <h3 class="text-white font-bold text-lg flex items-center gap-2">
+          <span class="w-1.5 h-5 bg-emerald-500 rounded-full inline-block"></span>
+          Marmara'nın İncisi
+        </h3>
+        <p class="text-gray-400 text-sm leading-relaxed"><%= t('footerTag') %></p>
       </div>
-      <div class="space-y-2">
-        <h4><%= t('quickLinks') %></h4>
-        <a href="<%= lp %>/haberler" class="text-gray-400 hover:text-emerald-400 transition"><%= t('news') %></a>
-        <a href="<%= lp %>/duyurular" class="text-gray-400 hover:text-emerald-400 transition"><%= t('annList') %></a>
-        <a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition"><%= t('places') %></a>
-        <a href="<%= lp %>/gezilecek-yerler" class="text-gray-400 hover:text-emerald-400 transition"><%= t('sightseeing') %></a>
-        <a href="<%= lp %>/rehber" class="text-gray-400 hover:text-emerald-400 transition"><%= t('guide') %></a>
-        <a href="<%= lp %>/iletisim" class="text-gray-400 hover:text-emerald-400 transition"><%= t('contact') %></a>
-        <a href="<%= lp %>/cinarcik-hakkinda" class="text-gray-400 hover:text-emerald-400 transition"><%= t('aboutCinarcik') %></a>
+      <div>
+        <h4 class="text-white font-semibold text-xs uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-emerald-500/70 rounded-full inline-block"></span>
+          <%= t('quickLinks') %>
+        </h4>
+        <ul class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <li><a href="<%= lp %>/haberler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('news') %></a></li>
+          <li><a href="<%= lp %>/duyurular" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('annList') %></a></li>
+          <li><a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('places') %></a></li>
+          <li><a href="<%= lp %>/gezilecek-yerler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sightseeing') %></a></li>
+          <li><a href="<%= lp %>/rehber" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('guide') %></a></li>
+          <li><a href="<%= lp %>/iletisim" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('contact') %></a></li>
+          <li><a href="<%= lp %>/cinarcik-hakkinda" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('aboutCinarcik') %></a></li>
+        </ul>
       </div>
-      <div class="space-y-2">
-        <h4><%= t('contact') %></h4>
-        <p>☘️ Çınarcık, Yalova</p>
-        <p>🌊 <%= t('marmaraShore') %></p>
+      <div>
+        <h4 class="text-white font-semibold text-xs uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-emerald-500/70 rounded-full inline-block"></span>
+          <%= t('contact') %>
+        </h4>
+        <ul class="space-y-2 text-sm text-gray-400">
+          <li class="flex items-center gap-2">☘️ Çınarcık, Yalova</li>
+          <li class="flex items-center gap-2">🌊 <%= t('marmaraShore') %></li>
+        </ul>
       </div>
     </div>
-    <div class="mt-8 text-center text-sm text-gray-500">
+    <div class="max-w-7xl mx-auto mt-8 pt-5 border-t border-zinc-800 px-4 text-center text-xs text-gray-500">
       <p>&copy; <%= new Date().getFullYear() %> Marmara'nın İncisi. <%= t('rightsReserved') %></p>
     </div>
   </footer>
