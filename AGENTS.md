@@ -18,7 +18,9 @@
 - `sightseeing`/`announcements` tablolarında `updated_at` YOK — SQL'lerinde kullanma.
 
 ## Tamamlananlar (özet — detay git log'da)
-- **Görüntülenme sayaçları (haber/duyuru/firma/gezilecek yer):** `views_count` + `views_reset_at` epoch'lu merge (`VOLATILE_COLS`/`RESET_EPOCH_COLS`/`VOLATILE_RESET_COL`); kök neden: MAX birleşimi sıfırlamayı diriltiyordu. Admin'de 👁 sütun + satır/toplu 🔄 (`/admin/<plural>[/ :id]/goruntulenme-sifirla`). Public detaylarda 👁 gösterim. 4 tablo × 4 senaryo merge testi geçti. **Push edildi (10cc578), canlı test bekliyor.**
+- **Orphan görsel süpürmesi (14 Eki):** DB referansları (lokal + Turso birleşimi, 49 adet) baz alınarak lokalde 47 + R2'de 55 dosya (21.3 MB) silindi; 0 başarısız, 0 kırık referans (404 yok). Yordam: `refs-union.json` üret → `basename` farkı ile sil → kalan her referans lokalde VEYA R2'de var mı doğrula. Dün silinen 3 haberin (id 1,2,3) görselleri de bunlar arasındaydı. Not: R2'de mojibake isimli çiftler vardı (`Ekran gÃ¶rÃ¼ntÃ¼sÃ¼...`), referanslı ASCII çiftleri korundu.
+- **Dün (13 Eki) eklenenler (AGENTS.md'ye geç yazıldı):** mekan görüntülenme sayacı (admin sutun + sifirlama, detayda gosterim) f042e13; admin listelere sirala (tasi) butonlari + en cok okunanlar goruntulenmeye gore dfa0ffb; altbilgi yeniden tasarim (baglanti grid, emerald basliklar, ayri telif bandi) d4eac9e; en cok okunanlar manset dahil tum aktif haberlerden 844059a; Haberler sag kolona "Yazar Adayi" blogu (iletisime yonlendirir) 45839f3 + siluet guncelleme b4d5dfa.
+- **Görüntülenme sayaçları (haber/duyuru/firma/gezilecek yer):** `views_count` + `views_reset_at` epoch'lu merge (`VOLATILE_COLS`/`RESET_EPOCH_COLS`/`VOLATILE_RESET_COL`); kök neden: MAX birleşimi sıfırlamayı diriltiyordu. Admin'de 👁 sütun + satır/toplu 🔄 (`/admin/<plural>[/ :id]/goruntulenme-sifirla`). Public detaylarda 👁 gösterim. 4 tablo × 4 senaryo merge testi geçti. **Canlıda doğrulandı (sayaçlar çalışıyor).**
 - **Duyuru sayfası UI:** görseller sabit `h-64`; kartlar `items-stretch` + başlık `line-clamp-2 min-h-[3.5rem]` ile eşit hizalı; alttaki tekrar subtitle kaldırıldı; İlan Ver butonu eski sade haline döndü + `ilan-flash` (1sn glow). (b6139ec, e60839d)
 - **Ticker hava durumu:** emerald gradient pill + `weatherShine` süpürme + `weatherBob` ikon nabzı (`style.css` `.ticker-weather`). (1c746d9)
 - **Hero slider CTA akışı:** her slaytta `data-cta` JSON → `hero-ctas` JS ile yeniden basılıyor (Haberler + sırayla Sefer/Nöbetçi Eczane/Mekanlar/Gezilecek Yerler/Firma Rehberi). (b24a61a)
@@ -28,7 +30,8 @@
 - Firma rehberi detay/map_embed, iletişim formu bildirimi, kullanıcı ilan akışı — önceki oturumlar.
 
 ## Açık kalanlar / test bekleyen
-1. **Canlı doğrulama (push edildi, redeploy sonrası):** görüntülenme sayaçları (artır + sıfırla + 0'da kal), ilan-ver captcha/etkinlik/mail, silme sonrası R2 loglarında `[r2] silindi`, UI (duyuru eşit kart + flash buton, ticker pill, hero CTA akışı, haberler grid, mekanlar İncele). CSS cache → hard refresh.
+1. **Canlı doğrulama (push edildi, redeploy sonrası):** görüntülenme sayaçları ✅ doğrulandı; ilan-ver captcha/etkinlik/mail, silme sonrası R2 loglarında `[r2] silindi` ✅ (14 Eki orphan süpürmesinde R2 DELETE 55/55 başarılı), UI (duyuru eşit kart + flash buton, ticker pill, hero CTA akışı, haberler grid, mekanlar İncele). CSS cache → hard refresh.
 2. **Gmail alias (Aktif iş 1):** render.yaml `EMAIL_FROM` + `EMAIL_API_KEY` push edildi; iletişim formu testi + gönderen spam'e düşerse Brevo DNS Verified kontrolü.
-3. **Opsiyonel:** R2 bucket'ında kullanılmayan orphan dosyaları süpüren script; `content_translations` hash-cache süpürmesi.
+3. ~~Opsiyonel: R2 bucket'ında kullanılmayan orphan dosyaları süpüren script~~ ✅ 14 Eki'de elle yapıldı (script commit edilmedi, gerekirse yeniden yazılır); `content_translations` hash-cache süpürmesi hâlâ opsiyonel.
 4. Render free plan SMTP portları engelli → HTTP API öncelikli. Lokal eski kodlu instance Turso'ya eski veri basabilir — lokal sunucu yeni koddan restart edilmeli.
+5. **db/cinarcik.db commit edilmedi** (working tree'de değişiklik var: silme tombstone'ları + sayaçlar); bir sonraki commit'te dahil edilecek.
