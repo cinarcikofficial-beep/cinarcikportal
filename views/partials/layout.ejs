@@ -7,6 +7,16 @@
   <link rel="icon" type="image/png" href="/img/logo-circle.png">
   <link rel="stylesheet" href="/css/tailwind.css">
   <meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDesc') %>">
+  <meta name="google-site-verification" content="CzjrSopLFPONrxTH1m5RDQ7bft0jSV1u52Du475UUUM">
+
+  <!-- Google tag (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-HPNR24RP48"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-HPNR24RP48');
+  </script>
 
   <!-- Canonical + Hreflang -->
   <link rel="canonical" href="<%= siteUrl %><%= lp %><%= path === '/' ? '/' : path %>">
@@ -82,8 +92,6 @@
   <% if (typeof pageSchema !== 'undefined' && pageSchema) { %>
   <script type="application/ld+json"><%- JSON.stringify(pageSchema) %></script>
   <% } %>
-</head>
-</head>
 </head>
 <body class="text-white" style="min-height:100vh;display:flex;flex-direction:column;">
 
