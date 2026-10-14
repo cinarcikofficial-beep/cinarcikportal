@@ -119,6 +119,8 @@ app.use((req, res, next) => {
   res.locals.lp = req.lang === 'tr' ? '' : '/' + req.lang;
   res.locals.dir = 'ltr';
   res.locals.siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  // Admin sayfaları ve hata sayfaları Google'da görünmesin.
+  res.locals.robotsMeta = req.path.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow';
   res.locals.t = (key) => i18n.t(req.lang, key);
   res.locals.langs = i18n.LANGS;
   // CSS url() içinde boşluk ve Türkçe karakter geçersizdir; görsel hiç yüklenmez.
@@ -267,7 +269,7 @@ app.get('/sitemap.xml', (req, res) => {
   };
 
   // Statik sayfalar
-  ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda']
+  ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda', '/ilan-ver']
     .forEach(p => addEntry(p));
 
   // Haberler (son 500)
@@ -275,6 +277,12 @@ app.get('/sitemap.xml', (req, res) => {
     all("SELECT slug, id, updated_at, created_at FROM news WHERE status='active' ORDER BY created_at DESC LIMIT 500")
       .forEach(n => addEntry('/haber/' + (n.slug || n.id), (n.updated_at || n.created_at || '').slice(0, 10)));
   } catch (e) { console.error('sitemap news:', e.message); }
+
+  // Duyurular (announcements tablosunda updated_at YOK)
+  try {
+    all("SELECT id, created_at FROM announcements WHERE status='active' ORDER BY created_at DESC LIMIT 500")
+      .forEach(a => addEntry('/duyuru/' + a.id, (a.created_at || '').slice(0, 10)));
+  } catch (e) { console.error('sitemap announcements:', e.message); }
 
   // Mekanlar
   try {
@@ -463,7 +471,44 @@ app.get('/duyuru/:id', async (req, res) => {
   if (!announcement || !announcement.id) return res.redirect('/duyurular');
   run("UPDATE announcements SET views_count = views_count + 1 WHERE id = ?", [announcement.id]);
   await txFields(announcement, ['title', 'content'], req.lang);
-  res.render('announcement-detail', { announcement, pageTitle: announcement.title });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const shortText = stripHtml(announcement.content).slice(0, 160);
+  res.render('announcement-detail', {
+    announcement,
+    pageTitle: announcement.title,
+    metaDescription: shortText || i18n.t(req.lang, 'metaDescShort'),
+    ogType: announcement.category === 'etkinlik' ? 'website' : 'article',
+    ogImage: announcement.image || '',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": announcement.category === 'etkinlik' ? 'Event' : 'Article',
+          "headline": announcement.title,
+          "description": shortText || undefined,
+          "image": announcement.image ? [announcement.image] : undefined,
+          "datePublished": announcement.created_at,
+          "author": { "@type": "Organization", "name": "Marmara'nın İncisi", "url": siteUrl + '/' },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Marmara'nın İncisi",
+            "logo": { "@type": "ImageObject", "url": siteUrl + '/img/logo-circle.png' }
+          },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": siteUrl + lp + '/duyuru/' + announcement.id },
+          "inLanguage": req.lang
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'announcements'), "item": siteUrl + lp + '/duyurular' },
+            { "@type": "ListItem", "position": 3, "name": announcement.title }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/mekanlar', async (req, res) => {
@@ -1710,7 +1755,39 @@ app.get('/rehber/:slug', async (req, res) => {
     if (!embedMapUrl) embedMapUrl = mapInfo.embedUrl;
     if (!directionsUrl) directionsUrl = mapInfo.directionsUrl;
   }
-  res.render('rehber-detail', { company, embedMapUrl, directionsUrl, pageTitle: company.name });
+  const shortDesc = stripHtml(company.description || '').slice(0, 160);
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('rehber-detail', {
+    company, embedMapUrl, directionsUrl,
+    pageTitle: company.name + ' - ' + i18n.t(req.lang, 'guide'),
+    metaDescription: shortDesc || (company.name + ' — ' + company.category + ' | ' + i18n.t(req.lang, 'metaDescShort')),
+    ogImage: company.logo_url || '',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "LocalBusiness",
+          "name": company.name,
+          "description": shortDesc || undefined,
+          "image": company.logo_url || undefined,
+          "address": company.address ? { "@type": "PostalAddress", "streetAddress": company.address, "addressLocality": "Çınarcık", "addressRegion": "Yalova", "addressCountry": "TR" } : undefined,
+          "telephone": company.phone || undefined,
+          "email": company.email || undefined,
+          "url": siteUrl + lp + '/rehber/' + (company.slug || company.id),
+          "openingHours": company.working_hours || undefined
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'guide'), "item": siteUrl + lp + '/rehber' },
+            { "@type": "ListItem", "position": 3, "name": company.name }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 // Admin firma yönetimi
@@ -3066,11 +3143,13 @@ async function safeSyncSefer() {
 
 
 app.use((req, res) => {
+  res.locals.robotsMeta = 'noindex, nofollow';
   res.status(404).render('error', { title: 'Sayfa Bulunamadı', message: 'Aradığınız sayfa taşınmış veya kaldırılmış olabilir.', error: null });
 });
 
 app.use((err, req, res, next) => {
   console.error('[hata]', err);
+  res.locals.robotsMeta = 'noindex, nofollow';
   res.status(500).render('error', { title: 'Sunucu Hatası', message: 'Bir sorun oluştu, lütfen daha sonra tekrar deneyin.', error: null });
 });
 
