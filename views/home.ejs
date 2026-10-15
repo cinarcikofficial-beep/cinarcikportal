@@ -55,7 +55,7 @@
   .manset-nav-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 12px rgba(220,38,38,0.4); }
   .manset-nav-btn:not(.active) { background: rgba(24,24,28,0.8); color: #a1a1aa; }
   .manset-nav-btn:not(.active):hover { background: rgba(39,39,42,0.9); color: #f4f4f5; }
-  .slider-text-fade { transition: opacity 0.4s ease; }
+  .slider-text-fade { transition: opacity 0.18s ease; }
 </style>
 
 <!-- 🖼️ Çınarcık Görsel Hero -->
@@ -103,7 +103,7 @@
 </div>
 <section id="headline-slider" class="relative bg-zinc-950">
   <div id="slider-inner" class="relative w-full h-[400px] md:h-[480px] overflow-hidden rounded-2xl">
-    <div id="slider-bg" class="absolute inset-0 bg-cover bg-top transition-all duration-700" style="background-image:url('<%= img(headlines[0] && headlines[0].main_image_url ? headlines[0].main_image_url : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80") %>');"></div>
+    <div id="slider-bg" class="absolute inset-0 bg-cover bg-top transition-all duration-300" style="background-image:url('<%= img(headlines[0] && headlines[0].main_image_url ? headlines[0].main_image_url : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80") %>');"></div>
     <div id="slider-overlay" class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent z-10"></div>
     <div id="slider-content" class="absolute inset-0 z-20 flex items-end p-6 sm:p-12 pl-16 sm:pl-20 pb-20 sm:pb-24">
       <div id="slider-text" class="max-w-2xl text-white space-y-3 slider-text-fade">
@@ -336,6 +336,7 @@
   // Haberler sunucu tarafında basıldı: admin'de yapılan her değişiklik
   // ana sayfada da aynen görünür, ayrı bir API/fetch adımı yoktur.
   var headlines = <%- JSON.stringify((headlines || []).map(function(n){ return { id:n.id, slug:n.slug, title:n.title, badge_text:n.badge_text, summary:n.summary, main_image_url:n.main_image_url }; })).replace(/</g, '\\u003c') %>;
+  headlines.forEach(function(h) { if (h.main_image_url) { var im = new Image(); im.src = h.main_image_url; } });
   var current = 0;
   var autoplay = true;
   var timerId = null;
@@ -380,7 +381,7 @@
       try { src = encodeURI(src); } catch (e) {}
       el.bg.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
       el.bg.style.opacity = '1';
-    }, 200);
+    }, 80);
 
     var textEl = document.getElementById('slider-text');
     if (textEl) textEl.style.opacity = '0';
@@ -395,7 +396,7 @@
       el.summary.textContent = h.summary || '';
       el.link.href = lp + '/haber/' + (h.slug || h.id);
       if (textEl) textEl.style.opacity = '1';
-    }, 250);
+    }, 100);
 
     updateNavButtons();
   }
