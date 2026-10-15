@@ -8,8 +8,8 @@
   .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ticker-pulse { animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-  @keyframes marqueeFromRight { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-  .animate-marquee-right { display: inline-flex; white-space: nowrap; will-change: transform; animation: marqueeFromRight 20s linear infinite; gap: 3rem; }
+  @keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+  .animate-marquee-right { display: inline-flex; white-space: nowrap; will-change: transform; animation: marqueeScroll 28s linear infinite; gap: 3rem; }
   .animate-marquee-right:hover { animation-play-state: paused; }
   #manset-img { transition: opacity 0.4s ease; }
   #manset-text { transition: opacity 0.4s ease; }
