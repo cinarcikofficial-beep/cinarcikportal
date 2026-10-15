@@ -25,7 +25,7 @@ html.light .text-white { color: #0f172a; }
 html.light .text-zinc-300, html.light .text-zinc-400 { color: #475569 !important; }
 html.light .text-zinc-500 { color: #64748b !important; }
 html.light .border-zinc-800, html.light .border-zinc-700 { border-color: #e2e8f0; }
-html.light #hero .text-white, html.light #headline-slider .text-white, html.light #hero h1, html.light #hero p, html.light #slider-text .text-white, html.light #slider-text p, html.light #manset-text, html.light #manset-text * { color: #ffffff; }
+html.light #hero .text-white, html.light #headline-slider .text-white, html.light #hero h1, html.light #hero p, html.light #slider-text .text-white, html.light #slider-text p, html.light #manset-text, html.light #manset-text * { color: #ffffff !important; }
 html.light .card-image, html.light .card img, html.light .announcement-card img, html.light .news-card img, html.light #manset-img { border: 1px solid #d4d4d8; border-radius: 0.75rem; overflow: hidden; }
 html.light .place-card, html.light .news-card, html.light .card, html.light .announcement-card { background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
 html.light .card-body h3, html.light .news-card-body h3, html.light .card h3 { color: #0f172a; }
@@ -122,6 +122,22 @@ html.light .about-content p, html.light .about-content ul, html.light .about-con
 html.light .about-content strong { color: #0f172a; }
 html.light .about-content a { color: #059669; }
 html.light .from-emerald-950\/60 { background-image: linear-gradient(to right, rgba(16,185,129,0.12), rgba(255,255,255,0)) !important; }
+
+/* Manşet slider nav butonları — gündüz modunda beyaz kutuya düşen rakamlar */
+html.light .manset-nav-btn { background: rgba(255, 255, 255, 0.92) !important; color: #334155 !important; border: 1px solid #cbd5e1; }
+html.light .manset-nav-btn.active, html.light .manset-nav-btn.bg-red-600 { background: #dc2626 !important; color: #ffffff !important; border-color: #dc2626; }
+
+/* Sayfa hero bandı (firma rehberi vb.) — gündüz modunda açık zemin */
+html.light .page-hero { background: linear-gradient(to bottom right, #ffffff, #f1f5f9) !important; border-color: #e2e8f0; }
+
+/* Kategori pill'leri (firma rehberi / gezilecek yerler) */
+html.light .cat-pill { color: #475569; border-color: #cbd5e1; }
+html.light .cat-pill:hover { background: #f1f5f9; color: #0f172a; }
+html.light .cat-pill.cat-active, html.light .cat-pill.active { color: #059669; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.1); }
+
+/* Fotoğraf/renkli zemin üzerine binen metinler gündüz modunda da açık kalmalı */
+html.light .breaking-marquee, html.light .breaking-marquee * { color: #ffffff !important; }
+html.light .news-thumb-overlay, html.light .news-thumb-overlay * { color: #ffffff !important; }
 
 .card {
   background: rgba(24, 24, 28, 0.7);
