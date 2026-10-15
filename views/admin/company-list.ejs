@@ -19,7 +19,7 @@
       </div>
       <div class="flex items-center gap-2">
         <form method="POST" action="/admin/firmalar/goruntulenme-sifirla"
-          onsubmit="return confirm('Tüm firmaların görüntülenme sayıları sıfırlansın mı?')">
+          data-confirm="Tüm firmaların görüntülenme sayıları sıfırlansın mı?">
           <button type="submit" class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium px-4 py-2.5 rounded-xl transition-all text-sm">🔄 Görüntelenmeleri Sıfırla</button>
         </form>
         <a href="/admin/firma-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">
@@ -83,7 +83,7 @@
               <td class="p-4 text-center whitespace-nowrap">
                 <span class="inline-block px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-semibold"><%= Number(item.views_count) || 0 %></span>
                 <form method="POST" action="/admin/firmalar/<%= item.id %>/goruntulenme-sifirla" style="display:inline">
-                  <button type="submit" onclick="return confirm('Bu firmanın görüntülenme sayısı sıfırlansın mı?')" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
+                  <button type="submit" data-confirm="Bu firmanın görüntülenme sayısı sıfırlansın mı?" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
                 </form>
               </td>
               <td class="p-4">
@@ -97,7 +97,7 @@
                 <a href="/admin/firma-ekle?edit=<%= item.id %>" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Düzenle">✏️</a>
                 <a href="/rehber/<%= item.slug || item.id %>" target="_blank" class="inline-flex items-center justify-center w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all text-xs" title="Önizle">👁️</a>
                 <form method="POST" action="/admin/firma-toggle/<%= item.id %>" style="display:inline"><button type="submit" class="inline-flex items-center justify-center w-8 h-8 <%= item.status === 'active' ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' %> rounded-lg transition-all text-xs" title="<%= item.status === 'active' ? 'Pasifleştir' : 'Aktifleştir' %>"><%= item.status === 'active' ? '⛔' : '▶️' %></button></form>
-                <form method="POST" action="/admin/firma-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Bu firma kalıcı olarak silinsin mi?')" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
+                <form method="POST" action="/admin/firma-sil/<%= item.id %>" style="display:inline"><button type="submit" data-confirm="Bu firma kalıcı olarak silinsin mi?" class="inline-flex items-center justify-center w-8 h-8 bg-red-950/50 hover:bg-red-900 text-red-400 rounded-lg border border-red-800/50 transition-all text-xs" title="Sil">🗑️</button></form>
               </td>
             </tr>
             <% }) %>

@@ -59,7 +59,7 @@
             <% } %>
             <a href="mailto:<%= m.email %>?subject=<%= encodeURIComponent(m.subject || "Marmara'nın İncisi - Dönüş") %>"
               class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✉️ Yanıtla</a>
-            <form action="/admin/iletisim/delete/<%= m.id %>" method="POST" class="inline" onsubmit="return confirm('Bu mesaj silinsin mi?')">
+            <form action="/admin/iletisim/delete/<%= m.id %>" method="POST" class="inline" data-confirm="Bu mesaj silinsin mi?">
               <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
             </form>
           </div>

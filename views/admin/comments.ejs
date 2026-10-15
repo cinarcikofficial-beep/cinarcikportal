@@ -62,7 +62,7 @@
                   <form action="/admin/comments/approve/<%= c.id %>" method="POST" class="inline">
                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✓ Onayla</button>
                   </form>
-                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" data-confirm="Bu yorumu silmek istediğinize emin misiniz?">
                     <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
                   </form>
                 </div>
@@ -122,7 +122,7 @@
                   <form action="/admin/comments/toggle/<%= c.id %>" method="POST" class="inline">
                     <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Gizle">👁‍🗨</button>
                   </form>
-                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" data-confirm="Bu yorumu silmek istediğinize emin misiniz?">
                     <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
                   </form>
                 </div>
@@ -182,7 +182,7 @@
                   <form action="/admin/comments/toggle/<%= c.id %>" method="POST" class="inline">
                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Göster">👁</button>
                   </form>
-                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" onsubmit="return confirm('Bu yorumu silmek istediğinize emin misiniz?')">
+                  <form action="/admin/comments/delete/<%= c.id %>" method="POST" class="inline" data-confirm="Bu yorumu silmek istediğinize emin misiniz?">
                     <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
                   </form>
                 </div>

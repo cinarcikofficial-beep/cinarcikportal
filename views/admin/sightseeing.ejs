@@ -12,7 +12,7 @@
       <div class="flex items-center gap-2">
         <a href="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">← Dashboard</a>
         <form method="POST" action="/admin/gezilecek-yerler/goruntulenme-sifirla"
-          onsubmit="return confirm('Tüm gezilecek yerlerin görüntülenme sayıları sıfırlansın mı?')">
+          data-confirm="Tüm gezilecek yerlerin görüntülenme sayıları sıfırlansın mı?">
           <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-lg text-sm font-medium transition">🔄 Görüntelenmeleri Sıfırla</button>
         </form>
         <a href="/admin/gezilecek-yer-ekle" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition">+ Yeni Ekle</a>
@@ -63,13 +63,13 @@
           <a href="/admin/gezilecek-yer-ekle?edit=<%= s.id %>"
             class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✏️ Düzenle</a>
           <form method="POST" action="/admin/gezilecek-yerler/<%= s.id %>/goruntulenme-sifirla" style="display:inline"><button type="submit"
-            onclick="return confirm('Bu kaydın görüntülenme sayısı sıfırlansın mı?')"
+            data-confirm="Bu kaydın görüntülenme sayısı sıfırlansın mı?"
             class="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 px-3 py-1.5 rounded-lg text-xs font-bold transition" title="Görüntilenmeyi Sıfırla">🔄 Sıfırla</button></form>
           <form method="POST" action="/admin/gezilecek-yer-toggle/<%= s.id %>" style="display:inline"><button type="submit"
             class="<%= s.status === 'active' ? 'bg-amber-600/80 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500' %> text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
             <%= s.status === 'active' ? '⏸ Gizle' : '▶ Yayına Al' %></button></form>
           <form method="POST" action="/admin/gezilecek-yer-sil/<%= s.id %>" style="display:inline"><button type="submit"
-            onclick="return confirm('Bu kayıt silinsin mi?')"
+            data-confirm="Bu kayıt silinsin mi?"
             class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button></form>
         </div>
       </div>

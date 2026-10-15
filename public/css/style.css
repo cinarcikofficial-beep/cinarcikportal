@@ -1290,7 +1290,7 @@ a.card.place-card { padding: 0; }
   }
 }
 
-/* ---- Windows 11 tarzi k�se bildirimi (admin toast) ---- */
+/* ---- Windows 11 tarzi k�se bildirimi (admin toast) ---- */
 .admin-toast-root {
   position: fixed;
   right: 18px;
@@ -1369,4 +1369,86 @@ a.card.place-card { padding: 0; }
 @keyframes atProgress { from { width: 100%; } to { width: 0; } }
 @media (max-width: 540px) {
   .admin-toast { min-width: 0; width: calc(100vw - 36px); }
+}
+
+/* Windows 11 tarzı onay diyaloğu (native confirm/alert yerine) */
+.admin-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: min(18vh, 140px) 16px 16px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+.admin-confirm-backdrop.show { opacity: 1; }
+.admin-confirm-backdrop.hidden { display: none; }
+.admin-confirm {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 420px;
+  padding: 18px;
+  border-radius: 10px;
+  background: rgba(32, 32, 32, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  color: #f4f4f5;
+  font-size: 13.5px;
+  line-height: 1.5;
+  transform: scale(0.96) translateY(-8px);
+  opacity: 0;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease;
+}
+.admin-confirm-backdrop.show .admin-confirm { transform: scale(1) translateY(0); opacity: 1; }
+.admin-confirm .ac-icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+.admin-confirm.danger .ac-icon { background: #c0392b; }
+.admin-confirm.info .ac-icon { background: #2563eb; }
+.admin-confirm .ac-body { flex: 1 1 auto; min-width: 0; padding-top: 2px; }
+.admin-confirm .ac-title { font-weight: 600; font-size: 14.5px; color: #fff; margin-bottom: 4px; }
+.admin-confirm .ac-text { color: #b8b8c0; word-break: break-word; }
+.admin-confirm .ac-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.admin-confirm .ac-btn {
+  min-width: 96px;
+  padding: 7px 16px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.admin-confirm .ac-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.admin-confirm .ac-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 1px; }
+.admin-confirm .ac-btn.primary { background: #065f46; border-color: #059669; color: #fff; }
+.admin-confirm .ac-btn.primary:hover { background: #047857; }
+.admin-confirm .ac-btn.danger { background: #7f1d1d; border-color: #b91c1c; color: #fff; }
+.admin-confirm .ac-btn.danger:hover { background: #991b1b; }
+@media (max-width: 540px) {
+  .admin-confirm-backdrop { padding-top: 10vh; }
 }

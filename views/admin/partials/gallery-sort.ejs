@@ -71,10 +71,12 @@
       var room = Math.max(max - (existingCount() + dt.files.length), 0);
       accepted = accepted.slice(0, room);
       if (!accepted.length) {
-        alert('En fazla ' + max + ' görsel ekleyebilirsiniz.');
+        if (window.adminAlert) adminAlert('En fazla ' + max + ' görsel ekleyebilirsiniz.', 'Galeri limiti');
+        else alert('En fazla ' + max + ' görsel ekleyebilirsiniz.');
         return;
       }
-      alert('Galeri limiti ' + max + ' görsel, fazlası eklenmedi.');
+      if (window.adminAlert) adminAlert('Galeri limiti ' + max + ' görsel, fazlası eklenmedi.', 'Galeri limiti');
+      else alert('Galeri limiti ' + max + ' görsel, fazlası eklenmedi.');
     }
     accepted.forEach(function (f) {
       dt.items.add(f);

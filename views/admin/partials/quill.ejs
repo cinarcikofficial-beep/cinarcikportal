@@ -58,7 +58,8 @@
         if (required && !html) {
           e.preventDefault();
           e.stopPropagation();
-          alert('Bu alan zorunludur, lütfen içerik yazın.');
+          if (window.adminAlert) adminAlert('Bu alan zorunludur, lütfen içerik yazın.', 'Zorunlu alan');
+          else alert('Bu alan zorunludur, lütfen içerik yazın.');
           quill.focus();
           return false;
         }

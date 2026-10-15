@@ -538,5 +538,101 @@
     }
   })();
   </script>
+
+  <!-- Windows 11 tarzı onay diyaloğu: data-confirm'li form/butonlar + adminConfirm()/adminAlert() -->
+  <div class="admin-confirm-backdrop hidden" id="admin-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="ac-title">
+    <div class="admin-confirm" id="admin-confirm">
+      <span class="ac-icon" id="ac-icon">?</span>
+      <div class="ac-body">
+        <div class="ac-title" id="ac-title">Onay</div>
+        <div class="ac-text" id="ac-text"></div>
+        <div class="ac-actions">
+          <button type="button" class="ac-btn cancel" id="ac-cancel">Vazgeç</button>
+          <button type="button" class="ac-btn primary" id="ac-ok">Tamam</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var backdrop = document.getElementById('admin-confirm-backdrop');
+    var card = document.getElementById('admin-confirm');
+    var iconEl = document.getElementById('ac-icon');
+    var titleEl = document.getElementById('ac-title');
+    var textEl = document.getElementById('ac-text');
+    var okBtn = document.getElementById('ac-ok');
+    var cancelBtn = document.getElementById('ac-cancel');
+    var resolveFn = null;
+
+    function close(result) {
+      if (!resolveFn) return;
+      var r = resolveFn; resolveFn = null;
+      backdrop.classList.remove('show');
+      setTimeout(function() { backdrop.classList.add('hidden'); }, 200);
+      document.removeEventListener('keydown', onKey, true);
+      r(result);
+    }
+    function onKey(e) {
+      if (!resolveFn) return;
+      if (e.key === 'Escape') { e.preventDefault(); close(false); }
+      else if (e.key === 'Enter') {
+        var ae = document.activeElement;
+        if (ae === cancelBtn || ae === okBtn) return; // buton zaten native click tetikler
+        e.preventDefault(); close(true);
+      }
+      else if (e.key === 'Tab') {
+        var other = cancelBtn.classList.contains('hidden') ? okBtn : (document.activeElement === okBtn ? cancelBtn : okBtn);
+        if (other !== document.activeElement) { e.preventDefault(); other.focus(); }
+      }
+    }
+
+    function adminConfirm(message, opts) {
+      opts = opts || {};
+      if (resolveFn) close(false);
+      var danger = opts.danger !== undefined ? !!opts.danger : /silinsin|sil\b|reddet|kalıcı/i.test(message || '');
+      card.className = 'admin-confirm ' + (danger ? 'danger' : 'info');
+      iconEl.textContent = danger ? '!' : 'i';
+      titleEl.textContent = opts.title || (danger ? 'Bu işlemi onaylıyor musunuz?' : 'Onay');
+      textEl.textContent = message || '';
+      okBtn.textContent = opts.okText || (danger ? 'Evet, sil' : 'Tamam');
+      okBtn.className = 'ac-btn ' + (danger ? 'danger' : 'primary');
+      cancelBtn.classList.toggle('hidden', !!opts.single);
+      backdrop.classList.remove('hidden');
+      requestAnimationFrame(function() { requestAnimationFrame(function() { backdrop.classList.add('show'); }); });
+      document.addEventListener('keydown', onKey, true);
+      cancelBtn.focus();
+      return new Promise(function(res) { resolveFn = res; });
+    }
+    window.adminConfirm = adminConfirm;
+    window.adminAlert = function(message, title) { return adminConfirm(message, { single: true, title: title, okText: 'Tamam' }); };
+
+    okBtn.addEventListener('click', function() { close(true); });
+    cancelBtn.addEventListener('click', function() { close(false); });
+    backdrop.addEventListener('click', function(e) { if (e.target === backdrop) close(false); });
+
+    function submitForm(form) { HTMLFormElement.prototype.submit.call(form); }
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      var msg = form.getAttribute && form.getAttribute('data-confirm');
+      if (!msg) return;
+      e.preventDefault();
+      adminConfirm(msg).then(function(ok) { if (ok) submitForm(form); });
+    });
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest && e.target.closest('button[data-confirm], a[data-confirm]');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      adminConfirm(btn.getAttribute('data-confirm')).then(function(ok) {
+        if (!ok) return;
+        if (btn.form) submitForm(btn.form);
+        else {
+          btn.removeAttribute('data-confirm');
+          btn.click();
+        }
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

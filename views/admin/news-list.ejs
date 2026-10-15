@@ -16,7 +16,7 @@
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <form method="POST" action="/admin/haberler/goruntulenme-sifirla" style="display:inline"
-            onsubmit="return confirm('Tüm haberlerin görüntelenme sayıları sıfırlansın mı?')">
+            data-confirm="Tüm haberlerin görüntelenme sayıları sıfırlansın mı?">
         <button type="submit" class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium px-4 py-2.5 rounded-xl transition-all">🔄 Görüntelenmeleri Sıfırla</button>
       </form>
       <a href="/admin/haber-ekle" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-medium px-5 py-2.5 rounded-xl transition-all">➕ Yeni Haber</a>
@@ -96,7 +96,7 @@
           <td class="p-4 text-center whitespace-nowrap">
             <span class="inline-block px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-semibold"><%= Number(item.views_count) || 0 %></span>
             <form method="POST" action="/admin/haberler/<%= item.id %>/goruntulenme-sifirla" style="display:inline">
-              <button type="submit" onclick="return confirm('Bu haberin görüntelenme sayısı sıfırlansın mı?')" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
+              <button type="submit" data-confirm="Bu haberin görüntelenme sayısı sıfırlansın mı?" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
             </form>
           </td>
           <td class="p-4 whitespace-nowrap">
@@ -106,7 +106,7 @@
             <a href="/admin/haber-ekle?edit=<%= item.id %>" class="inline-flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 px-3 py-1.5 rounded-lg transition-all text-xs font-medium mr-1" title="Düzenle">✏️</a>
             <a href="/haber/<%= item.slug || item.id %>" target="_blank" class="inline-flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 px-3 py-1.5 rounded-lg transition-all text-xs font-medium mr-1" title="Önizle">👁️</a>
             <form method="POST" action="/admin/haberler/toggle/<%= item.id %>" style="display:inline"><button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-xs font-medium mr-1 <%= item.status === 'active' ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' %>" title="<%= item.status === 'active' ? 'Yayından Kaldır' : 'Yayınla' %>"><%= item.status === 'active' ? '⛔' : '▶️' %></button></form>
-            <form method="POST" action="/admin/haber-sil/<%= item.id %>" style="display:inline"><button type="submit" onclick="return confirm('Bu haber kalıcı olarak silinsin mi?')" class="inline-flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg transition-all text-xs font-medium" title="Sil">🗑️</button></form>
+            <form method="POST" action="/admin/haber-sil/<%= item.id %>" style="display:inline"><button type="submit" data-confirm="Bu haber kalıcı olarak silinsin mi?" class="inline-flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg transition-all text-xs font-medium" title="Sil">🗑️</button></form>
           </td>
         </tr>
         <% }) %>
