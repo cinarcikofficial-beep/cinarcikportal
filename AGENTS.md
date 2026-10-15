@@ -35,7 +35,7 @@
 ## Açık kalanlar / test bekleyen
 1. **Google hesap tarafı (kullanıcı):** Search Console → Settings → Ownership verification → **Verify** (etiketi canlıda, b0c4125+); GA4 `G-HPNR24RP48` → Gerçek Zamanlı kontrol; Search Console → Sitemaps → `sitemap.xml` gönder.
 2. ~~DB yedeği GitHub Actions~~ ✅ 15 Eki: 6 secret Repository secrets'a eklendi (Environments yolu yanlıştı, silinebilir); manuel tetikleme **Success** (23s); R2'de `backups/cinarcik-2026-10-15.db.gz` (279 KB gzip → 1.3 MB geçerli SQLite) doğrulandı; workflow Node 24 + actions v5'e güncellendi. Her Pazartesi 06:00 TR otomatik.
-3. **Uptime (kullanıcı, 2 dk):** UptimeRobot hesabı → `https://marmaraninincisi.com` 5 dk ping (Render free uykusunu da hafifletir, düşerse mail atar; free uyursa ziyaretçi Render'ın "Application loading" ekranını görür).
+3. **Uptime:** ~~UptimeRobot şart~~ ✅ 15 Eki: `.github/workflows/keep-awake.yml` ile 10 dk'da bir site ping'i (Render free uyumuyor → "Application loading" ekranı kalktı). Not: GitHub, 60 gün activity olmayan repo'ların schedule'ını durdurur; UptimeRobot opsiyonel (düşerse mail alert için, 2 dk kayıt).
 4. **Canlı doğrulama:** görüntülenme sayaçları ✅; R2 silme ✅ (14 Eki süpürmede 55/55); ilan-ver captcha/etkinlik/mail, UI (duyuru eşit kart + flash buton, ticker pill, hero CTA akışı, haberler grid, mekanlar İncele, Yazar Adayı bloğu, altbilgi). CSS cache → hard refresh.
 5. **Gmail alias (Aktif iş 1):** render.yaml `EMAIL_FROM` + `EMAIL_API_KEY` push edildi; iletişim formu testi + gönderen spam'e düşerse Brevo DNS Verified kontrolü.
 6. ~~Opsiyonel: R2 orphan süpürme~~ ✅ 14 Eki'de elle yapıldı (script commit edilmedi, gerekirse yeniden yazılır); `content_translations` hash-cache süpürmesi hâlâ opsiyonel.
