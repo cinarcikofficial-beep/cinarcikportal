@@ -64,7 +64,7 @@
   <% } else { %>
   <div id="sight-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     <% items.forEach(s => { %>
-    <div role="link" tabindex="0" data-href="/gezilecek-yer/<%= s.id %>" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'){window.location.href=this.dataset.href}"
+    <div role="link" tabindex="0" data-href="/gezilecek-yer/<%= s.slug || s.id %>" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'){window.location.href=this.dataset.href}"
       class="sight-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer" data-cat="<%= s.category %>">
       <div class="relative h-48 overflow-hidden bg-zinc-800">
         <% if (s.image) { %>

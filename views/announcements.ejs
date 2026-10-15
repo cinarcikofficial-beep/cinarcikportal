@@ -51,7 +51,7 @@
         <div class="whitespace-pre-line"><%= a.content %></div>
         <% } %>
       </div>
-      <a href="/duyuru/<%= a.id %>" class="absolute inset-0 rounded-2xl" aria-label="<%= a.title %>"></a>
+      <a href="/duyuru/<%= a.slug || a.id %>" class="absolute inset-0 rounded-2xl" aria-label="<%= a.title %>"></a>
     </div>
     <% }) %>
   </div>

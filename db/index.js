@@ -834,7 +834,13 @@ function createTables() {
     if (!cols.includes('sort_order')) db.run("ALTER TABLE announcements ADD COLUMN sort_order INTEGER DEFAULT 999");
     if (!cols.includes('views_count')) db.run("ALTER TABLE announcements ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('views_reset_at')) db.run("ALTER TABLE announcements ADD COLUMN views_reset_at TEXT DEFAULT NULL");
+    if (!cols.includes('slug')) db.run("ALTER TABLE announcements ADD COLUMN slug TEXT");
   }
+  try {
+    all("SELECT id, title FROM announcements WHERE slug IS NULL OR slug = ''").forEach(r => {
+      run("UPDATE announcements SET slug = ? WHERE id = ?", [ensureUniqueSlug(slugify(r.title), r.id, 'announcements'), r.id]);
+    });
+  } catch (e) { console.error('announcements slug backfill:', e.message); }
   db.run(`
     CREATE TABLE IF NOT EXISTS pharmacies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -902,7 +908,13 @@ function createTables() {
     if (!cols.includes('gallery_images')) db.run("ALTER TABLE sightseeing ADD COLUMN gallery_images TEXT DEFAULT '[]'");
     if (!cols.includes('views_count')) db.run("ALTER TABLE sightseeing ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('views_reset_at')) db.run("ALTER TABLE sightseeing ADD COLUMN views_reset_at TEXT DEFAULT NULL");
+    if (!cols.includes('slug')) db.run("ALTER TABLE sightseeing ADD COLUMN slug TEXT");
   }
+  try {
+    all("SELECT id, title FROM sightseeing WHERE slug IS NULL OR slug = ''").forEach(r => {
+      run("UPDATE sightseeing SET slug = ? WHERE id = ?", [ensureUniqueSlug(slugify(r.title), r.id, 'sightseeing'), r.id]);
+    });
+  } catch (e) { console.error('sightseeing slug backfill:', e.message); }
   db.run(`
     CREATE TABLE IF NOT EXISTS places (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

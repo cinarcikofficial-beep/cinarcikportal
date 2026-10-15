@@ -11,7 +11,7 @@
     "name": place.name,
     "description": (place.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
     "image": place.main_image_url || undefined,
-    "url": siteUrl + lp + '/mekan/' + place.id,
+    "url": siteUrl + lp + '/mekan/' + (place.slug || place.id),
     "telephone": place.phone || undefined,
     "address": place.address ? {
       "@type": "PostalAddress",

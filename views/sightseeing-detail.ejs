@@ -8,7 +8,7 @@
         "name": item.title,
         "description": (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
         "image": item.image || undefined,
-        "url": siteUrl + lp + '/gezilecek-yer/' + item.id,
+        "url": siteUrl + lp + '/gezilecek-yer/' + (item.slug || item.id),
         "address": {
           "@type": "PostalAddress",
           "addressLocality": item.location || "Çınarcık",
@@ -159,7 +159,7 @@
         <h3 class="text-white font-bold text-sm mb-3">🧭 <%= t('otherSights') %></h3>
         <div class="space-y-3">
           <% others.forEach(o => { %>
-          <a href="/gezilecek-yer/<%= o.id %>" class="flex items-center gap-3 group rounded-xl border border-zinc-800/80 hover:border-zinc-700 bg-zinc-950/60 p-2.5 transition-all">
+          <a href="/gezilecek-yer/<%= o.slug || o.id %>" class="flex items-center gap-3 group rounded-xl border border-zinc-800/80 hover:border-zinc-700 bg-zinc-950/60 p-2.5 transition-all">
             <div class="w-14 h-14 rounded-lg overflow-hidden bg-zinc-800 shrink-0 flex items-center justify-center">
               <% if (o.image) { %><img src="<%= o.image %>" alt="" class="w-full h-full object-cover"><% } else { %><span>🧳</span><% } %>
             </div>

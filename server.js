@@ -288,20 +288,20 @@ app.get('/sitemap.xml', (req, res) => {
 
   // Duyurular (announcements tablosunda updated_at YOK)
   try {
-    all("SELECT id, created_at FROM announcements WHERE status='active' ORDER BY created_at DESC LIMIT 500")
-      .forEach(a => addEntry('/duyuru/' + a.id, (a.created_at || '').slice(0, 10)));
+    all("SELECT slug, id, created_at FROM announcements WHERE status='active' ORDER BY created_at DESC LIMIT 500")
+      .forEach(a => addEntry('/duyuru/' + (a.slug || a.id), (a.created_at || '').slice(0, 10)));
   } catch (e) { console.error('sitemap announcements:', e.message); }
 
   // Mekanlar
   try {
-    all("SELECT id, created_at FROM places WHERE status='active'")
-      .forEach(p => addEntry('/mekan/' + p.id, (p.created_at || '').slice(0, 10)));
+    all("SELECT slug, id, created_at FROM places WHERE status='active'")
+      .forEach(p => addEntry('/mekan/' + (p.slug || p.id), (p.created_at || '').slice(0, 10)));
   } catch (e) { console.error('sitemap places:', e.message); }
 
   // Gezilecek yerler
   try {
-    all("SELECT id, created_at FROM sightseeing WHERE status='active'")
-      .forEach(s => addEntry('/gezilecek-yer/' + s.id, (s.created_at || '').slice(0, 10)));
+    all("SELECT slug, id, created_at FROM sightseeing WHERE status='active'")
+      .forEach(s => addEntry('/gezilecek-yer/' + (s.slug || s.id), (s.created_at || '').slice(0, 10)));
   } catch (e) { console.error('sitemap sightseeing:', e.message); }
 
   // Firma rehberi
@@ -475,12 +475,15 @@ app.get('/duyurular', async (req, res) => {
 
 app.get('/duyuru/:id', async (req, res) => {
   const { get, run } = require('./db');
-  const announcement = get("SELECT * FROM announcements WHERE id = ? AND status = 'active'", [req.params.id]);
+  const key = req.params.id;
+  const announcement = get("SELECT * FROM announcements WHERE (slug = ? OR id = ?) AND status = 'active'", [key, isNaN(parseInt(key)) ? -1 : key]);
   if (!announcement || !announcement.id) return res.redirect('/duyurular');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const canon = announcement.slug || String(announcement.id);
+  if (key !== canon) return res.redirect(301, lp + '/duyuru/' + canon);
   run("UPDATE announcements SET views_count = views_count + 1 WHERE id = ?", [announcement.id]);
   await txFields(announcement, ['title', 'content'], req.lang);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
-  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const shortText = stripHtml(announcement.content).slice(0, 160);
   res.render('announcement-detail', {
     announcement,
@@ -503,7 +506,7 @@ app.get('/duyuru/:id', async (req, res) => {
             "name": "Marmara'nın İncisi",
             "logo": { "@type": "ImageObject", "url": siteUrl + '/img/logo-circle.png' }
           },
-          "mainEntityOfPage": { "@type": "WebPage", "@id": siteUrl + lp + '/duyuru/' + announcement.id },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": siteUrl + lp + '/duyuru/' + (announcement.slug || announcement.id) },
           "inLanguage": req.lang
         },
         {
@@ -551,8 +554,8 @@ app.get('/mekanlar', async (req, res) => {
 app.get('/mekan/:id', async (req, res) => {
   try {
     const { get, all, run } = require('./db');
-    const placeId = req.params.id;
-    const place = get('SELECT * FROM places WHERE id = ?', [placeId]);
+    const key = req.params.id;
+    const place = get('SELECT * FROM places WHERE slug = ? OR id = ?', [key, isNaN(parseInt(key)) ? -1 : key]);
     if (!place) {
       return res.status(404).render('place-detail', {
         place: null,
@@ -561,6 +564,9 @@ app.get('/mekan/:id', async (req, res) => {
         pageTitle: 'Mekan Bulunamadı'
       });
     }
+    const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+    const canon = place.slug || String(place.id);
+    if (key !== canon) return res.redirect(301, lp + '/mekan/' + canon);
     run("UPDATE places SET views_count = views_count + 1 WHERE id = ?", [place.id]);
     const parseJSON = (data) => {
       if (!data) return [];
@@ -583,7 +589,6 @@ app.get('/mekan/:id', async (req, res) => {
       embedMapUrl = await getMapEmbedUrl(place.map_link);
     }
     const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
-    const lp = req.lang === 'tr' ? '' : '/' + req.lang;
     const schemaTypeMap = {
       'Restoran': 'Restaurant', 'Cafe': 'CafeOrCoffeeShop', 'Otel': 'Hotel',
       'Beach': 'BeachResort', 'Büfeler': 'FastFoodRestaurant', 'Gece Hayatı': 'BarOrPub',
@@ -595,7 +600,7 @@ app.get('/mekan/:id', async (req, res) => {
       "name": place.name,
       "description": (place.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
       "image": place.main_image_url || undefined,
-      "url": siteUrl + lp + '/mekan/' + place.id,
+      "url": siteUrl + lp + '/mekan/' + (place.slug || place.id),
       "telephone": place.phone || undefined,
       "address": place.address ? {
         "@type": "PostalAddress",
@@ -658,17 +663,20 @@ app.get('/gezilecek-yerler', async (req, res) => {
 
 app.get('/gezilecek-yer/:id', async (req, res) => {
   const { get, all, run, parseGallery } = require('./db');
-  const item = get("SELECT * FROM sightseeing WHERE id = ? AND status = 'active'", [req.params.id]);
+  const key = req.params.id;
+  const item = get("SELECT * FROM sightseeing WHERE (slug = ? OR id = ?) AND status = 'active'", [key, isNaN(parseInt(key)) ? -1 : key]);
   if (!item || !item.id) return res.redirect('/gezilecek-yerler');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const canon = item.slug || String(item.id);
+  if (key !== canon) return res.redirect(301, lp + '/gezilecek-yer/' + canon);
   run("UPDATE sightseeing SET views_count = views_count + 1 WHERE id = ?", [item.id]);
   item.gallery = parseGallery(item.gallery_images);
-  const others = all("SELECT id, title, summary, image, category, location FROM sightseeing WHERE id != ? AND status = 'active' ORDER BY sort_order ASC, created_at DESC", [parseInt(req.params.id) || -1]);
+  const others = all("SELECT id, slug, title, summary, image, category, location FROM sightseeing WHERE id != ? AND status = 'active' ORDER BY sort_order ASC, created_at DESC", [item.id]);
   await Promise.all([
     txFields(item, ['title', 'summary', 'description', 'category'], req.lang),
     txArray(others, ['title', 'summary', 'category'], req.lang)
   ]);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
-  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   res.render('sightseeing-detail', {
     item, others,
     pageTitle: item.title,
@@ -682,7 +690,7 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
           "name": item.title,
           "description": (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 300),
           "image": item.image || undefined,
-          "url": siteUrl + lp + '/gezilecek-yer/' + item.id,
+          "url": siteUrl + lp + '/gezilecek-yer/' + (item.slug || item.id),
           "address": {
             "@type": "PostalAddress",
             "addressLocality": item.location || "Çınarcık",
@@ -723,11 +731,12 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
     { name: 'gallery_files', maxCount: 12 }
   ]))(req, res, (err) => {
     if (err) return next(err);
-    const { run, get, parseGallery } = require('./db');
+    const { run, get, parseGallery, slugify, ensureUniqueSlug } = require('./db');
     const { title, summary, description, category, location, map_link, sort_order, status, edit_id, existing_gallery, remove_image } = req.body;
     if (!title || !String(title).trim()) {
       return res.render('admin/sightseeing-form', { edit: null, error: 'Başlık zorunludur' });
     }
+    const titleVal = String(title).trim();
     let image = (req.files && req.files.image && req.files.image[0]) ? pubUrl(req.files.image[0]) : '';
 
     let gallery = [];
@@ -745,7 +754,7 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
     const statusVal = status === 'passive' ? 'passive' : 'active';
     const order = parseInt(sort_order) || 999;
     const values = [
-      String(title).trim(),
+      titleVal,
       String(summary || '').trim().substring(0, 500),
       String(description || '').trim().substring(0, 8000),
       String(category || 'Genel').trim(),
@@ -761,11 +770,16 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
       const wantsRemove = remove_image === '1' || remove_image === 'true' || remove_image === 'on';
       if (!image) image = wantsRemove ? '' : (existing ? existing.image : '');
       values[6] = image;
-      run(`UPDATE sightseeing SET title=?, summary=?, description=?, category=?, location=?, map_link=?, image=?, gallery_images=?, sort_order=?, status=? WHERE id=?`,
-        [...values, edit_id]);
+      let slug = existing && existing.slug;
+      if (existing && existing.title !== titleVal) {
+        slug = ensureUniqueSlug(slugify(titleVal), parseInt(edit_id), 'sightseeing');
+      }
+      run(`UPDATE sightseeing SET title=?, slug=?, summary=?, description=?, category=?, location=?, map_link=?, image=?, gallery_images=?, sort_order=?, status=? WHERE id=?`,
+        [titleVal, slug].concat(values.slice(1), [edit_id]));
     } else {
-      run(`INSERT INTO sightseeing (title, summary, description, category, location, map_link, image, gallery_images, sort_order, status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        values);
+      const slug = ensureUniqueSlug(slugify(titleVal), null, 'sightseeing');
+      run(`INSERT INTO sightseeing (title, slug, summary, description, category, location, map_link, image, gallery_images, sort_order, status) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [titleVal, slug].concat(values.slice(1)));
     }
     res.redirect('/admin/gezilecek-yerler');
   });
@@ -1442,16 +1456,22 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
     next();
   });
 }, (req, res) => {
-  const { run } = require('./db');
+  const { run, get, slugify, ensureUniqueSlug } = require('./db');
   const { title, content, category, edit_id, existing_image } = req.body;
   let image = existing_image || '';
   const safeTitle = title || '';
   const safeContent = content || '';
   if (req.file) image = pubUrl(req.file);
   if (edit_id) {
-    run('UPDATE announcements SET title=?, content=?, category=?, image=? WHERE id=?', [safeTitle, safeContent, category || 'duyuru', image, edit_id]);
+    const existing = get('SELECT * FROM announcements WHERE id = ?', [edit_id]);
+    let slug = existing && existing.slug;
+    if (existing && existing.title !== safeTitle) {
+      slug = ensureUniqueSlug(slugify(safeTitle), parseInt(edit_id), 'announcements');
+    }
+    run('UPDATE announcements SET title=?, slug=?, content=?, category=?, image=? WHERE id=?', [safeTitle, slug, safeContent, category || 'duyuru', image, edit_id]);
   } else {
-    run('INSERT INTO announcements (title, content, category, image) VALUES (?,?,?,?)', [safeTitle, safeContent, category || 'duyuru', image]);
+    const slug = ensureUniqueSlug(slugify(safeTitle), null, 'announcements');
+    run('INSERT INTO announcements (title, slug, content, category, image) VALUES (?,?,?,?,?)', [safeTitle, slug, safeContent, category || 'duyuru', image]);
   }
   res.redirect('/admin');
 });
@@ -1537,8 +1557,10 @@ app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
     return res.render('ilan-ver', { user, error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
   }
   const image = req.file ? pubUrl(req.file) : '';
-  run("INSERT INTO announcements (title, content, category, image, status, user_name, user_email) VALUES (?,?,?,?,?,?,?)",
-    [title.slice(0, 120), content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '']);
+  const { slugify: annSlugify, ensureUniqueSlug: annUniqueSlug } = require('./db');
+  const slug = annUniqueSlug(annSlugify(title), null, 'announcements');
+  run("INSERT INTO announcements (title, slug, content, category, image, status, user_name, user_email) VALUES (?,?,?,?,?,?,?,?)",
+    [title.slice(0, 120), slug, content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '']);
   req.session.captchaCodes = [];
   const turMap = { ilan: 'ilan', duyuru: 'duyuru', etkinlik: 'etkinlik' };
   sendPortalMail({
