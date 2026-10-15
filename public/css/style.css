@@ -138,6 +138,19 @@ html.light .cat-pill.cat-active, html.light .cat-pill.active { color: #059669; b
 /* Fotoğraf/renkli zemin üzerine binen metinler gündüz modunda da açık kalmalı */
 html.light .breaking-marquee, html.light .breaking-marquee * { color: #ffffff !important; }
 html.light .news-thumb-overlay, html.light .news-thumb-overlay * { color: #ffffff !important; }
+html.light .on-photo, html.light .on-photo * { color: #ffffff !important; }
+html.light .hero-nav-btn { color: #ffffff !important; }
+
+/* Sayfa banner'ı (duyurular / ilan ver) — gündüz modunda açık zemin */
+html.light .page-banner { background: linear-gradient(135deg, #ffffff, #f1f5f9); border-bottom-color: #e2e8f0; }
+html.light .page-banner h1 { background: linear-gradient(90deg, #0f172a, #059669); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html.light .page-banner p { color: #64748b; }
+
+/* zinc-800 "buton/çip" zeminleri gündüz modunda açık gri (beyaz kartta kaybolmasın) */
+html.light .bg-zinc-800 { background-color: #f1f5f9 !important; }
+
+/* Galeri "+N" karosu (mekanlar) */
+html.light [style*="background:rgba(255,255,255,0.05)"] { background: #f1f5f9 !important; }
 
 .card {
   background: rgba(24, 24, 28, 0.7);

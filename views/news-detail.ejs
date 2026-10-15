@@ -45,7 +45,7 @@
       <% gallery.forEach((img, i) => { %>
       <div class="h-36 bg-zinc-900/80 rounded-xl overflow-hidden flex items-center justify-center p-1 border border-zinc-800 group relative cursor-pointer shadow-lg" onclick="openLightbox(<%= i %>)">
         <img src="<%= img %>" alt="<%= t('gallery') %> <%= i + 1 %>" class="max-h-full max-w-full object-contain mx-auto my-auto group-hover:scale-105 transition-transform duration-300">
-        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center on-photo">
           <span class="text-white text-xs"><%= t('zoom') %></span>
         </div>
       </div>
