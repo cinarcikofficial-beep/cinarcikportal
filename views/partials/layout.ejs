@@ -33,7 +33,7 @@
   <meta property="og:url" content="<%= siteUrl %><%= lp %><%= path === '/' ? '/' : path %>">
   <meta property="og:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : siteUrl + '/img/logo-circle.png' %>">
   <meta property="og:site_name" content="Marmara'nın İncisi">
-  <meta property="og:locale" content="<%= lang === 'ar' ? 'ar_AR' : lang + '_' + lang.toUpperCase() %>">
+  <meta property="og:locale" content="<%= lang === 'ar' ? 'ar_AR' : lang === 'en' ? 'en_US' : lang + '_' + lang.toUpperCase() %>">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">

@@ -11,6 +11,10 @@ process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]
 process.on('uncaughtException', (err) => console.error('[uncaughtException]', err));
 const helmet = require('helmet');
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+// Yanıtları gzip ile sıkıştır (TTFB + Lighthouse). statik'ten ÖNCE:
+// express.static da compression'ın geçtiği res yazmasından faydalanır.
+const compression = require('compression');
+app.use(compression());
 const PORT = process.env.PORT || 3000;
 
 const engine = require('ejs-mate');
@@ -268,9 +272,13 @@ app.get('/sitemap.xml', (req, res) => {
     entries.push({ path, lastmod: lastmod || new Date().toISOString().slice(0, 10) });
   };
 
+  // Statik sayfalar gerçekten değiştiğinde güncelleyin — her gün "bugün"
+  // yazmak Google'a sürekli değişiyormuş gibi görünürdü.
+  const STATIC_LASTMOD = '2026-10-14';
+
   // Statik sayfalar
   ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda', '/ilan-ver']
-    .forEach(p => addEntry(p));
+    .forEach(p => addEntry(p, STATIC_LASTMOD));
 
   // Haberler (son 500)
   try {
