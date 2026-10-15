@@ -27,6 +27,26 @@ app.use('/images', express.static(path.join(__dirname, 'images'), { maxAge: '30d
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// IndexNow: yeni/güncellenen sayfaları Bing, Yandex, Naver gibi motorlara anında
+// bildirir. Anahtar doszası: public/<KEY>.txt (hem doğrulama hem keyLocation).
+const SITE_ORIGIN = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+const INDEXNOW_KEY = '08ce8c9e17193c10a9078706e0e017a2';
+function pingIndexNow(paths) {
+  const urls = (Array.isArray(paths) ? paths : [paths]).filter(Boolean).map(p => SITE_ORIGIN + p);
+  if (!urls.length) return;
+  fetch('https://api.indexnow.org/indexnow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({
+      host: 'marmaraninincisi.com',
+      key: INDEXNOW_KEY,
+      keyLocation: SITE_ORIGIN + '/' + INDEXNOW_KEY + '.txt',
+      urlList: urls
+    })
+  }).then(r => console.log('[indexnow] ' + r.status + ' ' + urls.join(',')))
+    .catch(e => console.warn('[indexnow]', e.message));
+}
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'cinarcik-portal-secret-key-2024',
   resave: false,
@@ -776,10 +796,12 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
       }
       run(`UPDATE sightseeing SET title=?, slug=?, summary=?, description=?, category=?, location=?, map_link=?, image=?, gallery_images=?, sort_order=?, status=? WHERE id=?`,
         [titleVal, slug].concat(values.slice(1), [edit_id]));
+      pingIndexNow('/gezilecek-yer/' + (slug || edit_id));
     } else {
       const slug = ensureUniqueSlug(slugify(titleVal), null, 'sightseeing');
       run(`INSERT INTO sightseeing (title, slug, summary, description, category, location, map_link, image, gallery_images, sort_order, status) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         [titleVal, slug].concat(values.slice(1)));
+      pingIndexNow('/gezilecek-yer/' + slug);
     }
     res.redirect('/admin/gezilecek-yerler');
   });
@@ -1216,10 +1238,12 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE news SET title=?, slug=?, badge_text=?, summary=?, content=?, main_image_url=?, gallery_images=?, is_headline=?, headline_order=?, status=?, expires_at=?, category=?, updated_at=datetime('now') WHERE id=?`,
       [title, slug, badge_text || '', summary || '', content, main_image_url, JSON.stringify(galleryArr), isHeadline, order, statusVal, expiresValue, category || 'Gündem', edit_id]);
+    pingIndexNow('/haber/' + slug);
   } else {
     const slug = ensureUniqueSlug(slugify(title), null);
     run(`INSERT INTO news (title, slug, badge_text, summary, content, main_image_url, gallery_images, is_headline, headline_order, status, expires_at, category) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [title, slug, badge_text || '', summary || '', content, main_image_url, JSON.stringify(galleryArr), isHeadline, order, statusVal, expiresValue, category || 'Gündem']);
+    pingIndexNow('/haber/' + slug);
   }
   res.redirect('/admin/haberler');
 });
@@ -1469,9 +1493,11 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
       slug = ensureUniqueSlug(slugify(safeTitle), parseInt(edit_id), 'announcements');
     }
     run('UPDATE announcements SET title=?, slug=?, content=?, category=?, image=? WHERE id=?', [safeTitle, slug, safeContent, category || 'duyuru', image, edit_id]);
+    pingIndexNow('/duyuru/' + slug);
   } else {
     const slug = ensureUniqueSlug(slugify(safeTitle), null, 'announcements');
     run('INSERT INTO announcements (title, slug, content, category, image) VALUES (?,?,?,?,?)', [safeTitle, slug, safeContent, category || 'duyuru', image]);
+    pingIndexNow('/duyuru/' + slug);
   }
   res.redirect('/admin');
 });
@@ -1486,8 +1512,10 @@ app.post('/admin/duyuru-sil/:id', isAuthenticated, (req, res) => {
 
 // Kullanıcı ilan/duyuru onay akışı
 app.post('/admin/duyuru-onay/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
   run("UPDATE announcements SET status = 'active' WHERE id = ?", [req.params.id]);
+  const item = get('SELECT slug FROM announcements WHERE id = ?', [req.params.id]);
+  if (item) pingIndexNow('/duyuru/' + (item.slug || req.params.id));
   res.redirect('/admin');
 });
 
@@ -1654,11 +1682,13 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE places SET name=?, slug=?, category=?, cuisine_type=?, establishment_type=?, meal_type=?, address=?, phone=?, working_hours=?, map_link=?, features=?, main_image_url=?, gallery_images=?, description=?, is_featured=?, status=?, display_until=?, sort_order=?, google_reviews_url=? WHERE id=?`,
         [name, slug, category, cuisine_type || '', JSON.stringify(estTypeArr), JSON.stringify(mealTypeArr), address || '', phone || '', working_hours || '', map_link || '', JSON.stringify(features), main_image_url, JSON.stringify(galleryArr), description || '', isFeatured, statusVal, display_until || null, parseInt(sort_order) || 0, google_reviews_url || '', edit_id]);
+    pingIndexNow('/mekan/' + slug);
     return res.redirect('/admin?updated=1&tab=places');
   } else {
     const slug = ensureUniqueSlug(slugify(name), null, 'places');
     run(`INSERT INTO places (name, slug, category, cuisine_type, establishment_type, meal_type, address, phone, working_hours, map_link, features, main_image_url, gallery_images, description, is_featured, status, display_until, sort_order, google_reviews_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [name, slug, category, cuisine_type || '', JSON.stringify(estTypeArr), JSON.stringify(mealTypeArr), address || '', phone || '', working_hours || '', map_link || '', JSON.stringify(features), main_image_url, JSON.stringify(galleryArr), description || '', isFeatured, statusVal, display_until || null, parseInt(sort_order) || 0, google_reviews_url || '']);
+    pingIndexNow('/mekan/' + slug);
     return res.redirect('/admin?created=1&tab=places');
   }
 });
@@ -1926,11 +1956,13 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE companies SET name=?, slug=?, category=?, sector=?, address=?, phone=?, website=?, email=?, working_hours=?, map_link=?, map_embed=?, google_reviews_url=?, description=?, logo_url=?, gallery_images=?, features=?, is_featured=?, status=?, sort_order=? WHERE id=?`,
       [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0, edit_id]);
+    pingIndexNow('/rehber/' + (slug || edit_id));
     return res.redirect('/admin/firmalar?updated=1');
   } else {
     const slug = ensureUniqueSlug(slugify(name), null, 'companies');
     run(`INSERT INTO companies (name, slug, category, sector, address, phone, website, email, working_hours, map_link, map_embed, google_reviews_url, description, logo_url, gallery_images, features, is_featured, status, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0]);
+    pingIndexNow('/rehber/' + slug);
     return res.redirect('/admin/firmalar?created=1');
   }
 });
