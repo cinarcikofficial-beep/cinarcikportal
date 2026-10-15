@@ -35,7 +35,7 @@
 - Firma rehberi detay/map_embed, iletişim formu bildirimi, kullanıcı ilan akışı — önceki oturumlar.
 
 ## Açık kalanlar / test bekleyen
-1. **Google hesap tarafı (kullanıcı):** ~~Sitemap gönderimi~~ ✅ 15 Eki: Search Console'a `sitemap.xml` gönderildi + ana sayfa için "Indexing requested" alındı. Kalan küçük: Settings → Ownership → **Verify** butonuna basmak (etiketi sitede, b0c4125+); GA4 `G-HPNR24RP48` → Gerçek Zamanlı rapor kontrolü.
+1. ~~Google hesap tarafı (kullanıcı)~~ ✅ 15 Eki: Search Console doğrulanmış (verified owner), `sitemap.xml` gönderildi, ana sayfa "Indexing requested"; GA4 `G-HPNR24RP48` veri akıyor (3 kullanıcı / 30 olay görüldü).
 2. ~~DB yedeği GitHub Actions~~ ✅ 15 Eki: 6 secret Repository secrets'a eklendi (Environments yolu yanlıştı, silinebilir); manuel tetikleme **Success** (23s); R2'de `backups/cinarcik-2026-10-15.db.gz` (279 KB gzip → 1.3 MB geçerli SQLite) doğrulandı; workflow Node 24 + actions v5'e güncellendi. Her Pazartesi 06:00 TR otomatik.
 3. ~~Uptime~~ ✅ 15 Eki: keep-awake workflow (10 dk ping, `40031a6`) + kullanıcı UptimeRobot kurdu (5 dk HTTP monitor + mail alert). Render free artık hiç uyanmıyor → "Application loading" ekranı kalktı; site düşerse mail geliyor. Not: GitHub, 60 gün activity olmayan repo'ların schedule'ını durdurur — uzun süre commit yoksa Actions'a bak.
 4. **Canlı doğrulama:** görüntülenme sayaçları ✅; R2 silme ✅ (14 Eki süpürmede 55/55); ilan-ver captcha/etkinlik/mail, UI (duyuru eşit kart + flash buton, ticker pill, hero CTA akışı, haberler grid, mekanlar İncele, Yazar Adayı bloğu, altbilgi). CSS cache → hard refresh.
