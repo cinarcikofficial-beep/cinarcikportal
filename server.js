@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const crypto = require('crypto');
 const path = require('path');
 const { initDb, flushSync } = require('./db');
 const { tx, txFields, txArray, txJsonArrayField } = require('./translator');
@@ -58,8 +59,41 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'cinarcik-portal-secret-key-2024',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+  rolling: true,
+  cookie: { maxAge: 90 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
 }));
+
+// Kalıcı admin "beni hatırla" token'ı — session deploy/restart'ta düşse de
+// tarayıcı çerezinde kalır; Çıkış yap'a basılmadıkça yeniden OTP gerekmez.
+const ADMIN_REMEMBER_COOKIE = 'admin_rt';
+const ADMIN_REMEMBER_DAYS = 90;
+function adminTokenSecret() {
+  return crypto.createHash('sha256').update(process.env.SESSION_SECRET || 'cinarcik-portal-secret-key-2024').digest();
+}
+function signAdminToken(exp) {
+  return crypto.createHmac('sha256', adminTokenSecret()).update(String(exp)).digest('base64url');
+}
+function verifyAdminToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  const dot = token.indexOf('.');
+  if (dot < 1) return false;
+  const exp = Number(token.slice(0, dot));
+  const sig = token.slice(dot + 1);
+  if (!exp || Date.now() > exp) return false;
+  const expected = signAdminToken(exp);
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function setAdminRememberCookie(res) {
+  const exp = Date.now() + ADMIN_REMEMBER_DAYS * 24 * 60 * 60 * 1000;
+  res.cookie(ADMIN_REMEMBER_COOKIE, `${exp}.${signAdminToken(exp)}`, {
+    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production',
+    maxAge: ADMIN_REMEMBER_DAYS * 24 * 60 * 60 * 1000
+  });
+}
+function clearAdminRememberCookie(res) {
+  res.clearCookie(ADMIN_REMEMBER_COOKIE, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+}
 
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -183,8 +217,30 @@ app.use((req, res, next) => {
   next();
 });
 
+function getCookie(req, name) {
+  const header = req.headers.cookie;
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq > 0 && part.slice(0, eq).trim() === name) {
+      try { return decodeURIComponent(part.slice(eq + 1).trim()); } catch { return null; }
+    }
+  }
+  return null;
+}
+
 function isAuthenticated(req, res, next) {
   if (req.session.isAdmin) return next();
+  // Session düşmüşse (deploy/restart) kalıcı token ile otomatik geri gel
+  if (verifyAdminToken(getCookie(req, ADMIN_REMEMBER_COOKIE))) {
+    req.session.regenerate((err) => {
+      if (err) return res.redirect('/admin/login');
+      req.session.isAdmin = true;
+      setAdminRememberCookie(res);
+      next();
+    });
+    return;
+  }
   res.redirect('/admin/login');
 }
 
@@ -1015,7 +1071,7 @@ app.post('/iletisim', async (req, res) => {
 });
 
 app.get('/admin/login', (req, res) => {
-  if (req.session.isAdmin) return res.redirect('/admin');
+  if (req.session.isAdmin || verifyAdminToken(getCookie(req, ADMIN_REMEMBER_COOKIE))) return res.redirect('/admin');
   res.render('admin/login', { error: null });
 });
 
@@ -1057,6 +1113,7 @@ app.post('/admin/verify-otp', async (req, res) => {
     return req.session.regenerate((err) => {
       if (err) return res.redirect('/admin/login');
       req.session.isAdmin = true;
+      setAdminRememberCookie(res);
       loginAttempts.delete(req.ip);
       flash(res, '/admin', 'Giriş başarılı, hoş geldiniz');
     });
@@ -1065,6 +1122,7 @@ app.post('/admin/verify-otp', async (req, res) => {
 });
 
 app.get('/admin/logout', (req, res) => {
+  clearAdminRememberCookie(res);
   req.session.destroy();
   res.redirect('/');
 });
