@@ -17,6 +17,13 @@ const compression = require('compression');
 app.use(compression());
 const PORT = process.env.PORT || 3000;
 
+// Admin aksiyonları sonrası köşe bildirimi (Windows tarzı toast): hedefe
+// ?msg=<metin>&mtype=<success|error|info> ekler; layout.ejs bunu gösterir.
+function flash(res, path, message, type) {
+  const sep = path.includes('?') ? '&' : '?';
+  res.redirect(path + sep + 'msg=' + encodeURIComponent(message) + '&mtype=' + (type || 'success'));
+}
+
 const engine = require('ejs-mate');
 app.engine('ejs', engine);
 app.set('view engine', 'ejs');
@@ -803,24 +810,26 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
         [titleVal, slug].concat(values.slice(1)));
       pingIndexNow('/gezilecek-yer/' + slug);
     }
-    res.redirect('/admin/gezilecek-yerler');
+    flash(res, '/admin/gezilecek-yerler', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + titleVal);
   });
 });
 
 app.post('/admin/gezilecek-yer-sil/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT image, gallery_images FROM sightseeing WHERE id = ?', [req.params.id]);
+  const item = get('SELECT title, image, gallery_images FROM sightseeing WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia([item.image].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM sightseeing WHERE id = ?', [req.params.id]);
-  res.redirect('/admin/gezilecek-yerler');
+  flash(res, '/admin/gezilecek-yerler', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
 });
 
 app.post('/admin/gezilecek-yer-toggle/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const row = get('SELECT status FROM sightseeing WHERE id = ?', [req.params.id]);
+  const row = get('SELECT title, status FROM sightseeing WHERE id = ?', [req.params.id]);
   const nextStatus = row && row.status === 'active' ? 'passive' : 'active';
   run('UPDATE sightseeing SET status = ? WHERE id = ?', [nextStatus, req.params.id]);
-  res.redirect('/admin/gezilecek-yerler');
+  flash(res, '/admin/gezilecek-yerler',
+    (row && row.title || '#' + req.params.id) + (nextStatus === 'active' ? ' yayına alındı' : ' pasife alındı'),
+    nextStatus === 'active' ? 'success' : 'info');
 });
 
 // Gezilecek yer görüntülenme sıfırlama (toplu + satır bazlı)
@@ -829,7 +838,7 @@ app.post('/admin/gezilecek-yerler/goruntulenme-sifirla', isAuthenticated, (req, 
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM sightseeing').t || 0;
   run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now')");
   console.log(`[admin] Gezilecek yer görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
-  res.redirect('/admin/gezilecek-yerler');
+  flash(res, '/admin/gezilecek-yerler', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
 });
 
 app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -845,7 +854,7 @@ app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (r
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 // ---- İletişim (Bize Ulaşın) ----
@@ -1049,7 +1058,7 @@ app.post('/admin/verify-otp', async (req, res) => {
       if (err) return res.redirect('/admin/login');
       req.session.isAdmin = true;
       loginAttempts.delete(req.ip);
-      res.redirect('/admin');
+      flash(res, '/admin', 'Giriş başarılı, hoş geldiniz');
     });
   }
   res.render('admin/login', { error: 'Doğrulama kodu hatalı.', otpStep: true, otpSentTo: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com' });
@@ -1145,10 +1154,14 @@ app.post('/admin/sirala', isAuthenticated, (req, res) => {
 app.post('/admin/haberler/toggle/:id', isAuthenticated, (req, res) => {
   const { get, run } = require('./db');
   const item = get('SELECT * FROM news WHERE id = ?', [req.params.id]);
+  let next = 'active';
   if (item && item.id) {
-    run("UPDATE news SET status = ?, updated_at = datetime('now') WHERE id = ?", [item.status === 'active' ? 'passive' : 'active', item.id]);
+    next = item.status === 'active' ? 'passive' : 'active';
+    run("UPDATE news SET status = ?, updated_at = datetime('now') WHERE id = ?", [next, item.id]);
   }
-  res.redirect('/admin/haberler');
+  flash(res, '/admin/haberler',
+    ((item && item.title) || '#' + req.params.id) + (next === 'active' ? ' yayına alındı' : ' pasife alındı'),
+    next === 'active' ? 'success' : 'info');
 });
 
 app.post('/admin/haberler/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1156,7 +1169,7 @@ app.post('/admin/haberler/goruntulenme-sifirla', isAuthenticated, (req, res) => 
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM news').t || 0;
   run("UPDATE news SET views_count = 0, views_reset_at = datetime('now'), updated_at = datetime('now')");
   console.log(`[admin] Görüntelenme sayıları sıfırlandı (toplam ${total} görüntülenme) - ${req.session.adminUser || 'admin'}`);
-  res.redirect('/admin/haberler');
+  flash(res, '/admin/haberler', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
 });
 
 app.post('/admin/haberler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1172,7 +1185,7 @@ app.post('/admin/haberler/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 app.get('/admin/haber-ekle', isAuthenticated, (req, res) => {
@@ -1245,15 +1258,15 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
       [title, slug, badge_text || '', summary || '', content, main_image_url, JSON.stringify(galleryArr), isHeadline, order, statusVal, expiresValue, category || 'Gündem']);
     pingIndexNow('/haber/' + slug);
   }
-  res.redirect('/admin/haberler');
+  flash(res, '/admin/haberler', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + title);
 });
 
 app.post('/admin/haber-sil/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT main_image_url, gallery_images FROM news WHERE id = ?', [req.params.id]);
+  const item = get('SELECT title, main_image_url, gallery_images FROM news WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia([item.main_image_url].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM news WHERE id = ?', [req.params.id]);
-  res.redirect('/admin/haberler');
+  flash(res, '/admin/haberler', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
 });
 
 const multer = require('multer');
@@ -1499,32 +1512,32 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
     run('INSERT INTO announcements (title, slug, content, category, image) VALUES (?,?,?,?,?)', [safeTitle, slug, safeContent, category || 'duyuru', image]);
     pingIndexNow('/duyuru/' + slug);
   }
-  res.redirect('/admin');
+  flash(res, '/admin?tab=announcements', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + safeTitle);
 });
 
 app.post('/admin/duyuru-sil/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT image FROM announcements WHERE id = ?', [req.params.id]);
+  const item = get('SELECT title, image FROM announcements WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia(item.image);
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
-  res.redirect('/admin');
+  flash(res, '/admin?tab=announcements', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
 });
 
 // Kullanıcı ilan/duyuru onay akışı
 app.post('/admin/duyuru-onay/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
   run("UPDATE announcements SET status = 'active' WHERE id = ?", [req.params.id]);
-  const item = get('SELECT slug FROM announcements WHERE id = ?', [req.params.id]);
+  const item = get('SELECT title, slug FROM announcements WHERE id = ?', [req.params.id]);
   if (item) pingIndexNow('/duyuru/' + (item.slug || req.params.id));
-  res.redirect('/admin');
+  flash(res, '/admin?tab=announcements', 'Yayına alındı: ' + ((item && item.title) || '#' + req.params.id));
 });
 
 app.post('/admin/duyuru-reddet/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT image FROM announcements WHERE id = ?', [req.params.id]);
+  const item = get('SELECT title, image FROM announcements WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia(item.image);
   run('DELETE FROM announcements WHERE id = ?', [req.params.id]);
-  res.redirect('/admin');
+  flash(res, '/admin?tab=announcements', 'Reddedildi ve silindi: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
@@ -1533,7 +1546,7 @@ app.post('/admin/duyurular/goruntulenme-sifirla', isAuthenticated, (req, res) =>
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM announcements').t || 0;
   run("UPDATE announcements SET views_count = 0, views_reset_at = datetime('now')");
   console.log(`[admin] Duyuru/ilan görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
-  res.redirect('/admin?tab=announcements');
+  flash(res, '/admin?tab=announcements', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
 });
 
 app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1549,7 +1562,7 @@ app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 // ==================== KULLANICI İLAN/İLAN VERME ====================
@@ -1615,9 +1628,9 @@ app.post('/admin/hakkinda', isAuthenticated, (req, res) => {
     const about = get('SELECT * FROM about_page WHERE id = 1');
     return res.render('admin/about-form', { about, error: 'İçerik zorunludur', saved: false });
   }
-  run('UPDATE about_page SET banner_subtitle=?, content=?, cta_title=?, cta_text=?, updated_at=datetime(\'now\') WHERE id=1',
+  run(`UPDATE about_page SET banner_subtitle=?, content=?, cta_title=?, cta_text=?, updated_at=datetime('now') WHERE id=1`,
     [banner_subtitle || '', content, cta_title || '', cta_text || '']);
-  res.redirect('/admin/hakkinda?saved=1');
+  flash(res, '/admin/hakkinda?saved=1', 'Hakkında sayfası kaydedildi');
 });
 
 app.get('/admin/mekan-ekle', isAuthenticated, (req, res) => {
@@ -1683,13 +1696,13 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
     run(`UPDATE places SET name=?, slug=?, category=?, cuisine_type=?, establishment_type=?, meal_type=?, address=?, phone=?, working_hours=?, map_link=?, features=?, main_image_url=?, gallery_images=?, description=?, is_featured=?, status=?, display_until=?, sort_order=?, google_reviews_url=? WHERE id=?`,
         [name, slug, category, cuisine_type || '', JSON.stringify(estTypeArr), JSON.stringify(mealTypeArr), address || '', phone || '', working_hours || '', map_link || '', JSON.stringify(features), main_image_url, JSON.stringify(galleryArr), description || '', isFeatured, statusVal, display_until || null, parseInt(sort_order) || 0, google_reviews_url || '', edit_id]);
     pingIndexNow('/mekan/' + slug);
-    return res.redirect('/admin?updated=1&tab=places');
+    flash(res, '/admin?tab=places', 'Güncellendi: ' + name);
   } else {
     const slug = ensureUniqueSlug(slugify(name), null, 'places');
     run(`INSERT INTO places (name, slug, category, cuisine_type, establishment_type, meal_type, address, phone, working_hours, map_link, features, main_image_url, gallery_images, description, is_featured, status, display_until, sort_order, google_reviews_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [name, slug, category, cuisine_type || '', JSON.stringify(estTypeArr), JSON.stringify(mealTypeArr), address || '', phone || '', working_hours || '', map_link || '', JSON.stringify(features), main_image_url, JSON.stringify(galleryArr), description || '', isFeatured, statusVal, display_until || null, parseInt(sort_order) || 0, google_reviews_url || '']);
     pingIndexNow('/mekan/' + slug);
-    return res.redirect('/admin?created=1&tab=places');
+    flash(res, '/admin?tab=places', 'Eklendi: ' + name);
   }
 });
 
@@ -1714,10 +1727,10 @@ app.post('/admin/gallery-delete', isAuthenticated, (req, res) => {
 
 app.post('/admin/mekan-sil/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT main_image_url, gallery_images FROM places WHERE id = ?', [req.params.id]);
+  const item = get('SELECT name, main_image_url, gallery_images FROM places WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia([item.main_image_url].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM places WHERE id = ?', [req.params.id]);
-  res.redirect('/admin');
+  flash(res, '/admin?tab=places', 'Silindi: ' + ((item && item.name) || '#' + req.params.id));
 });
 
 // Mekan görüntülenme sıfırlama (toplu + satır bazlı)
@@ -1731,7 +1744,7 @@ app.post('/admin/mekanlar/goruntulenme-sifirla', isAuthenticated, (req, res) => 
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
 });
 
 app.post('/admin/mekanlar/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1747,7 +1760,7 @@ app.post('/admin/mekanlar/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.name) || '#' + req.params.id), 'info');
 });
 
 // ==================== FİMA REHBERİ ====================
@@ -1957,31 +1970,35 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     run(`UPDATE companies SET name=?, slug=?, category=?, sector=?, address=?, phone=?, website=?, email=?, working_hours=?, map_link=?, map_embed=?, google_reviews_url=?, description=?, logo_url=?, gallery_images=?, features=?, is_featured=?, status=?, sort_order=? WHERE id=?`,
       [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0, edit_id]);
     pingIndexNow('/rehber/' + (slug || edit_id));
-    return res.redirect('/admin/firmalar?updated=1');
+    flash(res, '/admin/firmalar', 'Güncellendi: ' + name);
   } else {
     const slug = ensureUniqueSlug(slugify(name), null, 'companies');
     run(`INSERT INTO companies (name, slug, category, sector, address, phone, website, email, working_hours, map_link, map_embed, google_reviews_url, description, logo_url, gallery_images, features, is_featured, status, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0]);
     pingIndexNow('/rehber/' + slug);
-    return res.redirect('/admin/firmalar?created=1');
+    flash(res, '/admin/firmalar', 'Eklendi: ' + name);
   }
 });
 
 app.post('/admin/firma-sil/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
-  const item = get('SELECT logo_url FROM companies WHERE id = ?', [req.params.id]);
+  const item = get('SELECT name, logo_url FROM companies WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia(item.logo_url);
   run('DELETE FROM companies WHERE id = ?', [req.params.id]);
-  res.redirect('/admin/firmalar');
+  flash(res, '/admin/firmalar', 'Silindi: ' + ((item && item.name) || '#' + req.params.id));
 });
 
 app.post('/admin/firma-toggle/:id', isAuthenticated, (req, res) => {
   const { get, run } = require('./db');
   const item = get('SELECT * FROM companies WHERE id = ?', [req.params.id]);
+  let next = 'active';
   if (item && item.id) {
-    run("UPDATE companies SET status = ? WHERE id = ?", [item.status === 'active' ? 'passive' : 'active', item.id]);
+    next = item.status === 'active' ? 'passive' : 'active';
+    run("UPDATE companies SET status = ? WHERE id = ?", [next, item.id]);
   }
-  res.redirect('/admin/firmalar');
+  flash(res, '/admin/firmalar',
+    ((item && item.name) || '#' + req.params.id) + (next === 'active' ? ' yayına alındı' : ' pasife alındı'),
+    next === 'active' ? 'success' : 'info');
 });
 
 // Firma görüntülenme sıfırlama (toplu + satır bazlı)
@@ -1995,7 +2012,7 @@ app.post('/admin/firmalar/goruntulenme-sifirla', isAuthenticated, (req, res) => 
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
 });
 
 app.post('/admin/firmalar/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -2011,7 +2028,7 @@ app.post('/admin/firmalar/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
-  res.redirect(back);
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.name) || '#' + req.params.id), 'info');
 });
 
 // ==================== GOOGLE OAuth & YORUM SİSTEMİ ====================
@@ -2231,33 +2248,35 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
 app.post('/admin/comments/approve/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run("UPDATE comments SET status = 'approved' WHERE id = ?", [req.params.id]);
-  res.redirect('/admin/comments');
+  flash(res, '/admin/comments', 'Yorum onaylandı ve yayında');
 });
 
 // Yorum görünürlük değiştir (approved<->hidden)
 app.post('/admin/comments/toggle/:id', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
   const comment = get("SELECT status FROM comments WHERE id = ?", [req.params.id]);
-  if (!comment) return res.redirect('/admin/comments');
+  if (!comment) return flash(res, '/admin/comments', 'Yorum bulunamadı', 'error');
   const newStatus = comment.status === 'approved' ? 'hidden' : 'approved';
   run("UPDATE comments SET status = ? WHERE id = ?", [newStatus, req.params.id]);
-  res.redirect('/admin/comments');
+  flash(res, '/admin/comments',
+    newStatus === 'approved' ? 'Yorum yeniden görünür yapıldı' : 'Yorum gizlendi',
+    newStatus === 'approved' ? 'success' : 'info');
 });
 
 // Yorum düzenle (admin)
 app.post('/admin/comments/edit/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   const { content } = req.body;
-  if (!content || content.trim().length === 0) return res.redirect('/admin/comments');
+  if (!content || content.trim().length === 0) return flash(res, '/admin/comments', 'Yorum içeriği boş olamaz', 'error');
   run("UPDATE comments SET content = ? WHERE id = ?", [content.trim().substring(0, 1000), req.params.id]);
-  res.redirect('/admin/comments');
+  flash(res, '/admin/comments', 'Yorum güncellendi');
 });
 
 // Yorum sil
 app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run('DELETE FROM comments WHERE id = ?', [req.params.id]);
-  res.redirect('/admin/comments');
+  flash(res, '/admin/comments', 'Yorum silindi');
 });
 
 // ---- Gelen Mesajlar (İletişim Formu) ----
@@ -2270,13 +2289,13 @@ app.get('/admin/iletisim', isAuthenticated, (req, res) => {
 app.post('/admin/iletisim/read/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run("UPDATE contact_messages SET status = 'read' WHERE id = ?", [req.params.id]);
-  res.redirect('/admin/iletisim');
+  flash(res, '/admin/iletisim', 'Mesaj okundu olarak işaretlendi', 'info');
 });
 
 app.post('/admin/iletisim/delete/:id', isAuthenticated, (req, res) => {
   const { run } = require('./db');
   run('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
-  res.redirect('/admin/iletisim');
+  flash(res, '/admin/iletisim', 'Mesaj silindi');
 });
 
 // Yorum düzenle (kullanıcı - sadece kendi yorumu)

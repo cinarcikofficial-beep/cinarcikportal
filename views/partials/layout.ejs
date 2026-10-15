@@ -481,5 +481,62 @@
     });
   })();
   </script>
+
+  <!-- Windows 11 tarzı köşe bildirimi: server ?msg=&mtype= ile flash() gönderir -->
+  <div class="admin-toast-root" id="admin-toast-root" aria-live="polite"></div>
+  <script>
+  (function() {
+    var ICONS = { success: '✓', info: 'i', error: '✕' };
+    var TITLES = { success: 'İşlem tamamlandı', info: 'Bilgi', error: 'Hata' };
+    function adminToast(text, type, title) {
+      var root = document.getElementById('admin-toast-root');
+      if (!root || !text) return;
+      type = (type && ICONS[type]) ? type : 'success';
+      while (root.children.length >= 4) root.removeChild(root.firstChild);
+      var el = document.createElement('div');
+      el.className = 'admin-toast t-' + type;
+      var icon = document.createElement('span');
+      icon.className = 'at-icon';
+      icon.textContent = ICONS[type];
+      var body = document.createElement('div');
+      body.className = 'at-body';
+      var t = document.createElement('div');
+      t.className = 'at-title';
+      t.textContent = title || TITLES[type];
+      var m = document.createElement('div');
+      m.className = 'at-text';
+      m.textContent = text;
+      body.appendChild(t); body.appendChild(m);
+      var close = document.createElement('button');
+      close.className = 'at-close';
+      close.setAttribute('aria-label', 'Kapat');
+      close.innerHTML = '&times;';
+      var prog = document.createElement('span');
+      prog.className = 'at-progress';
+      el.appendChild(icon); el.appendChild(body); el.appendChild(close); el.appendChild(prog);
+      root.appendChild(el);
+      requestAnimationFrame(function() { requestAnimationFrame(function() { el.classList.add('show'); }); });
+      var timer = setTimeout(dismiss, 4500);
+      function dismiss() {
+        clearTimeout(timer);
+        el.classList.remove('show');
+        el.classList.add('hide');
+        setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 450);
+      }
+      close.addEventListener('click', dismiss);
+      el.addEventListener('click', function(e) { if (e.target !== close) dismiss(); });
+      return el;
+    }
+    window.adminToast = adminToast;
+
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('msg')) {
+      adminToast(params.get('msg'), params.get('mtype') || 'success');
+      params.delete('msg'); params.delete('mtype');
+      var qs = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+    }
+  })();
+  </script>
 </body>
 </html>
