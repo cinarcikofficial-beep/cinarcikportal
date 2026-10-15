@@ -11,7 +11,7 @@
       <h1 class="text-3xl font-bold text-white flex items-center gap-3">
         <span class="text-2xl">📊</span> Raporlar
       </h1>
-      <p class="text-gray-400 mt-1 text-sm">Sayfa trafiği, ziyaretçi IP'leri ve en çok ziyaret edilen sayfalar (son 90 gün saklanır).</p>
+      <p class="text-gray-400 mt-1 text-sm">Sayfa trafiği, ziyaretçi IP'leri ve en çok ziyaret edilen sayfalar (son 90 gün saklanır). Render iç kontrolleri (10.x) istatistiklere sayılmaz; son ziyaretlerde "Render iç" rozetiyle işaretlenir.</p>
     </div>
   </div>
 
@@ -94,10 +94,12 @@
           <% if (!recent || recent.length === 0) { %>
             <tr><td colspan="5" class="p-12 text-center text-gray-500">Henüz veri yok.</td></tr>
           <% } else { recent.forEach(function(v) { %>
-            <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+            <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors<%= v.is_internal ? ' opacity-60' : '' %>">
               <td class="p-4 text-zinc-400 whitespace-nowrap text-xs"><%= v.created_at %></td>
               <td class="p-4 text-zinc-200 font-mono text-xs break-all"><%= v.path %></td>
-              <td class="p-4 text-emerald-400 font-semibold whitespace-nowrap"><%= v.ip %></td>
+              <td class="p-4 whitespace-nowrap font-semibold text-xs <%= v.is_internal ? 'text-zinc-500' : 'text-emerald-400' %>">
+                <%= v.ip %><% if (v.is_internal) { %><span class="ml-2 inline-block bg-zinc-800 border border-zinc-600 text-zinc-400 text-[10px] font-bold px-1.5 py-0.5 rounded align-middle">Render iç</span><% } %>
+              </td>
               <td class="p-4 text-zinc-400 text-xs max-w-xs truncate"><%= (v.user_agent || '').substring(0, 90) %></td>
               <td class="p-4 text-zinc-500 text-xs max-w-[160px] truncate"><%= (v.referrer || '-') %></td>
             </tr>

@@ -1936,17 +1936,31 @@ app.get('/admin/raporlar', isAuthenticated, (req, res) => {
   const d7 = iso(new Date(now.getTime() - 7 * 24 * 3600 * 1000));
   const d30 = iso(new Date(now.getTime() - 30 * 24 * 3600 * 1000));
 
+  // Render/AWS iç ağı (10.x, 172.16-31, 192.168, 127., IPv6 yerel) sağlık
+  // kontrollerinden gelir — istatistikleri bozmasın diye sorgulardan hariç tutulur.
+  const PUBLIC_IP = `ip NOT LIKE '10.%' AND ip NOT LIKE '127.%' AND ip NOT LIKE '192.168.%'
+    AND ip NOT GLOB '172.1[6-9]*' AND ip NOT GLOB '172.2[0-9]*' AND ip NOT GLOB '172.3[0-1]*'
+    AND ip != '::1'`;
+  const isPrivateIp = (ip) => {
+    if (!ip || ip === '::1') return true;
+    if (/^(10\.|127\.|192\.168\.)/.test(ip)) return true;
+    const m = ip.match(/^172\.(\d+)\./);
+    if (m && +m[1] >= 16 && +m[1] <= 31) return true;
+    return /^(fc|fd|fe8)/i.test(ip);
+  };
+
   const stat = (since) => {
-    const r = get('SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ?', [since]);
+    const r = get(`SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP}`, [since]);
     return { views: (r && r.views) || 0, uniques: (r && r.uniques) || 0 };
   };
-  const totals = get('SELECT COUNT(*) AS total, COUNT(DISTINCT ip) AS totalUniques FROM page_views') || { total: 0, totalUniques: 0 };
+  const totals = get(`SELECT COUNT(*) AS total, COUNT(DISTINCT ip) AS totalUniques FROM page_views WHERE ${PUBLIC_IP}`) || { total: 0, totalUniques: 0 };
 
   const topPages = all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
-    FROM page_views WHERE created_at >= ? GROUP BY path ORDER BY views DESC LIMIT 20`, [d30]);
+    FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY path ORDER BY views DESC LIMIT 20`, [d30]);
   const daily = all(`SELECT date(created_at) AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
-    FROM page_views WHERE created_at >= ? GROUP BY day ORDER BY day ASC`, [d30]);
-  const recent = all('SELECT * FROM page_views ORDER BY id DESC LIMIT 100');
+    FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY day ORDER BY day ASC`, [d30]);
+  const recent = all('SELECT * FROM page_views ORDER BY id DESC LIMIT 100')
+    .map(r => Object.assign(r, { is_internal: isPrivateIp(r.ip) }));
 
   const dailyMap = {};
   daily.forEach(r => { dailyMap[r.day] = r; });
