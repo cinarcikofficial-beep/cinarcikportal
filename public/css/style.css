@@ -150,6 +150,24 @@ html.light .places-hero input { background-color: #ffffff !important; color: #0f
 html.light .places-hero input::placeholder { color: #94a3b8 !important; }
 html.light .places-hero svg.text-zinc-400, html.light .places-hero svg.text-zinc-500 { color: #94a3b8 !important; }
 
+/* Firma logo kutuları + görsel yoksa yer tutucu gradiantlar — gündüzde açık zemin */
+html.light [class*="from-zinc-950"][class*="to-zinc-900"],
+html.light [class*="from-zinc-900"][class*="to-zinc-950"] {
+  background-image: linear-gradient(to bottom right, #f8fafc, #e2e8f0) !important;
+}
+html.light [class*="from-zinc-800"][class*="to-zinc-900"],
+html.light [class*="from-zinc-800"][class*="to-zinc-950"] {
+  background-image: linear-gradient(to bottom right, #f1f5f9, #e2e8f0) !important;
+}
+html.light .company-card, html.light .place-card.group {
+  border-color: #e2e8f0;
+}
+html.light .company-card h3, html.light .place-card.group h3,
+html.light .company-card p, html.light .place-card.group p {
+  color: #0f172a !important;
+}
+html.light .company-card .line-clamp-2 { color: #0f172a; }
+
 /* Kategori pill'leri (firma rehberi / gezilecek yerler) */
 html.light .cat-pill { color: #475569; border-color: #cbd5e1; }
 html.light .cat-pill:hover { background: #f1f5f9; color: #0f172a; }
