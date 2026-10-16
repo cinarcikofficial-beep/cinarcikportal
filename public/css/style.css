@@ -1118,14 +1118,71 @@ a.card.place-card { padding: 0; }
 
 .article-detail { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
 .article-header h1 { font-size: 1.8rem; margin: 1rem 0; }
-.article-header .back-link {
-  display: inline-block;
-  color: #facc15;
-  text-decoration: none;
+
+/* ---- "Listeye dön" pill linki (tüm detay sayfaları) ---- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem 0.45rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  margin-bottom: 1rem;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.article-header .back-link:hover { text-decoration: underline; }
+.back-link::before {
+  content: '\2190';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.back-link:hover {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateX(-2px);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.12);
+}
+.back-link:hover::before {
+  background: rgba(16, 185, 129, 0.22);
+  transform: translateX(-1px);
+}
+
+html.light .back-link {
+  color: #475569;
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+html.light .back-link::before {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+html.light .back-link:hover {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.07);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+}
+html.light .back-link:hover::before {
+  background: rgba(16, 185, 129, 0.18);
+}
 .article-image { margin: 1.5rem 0; }
 .article-image img {
   width: 100%;
