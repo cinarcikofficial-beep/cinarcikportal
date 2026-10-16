@@ -130,6 +130,15 @@ html.light .manset-nav-btn.active, html.light .manset-nav-btn.bg-red-600 { backg
 /* Sayfa hero bandı (firma rehberi vb.) — gündüz modunda açık zemin */
 html.light .page-hero { background: linear-gradient(to bottom right, #ffffff, #f1f5f9) !important; border-color: #e2e8f0; }
 
+/* places-hero: her iki modda da koyu foto overlay — metinler beyaz kalmalı */
+html.light .places-hero .text-white, html.light .places-hero h1, html.light .places-hero p { color: #ffffff !important; }
+html.light .places-hero .text-zinc-300, html.light .places-hero .text-zinc-400 { color: #e4e4e7 !important; }
+html.light .places-hero input { background-color: rgba(24, 24, 27, 0.75) !important; color: #ffffff !important; border-color: rgba(63, 63, 70, 0.6) !important; }
+html.light .places-hero input::placeholder { color: #a1a1aa !important; }
+html.light .places-hero .cat-pill { color: #d4d4d8; border-color: rgba(63, 63, 70, 0.8); background: rgba(24, 24, 27, 0.55); }
+html.light .places-hero .cat-pill:hover { background: rgba(39, 39, 42, 0.8); color: #ffffff; }
+html.light .places-hero .cat-pill.cat-active, html.light .places-hero .cat-pill.active { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.18); }
+
 /* Kategori pill'leri (firma rehberi / gezilecek yerler) */
 html.light .cat-pill { color: #475569; border-color: #cbd5e1; }
 html.light .cat-pill:hover { background: #f1f5f9; color: #0f172a; }
