@@ -152,6 +152,55 @@ html.light .bg-zinc-800 { background-color: #f1f5f9 !important; }
 /* Galeri "+N" karosu (mekanlar) */
 html.light [style*="background:rgba(255,255,255,0.05)"] { background: #f1f5f9 !important; }
 
+/* ---- Light mode: navigasyon / hover / buton düzeltmeleri ---- */
+/* Mobil hamburger menü — gece zemini sabit kodlanmış, gündüz açık olmalı */
+@media (max-width: 768px) {
+  html.light .main-nav.open {
+    background: rgba(255, 255, 255, 0.98);
+    border-bottom-color: #e2e8f0;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
+  }
+  html.light .main-nav.open a:hover { background: #f1f5f9; }
+  html.light .main-nav.open a.text-emerald-300 { background: rgba(16, 185, 129, 0.12); }
+}
+
+/* Header nav link hover — [class*="bg-zinc-800/"] kuralını yenmeli */
+html.light .main-nav > a:hover { background-color: #f1f5f9 !important; }
+html.light .main-nav > a.text-emerald-300 { background-color: rgba(16, 185, 129, 0.12) !important; }
+
+/* Dil menüsü — beyaz dropdown'da hover/aktif */
+html.light #lang-menu { background: #ffffff; border-color: #e2e8f0; }
+html.light #lang-menu a:hover { background: #f1f5f9; }
+html.light #lang-menu a.text-emerald-400 { background: rgba(16, 185, 129, 0.1); }
+
+/* Tema toggle butonu hover */
+html.light #theme-toggle:hover { background-color: #e2e8f0 !important; }
+
+/* İkincil koyu butonlar (yorum İptal, admin Çıkış) — gündüzde açık gri + koyu metin */
+html.light .bg-zinc-700 { background-color: #e2e8f0 !important; color: #334155 !important; }
+html.light .hover\:bg-zinc-700:hover { background-color: #cbd5e1 !important; }
+html.light .bg-zinc-700 .text-white, html.light .bg-zinc-700:hover .text-white { color: #334155 !important; }
+html.light .bg-gray-600 { background-color: #e2e8f0 !important; color: #334155 !important; }
+html.light .hover\:bg-gray-500:hover { background-color: #cbd5e1 !important; }
+html.light .bg-gray-600 .text-white, html.light .bg-gray-600:hover .text-white { color: #334155 !important; }
+
+/* Kart hover border — Tailwind hover: varyantı .border-zinc-700 ile eşleşmez */
+html.light .hover\:border-zinc-700:hover { border-color: #cbd5e1 !important; }
+html.light .hover\:bg-zinc-800\/50:hover, html.light .hover\:bg-zinc-800\/80:hover { background-color: #f1f5f9 !important; }
+
+/* Hava durumu modalı gün kartları + tarihsel rozeti */
+html.light [class*="border-zinc-700/"] { border-color: #e2e8f0 !important; }
+html.light [class*="bg-zinc-600/"] { background-color: #f1f5f9 !important; }
+
+/* Dosya input butonu (ilan-ver) — file: varyantı genel input kuralıyla eşleşmez */
+html.light input::file-selector-button {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+html.light input:hover::file-selector-button { background-color: #e2e8f0 !important; }
+html.light input::file-selector-button:hover { background-color: #e2e8f0 !important; }
+
 .card {
   background: rgba(24, 24, 28, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
