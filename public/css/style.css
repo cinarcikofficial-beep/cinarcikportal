@@ -265,6 +265,10 @@ a.card.place-card { padding: 0; }
 .announce-tag.tag-duyuru { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .announce-tag.tag-etkinlik { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 
+/* Duyuru/ilan görselleri: afişler kırpılmasın — contain + nötr çerçeve */
+.ann-img-frame { background: rgba(255, 255, 255, 0.04); }
+html.light .ann-img-frame { background: #f1f5f9; }
+
 /* Okunabilirlik: gri metinleri biraz aydınlat */
 .text-zinc-400 { color: #c4c4cd !important; }
 .text-zinc-500 { color: #a3a3ad !important; }
