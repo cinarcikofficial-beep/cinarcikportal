@@ -8,21 +8,28 @@ Son güncelleme: Ekim 2026
 gezi noktaları, firma rehberi, vapur/saat bilgisi, hava durumu ve döviz/altın
 ticker'ı içeren çok dilli (TR/EN/RU/AR) bir Express uygulaması. Ayrıca
 OpenStreetMap tabanlı haritalar ve admin tarafında trafik raporları
-(sayfa görüntülenme + ziyaretçi IP) bulunur. Tamamı ücretsiz (free tier)
-servislerle çalışır.
+   ziyaretçi IP) bulunur. Tamamı ücretsiz/ucuz (free tier + $20/yıl hosting)
+   servislerle çalışır.
 
 ```
 Ziyaretçi
    │  HTTPS
    ▼
-Cloudflare (DNS + opsiyonel proxy)
-   │
+Cloudflare (DNS + proxy + edge cache: /uploads/*, /css/*)
+   │  HTTP → origin (SSL mode: Full)
    ▼
-Render.com — Free Web Service (Node 20, Express + EJS)
-   ├── SQLite dosyası: db/cinarcik.db   (kalıcı değil, bkz. §6)
-   ├── Yüklenen görseller: public/img/uploads (kalıcı değil)
+Spaceship Shared Hosting — Essential (cPanel + Passenger, Node 20, Express + EJS)
+   ├── Sunucu: server59.shared.spaceship.host (IP 66.29.148.182)
+   ├── App root: /home/svclrphtsu/marmaraninincisi.com
+   ├── SQLite dosyası: db/cinarcik.db   (yerel fallback, asıl veri Turso)
+   ├── Yüklenen görseller: R2'ye gider (local mirror silinir)
    └── Harici API'ler: Brevo (2FA mail), Google OAuth, reCAPTCHA
 ```
+
+> **Taşınma (16 Eki 2026):** Render free bandwidth kotası dolduğu için servis
+> askıya alınmıştı (ay sonuna kadar 503) → Spaceship Essential'a manuel zip
+> deploy ile geçildi. Render artık kullanılmıyor; `render.yaml` repo'da
+> belge/rollback amaçlı duruyor. Detay: `AGENTS.md` "16 Eki (taşınma)".
 
 ## 2. Kod Deposu ve Deploy
 
@@ -30,38 +37,59 @@ Render.com — Free Web Service (Node 20, Express + EJS)
 |---|---|
 | Repo | `github.com/cinarcikofficial-beep/cinarcikportal` |
 | Branch | `main` |
-| Deploy | `main`'e push → Render otomatik deploy |
-| Build | `npm install` |
-| Start | `node server.js` |
+| Deploy | **Manuel**: `scripts/deploy-spaceship.ps1` → zip → cPanel Upload + Extract → (gerekirse) NPM Install → Restart |
+| Build | `npm install` (cPanel Node.js panelinde "Run NPM Install") |
+| Start | `node server.js` (Passenger, cPanel Node.js App paneli) |
+| App root | `/home/svclrphtsu/marmaraninincisi.com` |
 | Health check | `GET /` |
-| Blueprint | `render.yaml` (repo kökünde) |
 
-Env değişkenleri iki yerden yönetilir:
+Env değişkenleri tek yerden yönetilir:
 
-- `render.yaml` → Blueprint ile senkronize olan değerler (koda gömülü olanlar)
-- Render Dashboard → **Environment** → `sync: false` alanlar (secret'lar repo'ya girmez)
+- **`.env`** (app root'ta; dotenv ile yüklenir; repo'ya girmez)
+- cPanel → Setup Node.js App → environment variables (opsiyonel alternatif;
+  `.env` varken gerekmedi)
 
 ## 3. Altyapı
 
-### 3.1 Render.com (Free plan)
+### 3.1 Spaceship Shared Hosting (Essential plan)
 
-- Servis: `cinarcik-portal`
-- Adresler: `https://cinarcikportal.onrender.com` + `https://marmaraninincisi.com`
-- Compute: 0.1 CPU / 512 MB RAM, ücretsiz kota 750 saat/ay
-- Özel domain için sertifika Render tarafından otomatik sağlanır (Let's Encrypt)
+- Panel: Spaceship Hosting Manager → **cPanel** (full erişim + token'lı erişim)
+- Sunucu: `server59.shared.spaceship.host`, shared IP **`66.29.148.182`** (US)
+- Runtime: cPanel **Setup Node.js App** (CloudLinux + Passenger), **Node 20**,
+  mode: production, startup file: `server.js`
+- Depolama/ bandwidth: 20 GB SSD, **unmetered bandwidth** (Render kota sorununun
+  yapısal çözümü)
+- Sertifika: cPanel **AutoSSL** (Sectigo DV) — `marmaraninincisi.com`
+- Trial: 30 gün $0 → **15 Kasım 2026'da $19.88/yıl** yenileme (Auto-renew Açık;
+  iptal edilecekse 14 Kasım'dan önce karar ver)
+- Eski: Render Free (`cinarcikportal.onrender.com`) — 16 Eki'de taşındı,
+  kullanılmıyor.
 
-### 3.2 Cloudflare (DNS)
+### 3.2 Cloudflare (DNS + proxy + cache)
 
 Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 
 | Kayıt | Tip | Hedef | Not |
 |---|---|---|---|
-| `@` | A | `216.24.57.16`, `216.24.57.18` | Render, DNS only (gri bulut) |
-| `www` | CNAME | `cinarcikportal.onrender.com` | Proxied (turuncu) |
+| `@` | A | `66.29.148.182` | Spaceship, **Proxied (turuncu)** |
+| `www` | CNAME | `marmaraninincisi.com` | Proxied (turuncu) |
 
-- SSL/TLS encryption mode: **Full**
-- `AAAA` (IPv6) kaydı **bulunmamalı** — Render IPv6 desteklemiyor
-- Render tarafında **Settings → Custom Domains** üzerinden domain eklenip Verify edilir
+- SSL/TLS encryption mode: **Full** (strict değil — origin sertifikası AutoSSL'den)
+- Mail kayıtları (Brevo DKIM/SPF, Cloudflare Email Routing MX) **DNS only** kalmalı
+- **NEEDS DNS SETUP** rozeti (Spaceship): A kaydı doğru IP + DNS-only iken
+  "Verify DNS changes" ile geçiyor, sonra proxy geri açılabilir.
+- Cache: `/uploads/*` (immutable, 1 yıl) + `/css/*` edge'te — MISS→HIT doğrulandı;
+  HTML dinamik (DYNAMIC) kalıyor.
+- Eski Render kayıtları (`216.24.57.16/18`, `cinarcikportal.onrender.com`)
+  silindi.
+- **Güvenlik (16 Eki):** cPanel Passenger **docroot = app root** olduğu için
+  `server.js`/`db/index.js`/`package.json`/`db/cinarcik.db` (canlı DB kopyası)
+  ham web'den servis ediliyordu (`.env` 403 korumalı, `server.js` CF'te
+  cache'li). Kalıcı çözüm: cPanel Node.js App → docroot `public`. Repo'daki
+  `.htaccess` (RedirectMatch ile kod/db yolları 404) yedek katman — yeni zip
+  Extract edilince devreye girer. Doğrulama: `/server.js`, `/db/cinarcik.db` →
+  404; `/`, `/img/uploads/*`, `/images/*` → 200 kalmalı. Yedek katman olarak
+  Cloudflare WAF custom rule (path block) kurulabilir.
 
 ### 3.3 Cloudflare R2 (kalıcı görsel deposu)
 
@@ -126,9 +154,11 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | **Nominatim** (`nominatim.openstreetmap.org`) | Harita koordinat çözümleme (adres/plus code → lat/lng) | açık (düşük hacim) |
 
 ### 5.1 Neden SMTP değil?
-Render, **Free plan'da giden SMTP portlarını (25/465/587) engelliyor**
-(26 Eylül 2025'ten beri). Bu yüzden 2FA e-postası SMTP yerine **Brevo HTTP
-API** (port 443) ile gönderiliyor. Kod `server.js → sendAdmin2FACode()` içinde:
+Eskiden Render, Free plan'da giden SMTP portlarını (25/465/587) engelliyordu;
+bu yüzden 2FA e-postası SMTP yerine **Brevo HTTP API** (port 443) ile
+gönderiliyordu. Taşınmadan sonra SMTP teknik olarak mümkün olsa da kod
+**HTTP API öncelikli** olduğu için olduğu gibi bırakıldı (daha güvenilir +
+Render'a bağımlılık yok). Öncelik sırası `server.js → sendPortalMail()`:
 
 - `EMAIL_API_KEY` varsa → Brevo (`xkeysib-` prefix) veya SendGrid HTTP API
 - yoksa → yerelde SMTP fallback (yalnız geliştirme ortamında çalışır)
@@ -154,7 +184,7 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 - **Eksik alanlar önceki başarılı cache'ten tamamlanır** → ticker `--` göstermez.
 - **Cache**: tüm alanlar doluysa 5 dk; eksik varsa 60 sn (hızlı yeniden deneme).
 - **Saat**: `updated` alanı `Europe/Istanbul` zaman diliminde üretilir
-  (Render UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
+   (sunucu UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
 
 ### 5.4 Haritalar (OpenStreetMap)
 
@@ -185,10 +215,12 @@ ham haliyle iframe'e konunca reddediliyordu).
      sinyal (SIGINT/SIGTERM/SIGHUP) yakalayıcıları ~8 sn flush verir;
      `mergeRows` bulut/yerel çakışmasında kazananı doğru seçer.
    - Görseller: **Cloudflare R2** (bkz. 3.3).
-   - Geriye kalan: Render diski yalnızca yerel fallback; her deploy'ta sıfırlanır,
-     anlamlı veri kaybı yoktur.
-2. **Instance uykusu**: 15 dakika hareketsizlikte uyur, sonraki istekte ~1 dk uyanır.
-3. **Oturum kaybı**: session bellekte; deploy anında tüm oturumlar düşer.
+   - Yerel disk artık kalıcı (shared hosting); yine de asıl veri kaynağı
+     Turso'dur, lokal dosya sadece fallback'tir.
+2. **Process yaşam döngüsü**: Passenger uygulamayı belirli aralıklarla yeniden
+   başlatabilir (deploy/restart'ta session'lar düşer). Sürekli yükseltme için
+   `keep-awake` workflow'u 10 dk'da bir ping atar.
+3. **Oturum kaybı**: session bellekte; restart/deploy anında tüm oturumlar düşer.
 4. **Doğrudan SMTP yok**: yalnız Brevo/HTTP API üzerinden mail gönderilebilir.
 5. **Eşzamanlılık**: disk + SQLite nedeniyle tek instance ile çalışmalı
    (autoscale/çoklu instance desteklenmez).
@@ -198,39 +230,49 @@ ham haliyle iframe'e konunca reddediliyordu).
 
 ## 7. Ortam Değişkenleri
 
+Tümü **`.env`** dosyasında (app root'ta; `.gitignore`'da; repo'ya girmez).
+Eski Render `render.yaml` referansları artık belge niteliğinde.
+
 | Anahtar | Nerede | Açıklama |
 |---|---|---|
-| `NODE_VERSION`, `NODE_ENV` | render.yaml | Node 20, production |
-| `SITE_URL` | render.yaml | `https://marmaraninincisi.com` |
-| `GOOGLE_CLIENT_ID` | render.yaml | OAuth client ID |
-| `GOOGLE_CALLBACK_URL` | render.yaml | `https://marmaraninincisi.com/auth/google/callback` |
-| `GOOGLE_CLIENT_SECRET` | Dashboard (secret) | OAuth client secret |
-| `RECAPTCHA_SITE_KEY` | render.yaml | reCAPTCHA site key |
-| `RECAPTCHA_SECRET_KEY` | Dashboard (secret) | reCAPTCHA secret |
-| `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS` | render.yaml / secret | Basic auth — **aktif değil** (ölü kod, bkz. §4.2) |
-| `ADMIN_PASSWORD` | Dashboard (secret) | İlk admin kullanıcısı şifresi |
-| `ADMIN_2FA_EMAIL` | render.yaml | 2FA kodunun gideceği adres |
-| `EMAIL_API_KEY` | Dashboard (secret) | Brevo API key (`xkeysib-...`) |
-| `EMAIL_FROM` | render.yaml | Gönderici: `cinarcikofficial@gmail.com` |
-| `SMTP_*`, `GMAIL_*` | Dashboard | Yalnızca yerel fallback |
-| `SESSION_SECRET` | render.yaml (`generateValue`) | Oturum imzası |
-| `TURSO_URL` | render.yaml | `libsql://...turso.io` |
-| `TURSO_TOKEN` | Dashboard (secret) | Turso auth token |
-| `R2_ACCOUNT_ID` | Dashboard (secret) | Cloudflare account ID |
-| `R2_ACCESS_KEY_ID` | Dashboard (secret) | R2 API token access key |
-| `R2_SECRET_ACCESS_KEY` | Dashboard (secret) | R2 API token secret |
-| `R2_BUCKET` | render.yaml | `cinarcik-portal-uploads` |
-| `DB_PATH` | (opsiyonel) | Disk eklendiğinde SQLite yolu |
+| `NODE_ENV` | cPanel Node.js App (mode: production) | Üretim modu |
+| `PORT` | cPanel Passenger belirler | `.env`'deki 3000 yerel içindir |
+| `SITE_URL` | `.env` | `https://marmaraninincisi.com` |
+| `GOOGLE_CLIENT_ID` | `.env` | OAuth client ID |
+| `GOOGLE_CALLBACK_URL` | `.env` | `https://marmaraninincisi.com/auth/google/callback` |
+| `GOOGLE_CLIENT_SECRET` | `.env` | OAuth client secret |
+| `RECAPTCHA_SITE_KEY` | `.env` | reCAPTCHA site key |
+| `RECAPTCHA_SECRET_KEY` | `.env` | reCAPTCHA secret |
+| `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS` | `.env` | Basic auth — **aktif değil** (ölü kod, bkz. §4.2) |
+| `ADMIN_PASSWORD` | `.env` | İlk admin kullanıcısı şifresi |
+| `ADMIN_2FA_EMAIL` | `.env` | 2FA kodunun gideceği adres |
+| `EMAIL_API_KEY` | `.env` | Brevo API key (`xkeysib-...`) |
+| `EMAIL_FROM` | `.env` | Gönderici: `iletisim@marmaraninincisi.com` |
+| `SMTP_*`, `GMAIL_*` | `.env` | Yalnızca yerel fallback |
+| `SESSION_SECRET` | `.env` | Oturum imzası |
+| `TURSO_URL` | `.env` | `libsql://...turso.io` |
+| `TURSO_TOKEN` | `.env` | Turso auth token |
+| `R2_ACCOUNT_ID` | `.env` | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | `.env` | R2 API token access key |
+| `R2_SECRET_ACCESS_KEY` | `.env` | R2 API token secret |
+| `R2_BUCKET` | `.env` | `cinarcik-portal-uploads` |
+| `R2_PUBLIC_URL` | `.env` | `https://pub-....r2.dev` (artık kullanılmıyor, bkz. §3.3) |
 
 > `.env` dosyası `.gitignore` içindedir, repo'ya girmez; yerel geliştirme içindir.
 
 ## 8. Sık Yapılan İşlemler
 
-- **Deploy**: `git push origin main`
-- **Env güncelle**: Render → servis → Environment → Save (otomatik redeploy)
-- **Mail testi**: Render → Logs → `[2fa]` satırı
+- **Deploy** (manuel, 16 Eki'den beri):
+  1. `powershell -File scripts/deploy-spaceship.ps1` → `%TEMP%\opencode\cinarcik-deploy.zip` üretir
+  2. cPanel **File Manager** → `/home/svclrphtsu/marmaraninincisi.com` → Upload + Extract
+  3. `package.json` değiştiyse → Node.js App paneli → **Run NPM Install**
+  4. Node.js App paneli → **Restart**
+  5. `https://marmaraninincisi.com` + 1-2 sayfa smoke test
+- **Env güncelle**: app root'taki `.env`'i File Manager ile düzenle → Restart
+- **Log / hata**: cPanel Node.js App panelinde "Logs" (error log)
+- **Mail testi**: admin 2FA dene, `[2fa]` logu panelde
 - **EJS şablon kontrolü**: `npm run lint:ejs`
-- **Tailwind yeniden derleme**: `npm run build:css`
+- **Tailwind yeniden derleme**: `npm run build:css` (değiştiyse zip'e girer)
 
 ## 9. Trafik Raporları (Admin)
 
@@ -239,7 +281,7 @@ Ziyaretçi trafiği loglanır ve korumalı bir admin sayfasında gösterilir.
 - **Loglama** (`server.js`): `GET` istekleri `res.on('finish')` ile kaydedilir.
   Statik dosyalar `express.static`'te kısa yoldan döner (loglanmaz); `/admin/*`
   trafiği bilinçli olarak hariç tutulur. `trust proxy` sayesinde `req.ip`
-  Render proxy'sinin ardından gerçek istemci IP'sini verir.
+  Cloudflare proxy'sinin ardından gerçek istemci IP'sini verir.
 - **Veri**: `page_views` tablosu (`db/index.js`) — `path`, `method`, `status`,
   `ip`, `user_agent`, `referrer`, `created_at`.
 - **Performans**: `logPageView` buffer'lı çalışır (50 satırda veya ~20 sn'de bir

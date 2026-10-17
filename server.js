@@ -173,8 +173,10 @@ app.use((req, res, next) => {
   const m = req.url.match(/^\/(en|ru|ar)(?=\/|$|\?)/);
   req.lang = m ? m[1] : 'tr';
   if (m) {
-    req.url = req.url.slice(m[1].length + 1) || '/';
-    if (req.url === '') req.url = '/';
+    // Query string'i koru: '/en?x=1' → '/?x=1'. Yalnızca path kesiilirse
+    // '?x=1' gibi geçersiz bir url kalır, req.path null olur → 500.
+    const rest = req.url.slice(m[1].length + 1);
+    req.url = !rest ? '/' : (rest.startsWith('/') ? rest : '/' + rest);
   }
   res.locals.isAdmin = req.session.isAdmin || false;
   res.locals.isGoogleAuth = req.session.isGoogleAuth || false;

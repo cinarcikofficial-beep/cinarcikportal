@@ -1,0 +1,14 @@
+# Kaynak kodu ve yerel veritabanini web erisimine kapat.
+# cPanel Passenger docroot = app root oldugu icin tum dosyalar dogrudan
+# servis ediliyordu. Express yalnizca public/ + /images sunar; asagidaki
+# yollar public'te olmadigi icin kapatilmalidir (public'deki dosyalar
+# etkilenmez).
+<IfModule mod_alias.c>
+  RedirectMatch 404 ^/(db|views|scripts|src|docs|node_modules)/
+  RedirectMatch 404 ^/\.github/
+  RedirectMatch 404 ^/(server|i18n|translator)\.js$
+  RedirectMatch 404 ^/(tailwind|postcss)\.config\.js$
+  RedirectMatch 404 ^/(package(-lock)?\.json|render\.yaml|opencode\.json|AGENTS\.md|run\.bat)$
+  RedirectMatch 404 \.(log|sqlite|db)$
+  RedirectMatch 404 ^/\.
+</IfModule>
