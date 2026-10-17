@@ -28,8 +28,9 @@ Spaceship Shared Hosting — Essential (cPanel + Passenger, Node 20, Express + E
 
 > **Taşınma (16 Eki 2026):** Render free bandwidth kotası dolduğu için servis
 > askıya alınmıştı (ay sonuna kadar 503) → Spaceship Essential'a manuel zip
-> deploy ile geçildi. Render artık kullanılmıyor; `render.yaml` repo'da
-> belge/rollback amaçlı duruyor. Detay: `AGENTS.md` "16 Eki (taşınma)".
+> deploy ile geçildi. Render artık kullanılmıyor; `render.yaml` ve
+> `keep-awake` workflow'u 16 Eki akşamı temizlendi (Render hesabı silinecek).
+> Detay: `AGENTS.md` "16 Eki (taşınma)".
 
 ## 2. Kod Deposu ve Deploy
 
@@ -218,8 +219,9 @@ ham haliyle iframe'e konunca reddediliyordu).
    - Yerel disk artık kalıcı (shared hosting); yine de asıl veri kaynağı
      Turso'dur, lokal dosya sadece fallback'tir.
 2. **Process yaşam döngüsü**: Passenger uygulamayı belirli aralıklarla yeniden
-   başlatabilir (deploy/restart'ta session'lar düşer). Sürekli yükseltme için
-   `keep-awake` workflow'u 10 dk'da bir ping atar.
+   başlatabilir (deploy/restart'ta session'lar düşer). Uptime kontrolü
+   **UptimeRobot**'da (5 dk HTTP monitor + mail alert); `keep-awake`
+   workflow'u taşınma sonrası kaldırıldı (hosting artık always-on).
 3. **Oturum kaybı**: session bellekte; restart/deploy anında tüm oturumlar düşer.
 4. **Doğrudan SMTP yok**: yalnız Brevo/HTTP API üzerinden mail gönderilebilir.
 5. **Eşzamanlılık**: disk + SQLite nedeniyle tek instance ile çalışmalı
@@ -231,7 +233,7 @@ ham haliyle iframe'e konunca reddediliyordu).
 ## 7. Ortam Değişkenleri
 
 Tümü **`.env`** dosyasında (app root'ta; `.gitignore`'da; repo'ya girmez).
-Eski Render `render.yaml` referansları artık belge niteliğinde.
+Eski Render blueprint'i (`render.yaml`) 16 Eki'de repo'dan silindi.
 
 | Anahtar | Nerede | Açıklama |
 |---|---|---|
