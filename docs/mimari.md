@@ -29,8 +29,8 @@ Spaceship Shared Hosting — Essential (cPanel + Passenger, Node 20, Express + E
 > **Taşınma (16 Eki 2026):** Render free bandwidth kotası dolduğu için servis
 > askıya alınmıştı (ay sonuna kadar 503) → Spaceship Essential'a manuel zip
 > deploy ile geçildi. Render artık kullanılmıyor; `render.yaml` ve
-> `keep-awake` workflow'u 16 Eki akşamı temizlendi (Render hesabı silinecek).
-> Detay: `AGENTS.md` "16 Eki (taşınma)".
+> `keep-awake` workflow'u 16 Eki akşamı temizlendi; Render hesabı kullanıcı
+> tarafından silindi. Detay: `AGENTS.md` "16 Eki (taşınma)".
 
 ## 2. Kod Deposu ve Deploy
 
@@ -64,7 +64,7 @@ Env değişkenleri tek yerden yönetilir:
 - Trial: 30 gün $0 → **15 Kasım 2026'da $19.88/yıl** yenileme (Auto-renew Açık;
   iptal edilecekse 14 Kasım'dan önce karar ver)
 - Eski: Render Free (`cinarcikportal.onrender.com`) — 16 Eki'de taşındı,
-  kullanılmıyor.
+   hesap kullanıcı tarafından silindi.
 
 ### 3.2 Cloudflare (DNS + proxy + cache)
 
