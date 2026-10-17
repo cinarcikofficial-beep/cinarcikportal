@@ -42,6 +42,7 @@
   <meta name="twitter:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : siteUrl + '/img/logo-circle.png' %>">
 
   <meta name="robots" content="<%= typeof robotsMeta !== 'undefined' ? robotsMeta : 'index, follow' %>">
+  <link rel="alternate" type="application/rss+xml" title="Marmara'nın İncisi — Haberler RSS" href="/rss.xml">
   <link rel="stylesheet" href="/css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
@@ -116,6 +117,7 @@
         <a href="<%= lp %>/" class="px-3 py-2 rounded-full transition-all <%= path === '/' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏠 <%= t('home') %></a>
         <a href="<%= lp %>/haberler" class="px-3 py-2 rounded-full transition-all <%= (path === '/haberler' || path.startsWith('/haber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📰 <%= t('news') %></a>
         <a href="<%= lp %>/duyurular" class="px-3 py-2 rounded-full transition-all <%= path === '/duyurular' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📢 <%= t('announcements') %></a>
+        <a href="<%= lp %>/etkinlikler" class="px-3 py-2 rounded-full transition-all <%= path === '/etkinlikler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🗓️ <%= t('events') %></a>
         <a href="<%= lp %>/mekanlar" class="px-3 py-2 rounded-full transition-all <%= (path === '/mekanlar' || path.startsWith('/mekan/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📍 <%= t('places') %></a>
         <a href="<%= lp %>/rehber" class="px-3 py-2 rounded-full transition-all <%= (path === '/rehber' || path.startsWith('/rehber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏢 <%= t('guide') %></a>
         <a href="<%= lp %>/gezilecek-yerler" class="px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🧳 <%= t('sightseeing') %></a>
@@ -195,6 +197,9 @@
         <ul class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <li><a href="<%= lp %>/haberler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('news') %></a></li>
           <li><a href="<%= lp %>/duyurular" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('annList') %></a></li>
+          <li><a href="<%= lp %>/etkinlikler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('events') %></a></li>
+          <li><a href="<%= lp %>/deniz" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sea') %></a></li>
+          <li><a href="<%= lp %>/gizlilik" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('privacy') %></a></li>
           <li><a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('places') %></a></li>
           <li><a href="<%= lp %>/gezilecek-yerler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sightseeing') %></a></li>
           <li><a href="<%= lp %>/rehber" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('guide') %></a></li>
@@ -310,6 +315,7 @@
       document.getElementById('weather-modal').classList.remove('hidden');
       document.body.style.overflow = 'hidden';
       loadForecast('week');
+      if (typeof gtag === 'function') gtag('event', 'open_weather');
     };
 
     window.closeWeatherModal = function() {
@@ -609,7 +615,6 @@
     okBtn.addEventListener('click', function() { close(true); });
     cancelBtn.addEventListener('click', function() { close(false); });
     backdrop.addEventListener('click', function(e) { if (e.target === backdrop) close(false); });
-
     function submitForm(form) { HTMLFormElement.prototype.submit.call(form); }
     document.addEventListener('submit', function(e) {
       var form = e.target;
@@ -632,6 +637,19 @@
         }
       });
     });
+  })();
+  </script>
+
+  <!-- GA4 olaylari: sayfa bazli donusum olcumu -->
+  <script>
+  (function() {
+    if (typeof gtag !== 'function') return;
+    var p = window.location.pathname.replace(/^\/(en|ru|ar)(?=\/|$)/, '') || '/';
+    var qs = new URLSearchParams(window.location.search);
+    if (p === '/deniz') gtag('event', 'view_sea');
+    if (p === '/etkinlikler') gtag('event', 'view_events');
+    if (p === '/gizlilik') gtag('event', 'view_privacy');
+    if (qs.get('gonderildi') === '1' && p === '/duyurular') gtag('event', 'ilan_submitted');
   })();
   </script>
 </body>

@@ -59,6 +59,13 @@
       </select>
     </div>
 
+    <div id="event-date-wrap" class="<%= edit && edit.category === 'etkinlik' ? '' : 'hidden' %>">
+      <label for="event_date" class="block text-sm font-medium text-gray-300 mb-2">Etkinlik Tarihi</label>
+      <input type="date" id="event_date" name="event_date" value="<%= edit && edit.event_date ? edit.event_date : '' %>"
+        class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" />
+      <p class="text-xs text-zinc-500 mt-1">Tarih girilirse etkinlik takviminde günlük görünür.</p>
+    </div>
+
     <div class="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
       <a href="/admin" class="px-5 py-3 rounded-xl text-gray-300 hover:text-white border border-zinc-700 hover:bg-zinc-800 transition-all text-sm font-medium">İptal</a>
       <button type="submit" id="submit-btn" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition-all">
@@ -72,6 +79,16 @@
 <%- include('partials/quill') %>
 <script>
   initQuillEditor('#ann-editor', 'content', 'Duyuru içeriğini yazın', false);
+</script>
+
+<script>
+(function() {
+  var sel = document.getElementById('category');
+  var wrap = document.getElementById('event-date-wrap');
+  function toggle() { wrap.classList.toggle('hidden', sel.value !== 'etkinlik'); }
+  sel.addEventListener('change', toggle);
+  toggle();
+})();
 </script>
 
 <script>

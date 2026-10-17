@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 
 # Gereksiz/tehlikeli seyler paketlenmez: node_modules, git, lokal db, loglar,
 # gizli anahtar disindaki her sey (.env BILEREK girer - hosting'de lazim).
-$xd = @('node_modules', '.git', '.opencode')
+$xd = @('node_modules', '.git', '.opencode', 'data')
 $xf = @('*.log', 'cookies.txt', 'snake.html')
 
 robocopy $repo $stage /E /XD $xd /XF $xf /NFL /NDL /NJH /NJS /NP | Out-Null

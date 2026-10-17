@@ -46,6 +46,13 @@
           </select>
         </div>
 
+        <div id="event-date-wrap" class="<%= form.category === 'etkinlik' ? '' : 'hidden' %>">
+          <label for="event_date" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('eventDateOptional') %></label>
+          <input type="date" id="event_date" name="event_date" value="<%= form.event_date || '' %>"
+            class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" />
+          <p class="text-xs text-zinc-500 mt-1"><%= t('eventDateNote') %></p>
+        </div>
+
         <div>
           <label for="title" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('titleLabel') %> *</label>
           <input type="text" id="title" name="title" maxlength="120" required minlength="5"
@@ -92,3 +99,14 @@
     </div>
   </div>
 </section>
+
+<script>
+(function() {
+  var sel = document.getElementById('category');
+  var wrap = document.getElementById('event-date-wrap');
+  if (!sel || !wrap) return;
+  function toggle() { wrap.classList.toggle('hidden', sel.value !== 'etkinlik'); }
+  sel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>

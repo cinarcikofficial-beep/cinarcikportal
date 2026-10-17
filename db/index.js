@@ -835,6 +835,7 @@ function createTables() {
     if (!cols.includes('views_count')) db.run("ALTER TABLE announcements ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('views_reset_at')) db.run("ALTER TABLE announcements ADD COLUMN views_reset_at TEXT DEFAULT NULL");
     if (!cols.includes('slug')) db.run("ALTER TABLE announcements ADD COLUMN slug TEXT");
+    if (!cols.includes('event_date')) db.run("ALTER TABLE announcements ADD COLUMN event_date TEXT DEFAULT NULL");
   }
   try {
     all("SELECT id, title FROM announcements WHERE slug IS NULL OR slug = ''").forEach(r => {

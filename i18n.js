@@ -1,4 +1,4 @@
-﻿const translations = {
+const translations = {
   tr: {
     home: 'Ana Sayfa', news: 'Haberler', announcements: 'Duyurular', places: 'Mekanlar',
     guide: 'Firma Rehberi', sightseeing: 'Gezilecek Yerler', about: 'Hakkında', contact: 'İletişim',
@@ -53,6 +53,43 @@
     otherNews: 'Diğer Haberler', newsLabel: 'Haber',
     annSubtitle: "Çınarcık'tan duyuru, etkinlik ve ilanlar",
     postListing: 'İlan Ver', postListingSub: 'Ücretsiz ilan ve duyurunuzu oluşturun; onaydan sonra yayına alınır.',
+    // Etkinlik takvimi
+    events: 'Etkinlikler', eventsTitle: 'Çınarcık Etkinlik Takvimi',
+    eventsMetaDesc: "Çınarcık'taki yaklaşan etkinlikler, festival ve gösteri tarihleri — takvim görünümü.",
+    eventsUpcoming: 'Yaklaşan Etkinlikler', noEvents: 'Yaklaşan etkinlik bulunmuyor; duyuruları takip edin.',
+    undatedEvents: 'Tarihi Belirtilmemiş Etkinlikler', pastEvents: 'Geçmiş Etkinlikler',
+    eventDateLabel: 'Etkinlik Tarihi', eventDateOptional: 'Etkinlik tarihi (opsiyonel)',
+    eventDateNote: 'Tarih girerseniz etkinlik takviminde günlük görünür.',
+    // Deniz durumu
+    sea: 'Deniz', seaTitle: 'Çınarcık Deniz Durumu',
+    seaMetaDesc: "Çınarcık için dalga yüksekliği, deniz suyu sıcaklığı, rüzgâr ve UV bilgisi — Open-Meteo verisiyle otomatik güncellenir.",
+    seaSub: 'Dalga, deniz suyu sıcaklığı ve UV bilgisi — otomatik güncellenir',
+    seaTemp: 'Deniz Suyu Sıcaklığı', waveHeight: 'Dalga Yüksekliği', waveDir: 'Dalga Yönü',
+    wavePeriod: 'Dalga Dönemi', windLabel: 'Rüzgâr', uvLabel: 'UV İndeksi',
+    sunrise: 'Gün Doğumu', sunset: 'Gün Batımı', seaDaily: 'Günlük Özet',
+    seaUnavailable: 'Deniz verisi şu anda alınamıyor; birkaç dakika sonra tekrar deneyin.',
+    seaSource: 'Kaynak: Open-Meteo — yaklaşık 20 dakikada bir yenilenir',
+    seaViewWeather: 'Hava Tahminini Gör',
+    // Anasayfa "Bu hafta" modülü
+    thisWeek: 'Bu Hafta Çınarcık', weekNoEvents: 'Bu hafta planlı etkinlik yok.',
+    weekSeeEvents: 'Tüm Etkinlikler >',
+    // Gizlilik / KVKK
+    privacy: 'Gizlilik', privacyTitle: 'Gizlilik ve KVKK Aydınlatma Metni',
+    privacyMetaDesc: 'Marmara\'nın İncisi portalının kişisel verilerin işlenmesine ilişkin aydınlatma metni (KVKK).',
+    privacyBody: `<h2>Gizlilik ve KVKK Aydınlatma Metni</h2>
+<p>Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca <strong>marmaraninincisi.com</strong> internet sitesini ziyaret eden ve hizmetlerinden faydalanan kişilere yönelik bilgilendirme amacı taşır.</p>
+<h3>1. Veri Sorumlusu</h3><p>Çınarcık, Yalova — Marmara'nın İncisi portalı; kişisel verilerinizin işlenmesinde veri sorumlusu sıfatıyla hareket eder.</p>
+<h3>2. İşlenen Kişisel Veriler ve Amaç</h3>
+<ul>
+<li><strong>Trafik istatistikleri:</strong> Sunucu kayıtlarında IP adresi ve sayfa görüntülenme bilgisi tutulur; site güvenliğinin sağlanması ve anonim kullanım istatistiklerinin oluşturulması amaçlarıyla işlenir. Bu kayıtlar <strong>90 gün</strong> sonra otomatik olarak silinir.</li>
+<li><strong>İletişim formu:</strong> Ad, e-posta ve mesaj içeriği yalnızca talebinize yanıt vermek amacıyla saklanır.</li>
+<li><strong>Google ile giriş:</strong> Yorum ve ilan paylaşabilmek için yalnızca adınız, e-posta adresiniz ve profil fotoğrafınız Google'dan alınır; şifreniz hiçbir zaman saklanmaz.</li>
+<li><strong>Oturum bilgileri:</strong> Giriş durumunuzu sürdürmek için çerez ve sunucu tarafında oturum kayıtları kullanılır.</li>
+<li><strong>Duyuru/ilan başvuruları:</strong> Başlık, içerik, varsa görsel ve iletişim bilgileri yalnızca moderasyon süreci için saklanır.</li>
+</ul>
+<h3>3. Aktarım</h3><p>Veriler; altyapı sağlayıcıları (barındırma, veritabanı, görsel depolama, e-posta gönderimi) ve yasal zorunluluk hallerinde yetkili kurumlarla paylaşılabilir. Yurt dışına veri aktarımı, hizmet sağlayıcıların standart sözleşmeleri kapsamında gerçekleşir.</p>
+<h3>4. Çerezler</h3><p>Yalnızca oturumunuzu sürdürmek ve tema tercihinizi hatırlamak için zorunlu çerezler kullanılır; reklam/izleme çerezleri bulunmaz.</p>
+<h3>5. Haklarınız (KVKK m.11)</h3><p>Kişisel verilerinizin işlenip işlenmediğini öğrenme, düzeltilmesini veya silinmesini isteme haklarına sahipsiniz. Taleplerinizi <strong>iletisim</strong> sayfasındaki form aracılığıyla iletebilirsiniz.</p>`,
     titleLabel: 'Başlık', listingTitlePlaceholder: 'Örn: Satılık 2+1 Daire',
     listingContentLabel: 'İçerik', listingContentPlaceholder: 'İlanınızın detaylarını yazın...',
     listingContactNote: 'İletişim bilgilerinizi içeriğin içine yazabilirsiniz.',
@@ -189,6 +226,43 @@
     otherNews: 'Other News', newsLabel: 'News',
     annSubtitle: 'Announcements, events and notices from Çınarcık',
     postListing: 'Post a Listing', postListingSub: 'Create your free listing or announcement; it goes live after approval.',
+    // Event calendar
+    events: 'Events', eventsTitle: 'Çınarcık Event Calendar',
+    eventsMetaDesc: 'Upcoming events, festivals and shows in Çınarcık — calendar view.',
+    eventsUpcoming: 'Upcoming Events', noEvents: 'No upcoming events; keep an eye on the announcements.',
+    undatedEvents: 'Events Without a Date', pastEvents: 'Past Events',
+    eventDateLabel: 'Event Date', eventDateOptional: 'Event date (optional)',
+    eventDateNote: 'If you enter a date, the event appears on the calendar page.',
+    // Sea conditions
+    sea: 'Sea', seaTitle: 'Sea Conditions in Çınarcık',
+    seaMetaDesc: 'Wave height, sea temperature, wind and UV for Çınarcık — updated automatically with Open-Meteo data.',
+    seaSub: 'Waves, sea temperature and UV — updated automatically',
+    seaTemp: 'Sea Temperature', waveHeight: 'Wave Height', waveDir: 'Wave Direction',
+    wavePeriod: 'Wave Period', windLabel: 'Wind', uvLabel: 'UV Index',
+    sunrise: 'Sunrise', sunset: 'Sunset', seaDaily: 'Daily Summary',
+    seaUnavailable: 'Sea data is unavailable right now; please try again in a few minutes.',
+    seaSource: 'Source: Open-Meteo — refreshed about every 20 minutes',
+    seaViewWeather: 'View Weather Forecast',
+    // Home "This week" module
+    thisWeek: 'This Week in Çınarcık', weekNoEvents: 'No scheduled events this week.',
+    weekSeeEvents: 'All Events >',
+    // Privacy / KVKK
+    privacy: 'Privacy', privacyTitle: 'Privacy & Data Protection Notice',
+    privacyMetaDesc: "Data protection notice for the Marmara'nın İncisi portal (KVKK).",
+    privacyBody: `<h2>Privacy & Data Protection Notice</h2>
+<p>This notice informs visitors and users of <strong>marmaraninincisi.com</strong> about the processing of their personal data under Turkish Law No. 6698 (KVKK).</p>
+<h3>1. Data Controller</h3><p>The Marmara'nın İncisi portal (Çınarcık, Yalova) acts as the data controller for your personal data.</p>
+<h3>2. Data Processed and Purposes</h3>
+<ul>
+<li><strong>Traffic statistics:</strong> IP addresses and page views are kept in server logs for site security and anonymous usage statistics. These records are automatically deleted after <strong>90 days</strong>.</li>
+<li><strong>Contact form:</strong> Name, email and message content are stored only to respond to your request.</li>
+<li><strong>Google sign-in:</strong> Your name, email and profile picture are retrieved from Google only so you can comment or post listings; your password is never stored.</li>
+<li><strong>Session data:</strong> Cookies and server-side session records are used to keep you signed in and remember your theme preference.</li>
+<li><strong>Listing/announcement submissions:</strong> Title, content, image and contact details are kept for moderation purposes only.</li>
+</ul>
+<h3>3. Transfers</h3><p>Data may be shared with infrastructure providers (hosting, database, image storage, email delivery) and, where legally required, with public authorities. International transfers take place under the standard contracts of the service providers.</p>
+<h3>4. Cookies</h3><p>Only essential cookies are used to maintain your session and remember your theme; there are no advertising or tracking cookies.</p>
+<h3>5. Your Rights (Art. 11 KVKK)</h3><p>You may request to learn whether your data is processed, and to have it corrected or deleted. You can send your requests via the <strong>Contact</strong> page form.</p>`,
     titleLabel: 'Title', listingTitlePlaceholder: 'e.g. 2+1 apartment for sale',
     listingContentLabel: 'Details', listingContentPlaceholder: 'Write the details of your listing...',
     listingContactNote: 'You can include your contact details in the content.',
@@ -325,6 +399,43 @@
     otherNews: 'Другие новости', newsLabel: 'Новость',
     annSubtitle: 'Объявления, события и заметки Чинарлыка',
     postListing: 'Разместить объявление', postListingSub: 'Создайте бесплатное объявление; оно появится после проверки.',
+    // Календарь событий
+    events: 'События', eventsTitle: 'Календарь событий Чинарджик',
+    eventsMetaDesc: 'Предстоящие события, фестивали и представления в Чинарджик — вид календаря.',
+    eventsUpcoming: 'Предстоящие события', noEvents: 'Предстоящих событий нет; следите за объявлениями.',
+    undatedEvents: 'События без даты', pastEvents: 'Прошедшие события',
+    eventDateLabel: 'Дата события', eventDateOptional: 'Дата события (необязательно)',
+    eventDateNote: 'Если указать дату, событие появится на странице календаря.',
+    // Состояние моря
+    sea: 'Море', seaTitle: 'Состояние моря в Чинарджик',
+    seaMetaDesc: 'Высота волны, температура воды, ветер и УФ для Чинарджика — обновляется автоматически (Open-Meteo).',
+    seaSub: 'Волны, температура воды и УФ — обновляется автоматически',
+    seaTemp: 'Температура воды', waveHeight: 'Высота волны', waveDir: 'Направление волны',
+    wavePeriod: 'Период волны', windLabel: 'Ветер', uvLabel: 'УФ-индекс',
+    sunrise: 'Восход', sunset: 'Закат', seaDaily: 'Сводка по дням',
+    seaUnavailable: 'Данные о море временно недоступны; повторите через несколько минут.',
+    seaSource: 'Источник: Open-Meteo — обновляется примерно каждые 20 минут',
+    seaViewWeather: 'Смотреть прогноз погоды',
+    // Модуль «На этой неделе»
+    thisWeek: 'На этой неделе в Чинарджик', weekNoEvents: 'На этой неделе запланированных событий нет.',
+    weekSeeEvents: 'Все события >',
+    // Конфиденциальность
+    privacy: 'Конфиденциальность', privacyTitle: 'Уведомление о конфиденциальности',
+    privacyMetaDesc: 'Уведомление о защите персональных данных портала Marmara\'nın İncisi (KVKK).',
+    privacyBody: `<h2>Уведомление о конфиденциальности</h2>
+<p>Это уведомление информирует посетителей и пользователей <strong>marmaraninincisi.com</strong> об обработке персональных данных в соответствии с турецким законом № 6698 (KVKK).</p>
+<h3>1. Владелец данных</h3><p>Портал Marmara'nın İncisi (Чинарджик, Ялова) выступает владельцем персональных данных.</p>
+<h3>2. Обрабатываемые данные и цели</h3>
+<ul>
+<li><strong>Трафическая статистика:</strong> IP-адреса и просмотры страниц хранятся в логах сервера для обеспечения безопасности сайта и анонимной статистики. Эти записи автоматически удаляются через <strong>90 дней</strong>.</li>
+<li><strong>Форма обратной связи:</strong> имя, адрес электронной почты и текст сообщения хранятся только для ответа на ваш запрос.</li>
+<li><strong>Вход через Google:</strong> имя, email и фото профиля получены от Google только для комментариев и объявлений; пароль не сохраняется.</li>
+<li><strong>Данные сессии:</strong> cookie и серверные записи сессии используются для поддержания входа и сохранения темы.</li>
+<li><strong>Заявки на объявление:</strong> заголовок, содержимое, изображение и контактные данные хранятся только для модерации.</li>
+</ul>
+<h3>3. Передача данных</h3><p>Данные могут передаваться провайдерам инфраструктуры (хостинг, база данных, хранилище изображений, отправка почты) и, при необходимости, уполномоченным органам. Международная передача осуществляется по стандартным договорам провайдеров.</p>
+<h3>4. Файлы cookie</h3><p>Используются только необходимые cookie для поддержания сессии и сохранения темы; рекламных и отслеживающих cookie нет.</p>
+<h3>5. Ваши права (ст. 11 KVKK)</h3><p>Вы вправе запросить, обрабатываются ли ваши данные, а также потребовать их исправления или удаления. Запросы можно направить через форму страницы <strong>Контакты</strong>.</p>`,
     titleLabel: 'Заголовок', listingTitlePlaceholder: 'напр.: Продается 2-комнатная квартира',
     listingContentLabel: 'Описание', listingContentPlaceholder: 'Опишите ваше объявление...',
     listingContactNote: 'Контактные данные можно указать в описании.',
@@ -461,6 +572,43 @@
     otherNews: 'أخبار أخرى', newsLabel: 'خبر',
     annSubtitle: 'إعلانات وفعاليات وإشعارات من جينارجك',
     postListing: 'أضف إعلاناً', postListingSub: 'أنشئ إعلانك المجاني؛ يظهر بعد الموافقة عليه.',
+    // تقويم الفعاليات
+    events: 'الفعاليات', eventsTitle: 'تقويم فعاليات جينارجك',
+    eventsMetaDesc: 'الفعاليات والمهرجانات والعروض القادمة في جينارجك — عرض تقويمي.',
+    eventsUpcoming: 'الفعاليات القادمة', noEvents: 'لا توجد فعاليات قادمة؛ تابع الإعلانات.',
+    undatedEvents: 'فعاليات بدون تاريخ', pastEvents: 'الفعاليات السابقة',
+    eventDateLabel: 'تاريخ الفعالية', eventDateOptional: 'تاريخ الفعالية (اختياري)',
+    eventDateNote: 'عند إدخال تاريخ تظهر الفعالية في صفحة التقويم.',
+    // حالة البحر
+    sea: 'البحر', seaTitle: 'حالة البحر في جينارجك',
+    seaMetaDesc: 'ارتفاع الموج وحرارة مياه البحر والرياح والأشعة فوق البنفسجية لجينارجك — تحديث تلقائي عبر Open-Meteo.',
+    seaSub: 'الموج وحرارة مياه البحر والأشعة — تحديث تلقائي',
+    seaTemp: 'حرارة مياه البحر', waveHeight: 'ارتفاع الموج', waveDir: 'اتجاه الموج',
+    wavePeriod: 'دورة الموج', windLabel: 'الرياح', uvLabel: 'مؤشر الأشعة فوق البنفسجية',
+    sunrise: 'شروق الشمس', sunset: 'غروب الشمس', seaDaily: 'ملخص الأيام',
+    seaUnavailable: 'تعذر جلب بيانات البحر الآن؛ يرجى المحاولة بعد بضع دقائق.',
+    seaSource: 'المصدر: Open-Meteo — يُحدَّث كل 20 دقيقة تقريباً',
+    seaViewWeather: 'عرض نشرة الطقس',
+    // وحدة «هذا الأسبوع»
+    thisWeek: 'هذا الأسبوع في جينارجك', weekNoEvents: 'لا توجد فعاليات مخططة هذا الأسبوع.',
+    weekSeeEvents: 'كل الفعاليات >',
+    // الخصوصية
+    privacy: 'الخصوصية', privacyTitle: 'إشعار الخصوصية وحماية البيانات',
+    privacyMetaDesc: 'إشعار حماية البيانات الشخصية لبوابة Marmara\'nın İncisi (قانون KVKK).',
+    privacyBody: `<h2>إشعار الخصوصية وحماية البيانات</h2>
+<p>يهدف هذا الإشعار إلى إبلاغ زوار ومستخدمي <strong>marmaraninincisi.com</strong> بمعالجة بياناتهم الشخصية بموجب القانون التركي رقم 6698 (KVKK).</p>
+<h3>1. مسؤول البيانات</h3><p>بوابة Marmara'nın İncisi (جينارجك، يالوفا) تتحمل صفة مسؤول البيانات.</p>
+<h3>2. البيانات المعالجة وأغراضها</h3>
+<ul>
+<li><strong>إحصاءات الزيارات:</strong> تُحفظ عناوين IP ومشاهدات الصفحات في سجلات الخادم لضمان أمن الموقع وإنشاء إحصاءات مجهولة الهوية، وتُحذف هذه السجلات تلقائياً بعد <strong>90 يوماً</strong>.</li>
+<li><strong>نموذج الاتصال:</strong> الاسم والبريد الإلكتروني ونص الرسالة تُحفظ فقط للرد على طلبك.</li>
+<li><strong>الدخول عبر Google:</strong> الاسم والبريد وصورة الملف الشخصي تُستلم من Google فقط للتعليقات والإعلانات، ولا يُحفظ كلمة المرور أبداً.</li>
+<li><strong>بيانات الجلسة:</strong> تُستخدم ملفات تعريف الارتباط وسجلات الجلسة للحفاظ على تسجيل دخولك وتذكر سمة المظهر.</li>
+<li><strong>طلبات الإعلانات:</strong> العنوان والمحتوى والصورة وبيانات التواصل تُحفظ لأغراض الإشراف فقط.</li>
+</ul>
+<h3>3. نقل البيانات</h3><p>قد تتم مشاركة البيانات مع مزودي البنية التحتية (الاستضافة وقاعدة البيانات وتخزين الصور وإرسال البريد) وعند الضرورة مع السلطات المختصة. يتم النقل الدولي وفق العقود القياسية لمزودي الخدمات.</p>
+<h3>4. ملفات تعريف الارتباط</h3><p>تُستخدم ملفات تعريف الارتباط الضرورية فقط للحفاظ على الجلسة وتذكر المظهر، ولا توجد ملفات إعلانية أو تتبّع.</p>
+<h3>5. حقوقك (المادة 11 من KVKK)</h3><p>يحق لك معرفة ما إذا كانت بياناتك معالجة، وطلب تصحيحها أو حذفها. يمكنك إرسال طلباتك عبر نموذج صفحة <strong>اتصل بنا</strong>.</p>`,
     titleLabel: 'العنوان', listingTitlePlaceholder: 'مثال: شقة 2+1 للبيع',
     listingContentLabel: 'التفاصيل', listingContentPlaceholder: 'اكتب تفاصيل إعلانك...',
     listingContactNote: 'يمكنك كتابة بيانات التواصل داخل المحتوى.',

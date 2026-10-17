@@ -55,7 +55,11 @@ function pingIndexNow(paths) {
     .catch(e => console.warn('[indexnow]', e.message));
 }
 
+// Oturumlar diskte tutulur (session-store.js) — restart/deploy'ta admin 2FA
+// ve Google giris oturumlari dusmesin. Bellek store'undan fark: kalici.
+const FileSessionStore = require('./session-store');
 app.use(session({
+  store: new FileSessionStore({ dir: path.join(__dirname, 'data') }),
   secret: process.env.SESSION_SECRET || 'cinarcik-portal-secret-key-2024',
   resave: false,
   saveUninitialized: false,
@@ -364,6 +368,8 @@ app.get('/sitemap.xml', (req, res) => {
   // Statik sayfalar
   ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda', '/ilan-ver']
     .forEach(p => addEntry(p, STATIC_LASTMOD));
+  // Yeni eklenen sayfalar (ilk indeks tarihi)
+  ['/etkinlikler', '/deniz', '/gizlilik'].forEach(p => addEntry(p, '2026-10-17'));
 
   // Haberler (son 500)
   try {
@@ -407,6 +413,50 @@ app.get('/sitemap.xml', (req, res) => {
   res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>`);
 });
 
+// RSS: son haberler — Google News/okuyucu uygulamalari ve sosyal paylasim
+// kartlari icin. Basliklar DB'de orijinal (TR); ceviriler content_translations'da.
+app.get('/rss.xml', (req, res) => {
+  const { all } = require('./db');
+  const base = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const esc = s => String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  let items = [];
+  try {
+    items = all("SELECT slug, id, title, summary, content, created_at, main_image_url FROM news WHERE status='active' ORDER BY created_at DESC LIMIT 30");
+  } catch (e) { console.error('rss:', e.message); }
+  const latest = items.length ? items[0].created_at : new Date().toISOString();
+  const xmlItems = items.map(n => {
+    const url = base + '/haber/' + (n.slug || n.id);
+    const desc = stripHtml(n.summary || n.content || '').slice(0, 300);
+    return [
+      '    <item>',
+      '      <title>' + esc(n.title) + '</title>',
+      '      <link>' + esc(url) + '</link>',
+      '      <guid isPermaLink="true">' + esc(url) + '</guid>',
+      '      <pubDate>' + new Date(n.created_at).toUTCString() + '</pubDate>',
+      '      <description>' + esc(desc) + '</description>',
+      '    </item>'
+    ].filter(Boolean).join('\n');
+  }).join('\n');
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
+    '  <channel>',
+    '    <title>Marmara\'nın İncisi — Haberler</title>',
+    '    <link>' + base + '/</link>',
+    '    <description>Çınarcık haber, duyuru ve etkinlik akışı</description>',
+    '    <language>tr</language>',
+    '    <lastBuildDate>' + new Date(latest).toUTCString() + '</lastBuildDate>',
+    '    <atom:link href="' + base + '/rss.xml" rel="self" type="application/rss+xml"/>',
+    xmlItems,
+    '  </channel>',
+    '</rss>'
+  ].join('\n');
+  res.header('Content-Type', 'application/rss+xml; charset=utf-8');
+  res.send(xml);
+});
+
 app.get('/', async (req, res) => {
   const { all } = require('./db');
   const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 4");
@@ -428,6 +478,11 @@ app.get('/', async (req, res) => {
   `);
   const companies = all("SELECT * FROM companies WHERE status = 'active' ORDER BY is_featured DESC, sort_order ASC, created_at DESC LIMIT 3");
   const sightseeing = all("SELECT * FROM sightseeing WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 3");
+  // "Bu hafta Çınarcık" modulu: yaklasan tarihli etkinlikler + deniz/hava verisi
+  const weekEvents = all(`SELECT * FROM announcements WHERE status='active' AND category='etkinlik'
+      AND event_date IS NOT NULL AND event_date <> '' AND event_date >= ?
+      ORDER BY event_date ASC LIMIT 4`, [fmtDateLocal(new Date())]);
+  const sea = await getSeaData({ allowStale: true, waitMs: 1500 });
   const pharmacies = all("SELECT * FROM pharmacies WHERE status = 'active' ORDER BY name ASC");
   const ferryRows = all('SELECT * FROM ferry_schedules ORDER BY id ASC').map(r => {
     let columns = [];
@@ -439,6 +494,7 @@ app.get('/', async (req, res) => {
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   await Promise.all([
     txArray(announcements, ['title', 'content'], lang),
+    txArray(weekEvents, ['title'], lang),
     txArray(places, ['description', 'working_hours'], lang),
     txArray(companies, ['description', 'sector'], lang),
     txArray(sightseeing, ['title', 'summary', 'description'], lang),
@@ -447,7 +503,7 @@ app.get('/', async (req, res) => {
   ]);
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
-    headlines, regularNews,
+    headlines, regularNews, weekEvents, sea,
     pageTitle: 'Çınarcık Haber, Mekan ve Gezi Rehberi | ' + i18n.t(req.lang, 'heroTagline'),
     metaDescription: i18n.t(req.lang, 'metaDesc'),
     pageSchema: {
@@ -556,6 +612,164 @@ app.get('/duyurular', async (req, res) => {
   const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC");
   await txArray(announcements, ['title', 'content'], req.lang);
   res.render('announcements', { announcements, submitted: req.query.gonderildi === '1' });
+});
+
+// ---------- Deniz durumu (Open-Meteo Marine + forecast, 20 dk cache) ----------
+const seaCache = { data: null, ts: 0, fetching: null };
+const SEA_TTL_MS = 20 * 60 * 1000;
+const SEA_COORD = 'latitude=40.6475&longitude=29.0736'; // Çınarcık
+
+function degToCompass(deg) {
+  const dirs = ['K', 'KKD', 'KD', 'DKD', 'D', 'DGD', 'GD', 'GGD', 'G', 'GGB', 'GB', 'BGB', 'B', 'BKB', 'KB', 'KKB'];
+  if (deg == null || isNaN(deg)) return '';
+  return dirs[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
+}
+
+async function fetchSeaData() {
+  const marineUrl = 'https://marine-api.open-meteo.com/v1/marine?' + SEA_COORD +
+    '&current=wave_height,wave_direction,wave_period,sea_surface_temperature' +
+    '&daily=wave_height_max&forecast_days=4&timezone=auto';
+  const fcUrl = 'https://api.open-meteo.com/v1/forecast?' + SEA_COORD +
+    '&current=temperature_2m,wind_speed_10m,uv_index' +
+    '&daily=sunrise,sunset,uv_index_max,temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code' +
+    '&forecast_days=4&timezone=auto';
+  const [mr, fr] = await Promise.all([
+    fetch(marineUrl, { signal: AbortSignal.timeout(9000) }),
+    fetch(fcUrl, { signal: AbortSignal.timeout(9000) })
+  ]);
+  if (!mr.ok || !fr.ok) throw new Error('deniz veri HTTP ' + mr.status + '/' + fr.status);
+  const m = await mr.json();
+  const f = await fr.json();
+  const cur = m.current || {};
+  const fcur = f.current || {};
+  const fday = f.daily || {};
+  const mday = m.daily || {};
+  const days = (fday.time || []).map((date, i) => {
+    const code = fday.weather_code ? fday.weather_code[i] : 3;
+    return {
+      date,
+      waveMax: mday.wave_height_max && mday.wave_height_max[i] != null ? mday.wave_height_max[i] : null,
+      sunrise: fday.sunrise && fday.sunrise[i] ? String(fday.sunrise[i]).slice(11, 16) : '',
+      sunset: fday.sunset && fday.sunset[i] ? String(fday.sunset[i]).slice(11, 16) : '',
+      uvMax: fday.uv_index_max && fday.uv_index_max[i] != null ? fday.uv_index_max[i] : null,
+      tempMax: fday.temperature_2m_max && fday.temperature_2m_max[i] != null ? fday.temperature_2m_max[i] : null,
+      tempMin: fday.temperature_2m_min && fday.temperature_2m_min[i] != null ? fday.temperature_2m_min[i] : null,
+      rain: fday.precipitation_probability_max && fday.precipitation_probability_max[i] != null ? fday.precipitation_probability_max[i] : null,
+      code,
+      icon: wmoToIcon(code),
+      desc: wmoToDesc(code)
+    };
+  });
+  return {
+    updated: new Date().toISOString(),
+    waveHeight: cur.wave_height != null ? cur.wave_height : null,
+    waveDirection: cur.wave_direction != null ? cur.wave_direction : null,
+    waveDirText: cur.wave_direction != null ? degToCompass(cur.wave_direction) : '',
+    wavePeriod: cur.wave_period != null ? cur.wave_period : null,
+    seaTemp: cur.sea_surface_temperature != null ? cur.sea_surface_temperature : null,
+    airTemp: fcur.temperature_2m != null ? fcur.temperature_2m : null,
+    wind: fcur.wind_speed_10m != null ? fcur.wind_speed_10m : null,
+    uv: fcur.uv_index != null ? fcur.uv_index : null,
+    days
+  };
+}
+
+// allowStale: zaten bayat veri varsa onu dondur (ana sayfa modulu).
+// waitMs: bekleme suresini sinirla — sure dolarsa bayat veriye dus.
+async function getSeaData(opts) {
+  opts = opts || {};
+  if (seaCache.data && (Date.now() - seaCache.ts) < SEA_TTL_MS) return seaCache.data;
+  if (!seaCache.fetching) {
+    seaCache.fetching = fetchSeaData()
+      .then(d => { seaCache.data = d; seaCache.ts = Date.now(); return d; })
+      .catch(e => { console.warn('[sea]', e.message); return seaCache.data; })
+      .finally(() => { seaCache.fetching = null; });
+  }
+  const pending = seaCache.fetching;
+  if (opts.allowStale && seaCache.data) {
+    // arka planda tazelenmeye devam etsin, ana sayfa beklemesin
+    return seaCache.data;
+  }
+  if (opts.waitMs) {
+    let timer;
+    const timeout = new Promise(r => { timer = setTimeout(() => r(seaCache.data), opts.waitMs); });
+    try { return await Promise.race([pending, timeout]); } finally { clearTimeout(timer); }
+  }
+  return pending;
+}
+
+app.get('/etkinlikler', async (req, res) => {
+  const { all } = require('./db');
+  const today = fmtDateLocal(new Date());
+  const rows = all("SELECT * FROM announcements WHERE status='active' AND category='etkinlik' ORDER BY created_at DESC");
+  const upcoming = [], undated = [], past = [];
+  rows.forEach(r => {
+    const d = r.event_date || '';
+    if (!d) undated.push(r);
+    else if (d >= today) upcoming.push(r);
+    else past.push(r);
+  });
+  upcoming.sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  past.sort((a, b) => (a.event_date > b.event_date ? -1 : 1));
+  const pastTop = past.slice(0, 20);
+  await Promise.all([
+    txArray(upcoming, ['title', 'content'], req.lang),
+    txArray(undated, ['title', 'content'], req.lang),
+    txArray(pastTop, ['title'], req.lang)
+  ]);
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const eventItems = upcoming.slice(0, 20).map((e, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    item: {
+      "@type": "Event",
+      "name": e.title,
+      "startDate": e.event_date,
+      "url": siteUrl + lp + '/duyuru/' + (e.slug || e.id),
+      "image": e.image ? (e.image.indexOf('http') === 0 ? e.image : siteUrl + e.image) : undefined,
+      "location": {
+        "@type": "Place",
+        "name": "Çınarcık",
+        "address": { "@type": "PostalAddress", "addressLocality": "Çınarcık", "addressRegion": "Yalova", "addressCountry": "TR" }
+      },
+      "inLanguage": req.lang
+    }
+  }));
+  res.render('events', {
+    upcoming, undated, past: pastTop,
+    pageTitle: i18n.t(req.lang, 'eventsTitle'),
+    metaDescription: i18n.t(req.lang, 'eventsMetaDesc'),
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'eventsTitle') }
+          ]
+        },
+        { "@type": "ItemList", "name": i18n.t(req.lang, 'eventsTitle'), "itemListElement": eventItems }
+      ]
+    }
+  });
+});
+
+app.get('/deniz', async (req, res) => {
+  const sea = await getSeaData();
+  res.render('sea', {
+    sea,
+    pageTitle: i18n.t(req.lang, 'seaTitle'),
+    metaDescription: i18n.t(req.lang, 'seaMetaDesc')
+  });
+});
+
+app.get('/gizlilik', (req, res) => {
+  res.render('privacy', {
+    pageTitle: i18n.t(req.lang, 'privacyTitle'),
+    metaDescription: i18n.t(req.lang, 'privacyMetaDesc')
+  });
 });
 
 app.get('/duyuru/:id', async (req, res) => {
@@ -1558,6 +1772,9 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
   let image = existing_image || '';
   const safeTitle = title || '';
   const safeContent = content || '';
+  const safeCategory = category || 'duyuru';
+  const eventDateRaw = String(req.body.event_date || '');
+  const event_date = safeCategory === 'etkinlik' && /^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw) ? eventDateRaw : null;
   if (req.file) image = pubUrl(req.file);
   if (edit_id) {
     const existing = get('SELECT * FROM announcements WHERE id = ?', [edit_id]);
@@ -1565,12 +1782,14 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
     if (existing && existing.title !== safeTitle) {
       slug = ensureUniqueSlug(slugify(safeTitle), parseInt(edit_id), 'announcements');
     }
-    run('UPDATE announcements SET title=?, slug=?, content=?, category=?, image=? WHERE id=?', [safeTitle, slug, safeContent, category || 'duyuru', image, edit_id]);
+    run('UPDATE announcements SET title=?, slug=?, content=?, category=?, image=?, event_date=? WHERE id=?', [safeTitle, slug, safeContent, safeCategory, image, event_date, edit_id]);
     pingIndexNow('/duyuru/' + slug);
+    pingIndexNow('/etkinlikler');
   } else {
     const slug = ensureUniqueSlug(slugify(safeTitle), null, 'announcements');
-    run('INSERT INTO announcements (title, slug, content, category, image) VALUES (?,?,?,?,?)', [safeTitle, slug, safeContent, category || 'duyuru', image]);
+    run('INSERT INTO announcements (title, slug, content, category, image, event_date) VALUES (?,?,?,?,?,?)', [safeTitle, slug, safeContent, safeCategory, image, event_date]);
     pingIndexNow('/duyuru/' + slug);
+    pingIndexNow('/etkinlikler');
   }
   flash(res, '/admin?tab=announcements', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + safeTitle);
 });
@@ -1589,6 +1808,7 @@ app.post('/admin/duyuru-onay/:id', isAuthenticated, (req, res) => {
   run("UPDATE announcements SET status = 'active' WHERE id = ?", [req.params.id]);
   const item = get('SELECT title, slug FROM announcements WHERE id = ?', [req.params.id]);
   if (item) pingIndexNow('/duyuru/' + (item.slug || req.params.id));
+  pingIndexNow('/etkinlikler');
   flash(res, '/admin?tab=announcements', 'Yayına alındı: ' + ((item && item.title) || '#' + req.params.id));
 });
 
@@ -1660,8 +1880,10 @@ app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
   const image = req.file ? pubUrl(req.file) : '';
   const { slugify: annSlugify, ensureUniqueSlug: annUniqueSlug } = require('./db');
   const slug = annUniqueSlug(annSlugify(title), null, 'announcements');
-  run("INSERT INTO announcements (title, slug, content, category, image, status, user_name, user_email) VALUES (?,?,?,?,?,?,?,?)",
-    [title.slice(0, 120), slug, content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '']);
+  const eventDateRaw = String(req.body.event_date || '');
+  const event_date = category === 'etkinlik' && /^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw) ? eventDateRaw : null;
+  run("INSERT INTO announcements (title, slug, content, category, image, status, user_name, user_email, event_date) VALUES (?,?,?,?,?,?,?,?,?)",
+    [title.slice(0, 120), slug, content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '', event_date]);
   req.session.captchaCodes = [];
   const turMap = { ilan: 'ilan', duyuru: 'duyuru', etkinlik: 'etkinlik' };
   sendPortalMail({

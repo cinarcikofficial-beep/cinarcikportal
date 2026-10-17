@@ -146,6 +146,78 @@
 </section>
 <% } %>
 
+<% if ((typeof weekEvents !== 'undefined' && weekEvents.length > 0) || (typeof sea !== 'undefined' && sea)) { %>
+<section class="section" id="bu-hafta">
+  <div class="section-header">
+    <h2>🗓️ <%= t('thisWeek') %></h2>
+    <a href="/etkinlikler" class="see-all"><%= t('weekSeeEvents') %></a>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+
+    <div class="card flex flex-col">
+      <h3 class="font-bold text-white mb-3 flex items-center gap-2">🎟️ <%= t('events') %></h3>
+      <div class="flex-1">
+        <% if (typeof weekEvents !== 'undefined' && weekEvents.length > 0) { %>
+          <% weekEvents.forEach(ev => {
+            const ed = new Date(ev.event_date + 'T00:00:00');
+          %>
+          <a href="/duyuru/<%= ev.slug || ev.id %>" class="flex items-center gap-3 py-2.5 border-b border-zinc-800 last:border-0 hover:text-emerald-300 transition-colors">
+            <span class="shrink-0 w-12 text-center bg-amber-500/10 border border-amber-500/30 rounded-lg py-1">
+              <span class="block text-amber-400 text-[10px] font-bold uppercase leading-tight"><%= ed.toLocaleDateString(t('dateLocale'), { weekday: 'short' }) %></span>
+              <span class="block text-white text-base font-black leading-none"><%= ed.getDate() %></span>
+            </span>
+            <span class="text-sm text-zinc-300 line-clamp-2"><%= ev.title %></span>
+          </a>
+          <% }) %>
+        <% } else { %>
+          <p class="text-zinc-500 text-sm"><%= t('weekNoEvents') %></p>
+        <% } %>
+      </div>
+      <a href="/etkinlikler" class="see-all mt-auto pt-3"><%= t('weekSeeEvents') %></a>
+    </div>
+
+    <div class="card flex flex-col">
+      <h3 class="font-bold text-white mb-3 flex items-center gap-2">🌊 <%= t('sea') %></h3>
+      <div class="flex-1 flex flex-col items-center justify-center text-center py-2">
+        <% if (typeof sea !== 'undefined' && sea) { %>
+          <p class="text-4xl font-black text-white"><%= sea.seaTemp != null ? Number(sea.seaTemp).toFixed(1) + '°C' : '—' %></p>
+          <p class="text-xs text-zinc-500 uppercase tracking-wide mt-1"><%= t('seaTemp') %></p>
+          <div class="flex items-center gap-4 mt-3 text-sm text-zinc-300">
+            <span title="<%= t('waveHeight') %>">🌊 <%= sea.waveHeight != null ? Number(sea.waveHeight).toFixed(2) + ' m' : '—' %></span>
+            <span title="<%= t('windLabel') %>">💨 <%= sea.wind != null ? Math.round(sea.wind) + ' km/s' : '—' %></span>
+          </div>
+        <% } else { %>
+          <p class="text-3xl">🌊</p>
+          <p class="text-sm text-zinc-400 mt-2"><%= t('seaSub') %></p>
+        <% } %>
+      </div>
+      <a href="/deniz" class="see-all mt-auto pt-3"><%= t('seaTitle') %> ></a>
+    </div>
+
+    <div class="card flex flex-col">
+      <h3 class="font-bold text-white mb-3 flex items-center gap-2">🌤️ <%= t('weatherTitle') %></h3>
+      <div class="flex-1 flex flex-col items-center justify-center text-center py-2">
+        <% var todayW = (typeof sea !== 'undefined' && sea && sea.days && sea.days[0]) ? sea.days[0] : null; %>
+        <% if (todayW) { %>
+          <div class="text-4xl"><%= todayW.icon %></div>
+          <p class="text-2xl font-black text-white mt-1"><%= todayW.tempMax != null ? Math.round(todayW.tempMax) + '°' : '—' %> <span class="text-zinc-500 font-normal text-lg"><%= todayW.tempMin != null ? Math.round(todayW.tempMin) + '°' : '' %></span></p>
+          <p class="text-sm text-zinc-400 mt-1"><%= todayW.desc %></p>
+          <div class="flex items-center gap-4 mt-3 text-xs text-zinc-500">
+            <span>💧<%= todayW.rain != null ? todayW.rain : 0 %>%</span>
+            <span>💨<%= sea && sea.wind != null ? Math.round(sea.wind) + ' km/s' : '—' %></span>
+          </div>
+        <% } else { %>
+          <p class="text-3xl">🌤️</p>
+          <p class="text-sm text-zinc-400 mt-2"><%= t('weatherSub') %></p>
+        <% } %>
+      </div>
+      <button type="button" onclick="openWeatherModal()" class="see-all mt-auto pt-3 text-left hover:text-emerald-400"><%= t('seaViewWeather') %></button>
+    </div>
+
+  </div>
+</section>
+<% } %>
+
 <% if (places.length > 0) { %>
 <section class="section">
   <div class="section-header">

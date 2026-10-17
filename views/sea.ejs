@@ -1,0 +1,99 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('seaTitle') %>
+
+<div class="page-banner">
+  <h1>🌊 <%= t('seaTitle') %></h1>
+  <p><%= t('seaSub') %></p>
+</div>
+
+<section class="section">
+  <% if (!sea) { %>
+  <div class="empty-state">
+    <div class="empty-icon">🌊</div>
+    <h3><%= t('seaUnavailable') %></h3>
+    <a href="/cinarcik-hakkinda" class="inline-block mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all"><%= t('aboutCinarcik') %></a>
+  </div>
+  <% } else { %>
+  <%
+    function num(v, digits, unit) {
+      if (v === null || v === undefined || isNaN(v)) return '—';
+      return Number(v).toFixed(digits) + (unit || '');
+    }
+    var updatedTime = new Date(sea.updated).toLocaleTimeString(t('dateLocale'), { hour: '2-digit', minute: '2-digit' });
+  %>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🌡️</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('seaTemp') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= num(sea.seaTemp, 1, '°C') %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🌊</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('waveHeight') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= num(sea.waveHeight, 2, ' m') %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🧭</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('waveDir') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= sea.waveDirText || '—' %><span class="text-sm font-bold text-zinc-500"><%= sea.waveDirection != null ? ' ' + Math.round(sea.waveDirection) + '°' : '' %></span></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">⏱️</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('wavePeriod') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= num(sea.wavePeriod, 1, ' s') %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">💨</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('windLabel') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= num(sea.wind, 0, ' km/s') %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">☀️</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('uvLabel') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= num(sea.uv, 1) %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🌅</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('sunrise') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= sea.days && sea.days[0] && sea.days[0].sunrise ? sea.days[0].sunrise : '—' %></p>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🌇</div>
+      <p class="text-xs text-zinc-500 uppercase tracking-wide"><%= t('sunset') %></p>
+      <p class="text-2xl font-black text-white mt-1"><%= sea.days && sea.days[0] && sea.days[0].sunset ? sea.days[0].sunset : '—' %></p>
+    </div>
+  </div>
+
+  <% if (sea.days && sea.days.length > 0) { %>
+  <div class="card mb-6">
+    <div class="section-header mb-4"><h2>📅 <%= t('seaDaily') %></h2></div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <% sea.days.forEach(day => {
+        var d = new Date(day.date + 'T00:00:00');
+      %>
+      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-center">
+        <p class="text-zinc-400 text-xs font-semibold"><%= d.toLocaleDateString(t('dateLocale'), { weekday: 'long', day: 'numeric', month: 'long' }) %></p>
+        <div class="text-3xl my-2"><%= day.icon %></div>
+        <p class="text-white font-bold text-lg"><%= day.tempMax != null ? Math.round(day.tempMax) + '°' : '—' %> <span class="text-zinc-500 font-normal text-sm"><%= day.tempMin != null ? Math.round(day.tempMin) + '°' : '' %></span></p>
+        <div class="flex items-center justify-center gap-3 mt-2 text-xs text-zinc-400">
+          <span title="<%= t('waveHeight') %>">🌊 <%= day.waveMax != null ? day.waveMax.toFixed(2) + ' m' : '—' %></span>
+          <span title="<%= t('uvLabel') %>">☀️ <%= day.uvMax != null ? Number(day.uvMax).toFixed(1) : '—' %></span>
+        </div>
+        <div class="flex items-center justify-center gap-3 mt-1 text-xs text-zinc-500">
+          <span>💧<%= day.rain != null ? day.rain : 0 %>%</span>
+          <span>🌅 <%= day.sunrise || '—' %></span>
+          <span>🌇 <%= day.sunset || '—' %></span>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <button type="button" onclick="openWeatherModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🌤️ <%= t('seaViewWeather') %></button>
+    <a href="/etkinlikler" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🗓️ <%= t('events') %></a>
+  </div>
+  <p class="text-xs text-zinc-500">🛰️ <%= t('seaSource') %> — <%= t('lastUpdate') %>: <%= updatedTime %></p>
+  <% } %>
+</section>
