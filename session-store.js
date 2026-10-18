@@ -1,14 +1,15 @@
 // express-session icin dosya tabanli store: restart/deploy'ta oturumlar
 // bellekte kaybolmasin (admin 2FA + Google giris oturumlari).
 // Tek instance (Passenger) ile calisir; yazma 15 sn'de bir debounce edilir.
+// DIKKAT: express-session'in base Store sinifindan TUREMELI — yoksa
+// createSession/regenerate eksik kalir (OTP ekraninda 500).
 const fs = require('fs');
 const path = require('path');
-const EventEmitter = require('events');
+const { Store } = require('express-session');
 
 const FLUSH_MS = 15000;
 
-// express-session store'un EventEmitter olmasi gerekir (store.on).
-class FileSessionStore extends EventEmitter {
+class FileSessionStore extends Store {
   constructor(opts) {
     super();
     opts = opts || {};
