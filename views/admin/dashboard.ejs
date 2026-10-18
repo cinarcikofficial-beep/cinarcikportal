@@ -166,6 +166,10 @@
           class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
           🏢 Firma Yönetimi
         </button>
+        <button type="button" data-tab="othernews"
+          class="tab-btn bg-transparent text-zinc-400 hover:bg-zinc-800/50 font-medium px-4 py-2.5 rounded-lg text-sm transition-all">
+          🌐 Diğer Haberler
+        </button>
       </nav>
     </div>
 
@@ -556,6 +560,25 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB 5: DİĞER HABERLER (Google News RSS) -->
+    <div id="tab-othernews" class="tab-content hidden">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-white">🌐 Diğer Haberler</h3>
+            <p class="text-zinc-500 text-xs mt-0.5">Google News akışı — "Çınarcık" ile ilgili dış haberler (30 dk önbellek)</p>
+          </div>
+          <button type="button" id="othernews-refresh"
+            class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2.5 rounded-xl text-sm font-medium transition-all">
+            🔄 Yenile
+          </button>
+        </div>
+        <div id="othernews-list" class="p-4 divide-y divide-zinc-800/60">
+          <div class="text-zinc-500 text-sm py-6 text-center">Yükleniyor...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -713,5 +736,64 @@ function switchTab(tabName) {
 
   if (searchInput) searchInput.addEventListener('input', filterNews);
   if (filterSelect) filterSelect.addEventListener('change', filterNews);
+})();
+</script>
+<script>
+(function() {
+  var list = document.getElementById('othernews-list');
+  var refreshBtn = document.getElementById('othernews-refresh');
+  if (!list) return;
+  var loaded = false;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+  function load() {
+    list.innerHTML = '<div class="text-zinc-500 text-sm py-6 text-center">Yükleniyor...</div>';
+    fetch('/api/trending-news')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success || !data.news || data.news.length === 0) {
+          list.innerHTML = '<div class="text-zinc-500 text-sm py-6 text-center">Haber bulunamadı.</div>';
+          return;
+        }
+        var h = '';
+        data.news.forEach(function(item, i) {
+          var dateStr = '';
+          if (item.pubDate) {
+            try {
+              var d = new Date(item.pubDate);
+              dateStr = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+            } catch(e) {}
+          }
+          h += '<a href="' + esc(item.link) + '" target="_blank" rel="noopener" class="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-zinc-800/50 transition-all group">';
+          h += '  <span class="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-600/10 text-blue-500 font-bold text-xs flex items-center justify-center mt-0.5">' + (i + 1) + '</span>';
+          h += '  <div class="flex-1 min-w-0">';
+          h += '    <h4 class="text-zinc-200 font-semibold text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">' + esc(item.title) + '</h4>';
+          h += '    <div class="flex items-center gap-2 text-[11px] text-zinc-500 mt-1">';
+          if (item.source) h += '      <span>' + esc(item.source) + '</span>';
+          if (dateStr) h += '      <span>•</span><span>' + dateStr + '</span>';
+          h += '    </div>';
+          if (item.description) h += '    <p class="text-zinc-500 text-xs line-clamp-2 mt-1">' + esc(item.description) + '</p>';
+          h += '  </div>';
+          h += '  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-zinc-600 group-hover:text-blue-400 transition-colors mt-1"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
+          h += '</a>';
+        });
+        list.innerHTML = h;
+      })
+      .catch(function() {
+        list.innerHTML = '<div class="text-zinc-500 text-sm py-6 text-center">Haberler yüklenemedi.</div>';
+      });
+  }
+
+  var newsTabBtn = document.querySelector('.tab-btn[data-tab="othernews"]');
+  if (newsTabBtn) {
+    newsTabBtn.addEventListener('click', function() {
+      if (!loaded) { loaded = true; load(); }
+    });
+  }
+  if (refreshBtn) refreshBtn.addEventListener('click', function() { loaded = true; load(); });
+
+  var urlTab = new URLSearchParams(window.location.search).get('tab');
+  if (urlTab === 'othernews') { loaded = true; load(); }
 })();
 </script>

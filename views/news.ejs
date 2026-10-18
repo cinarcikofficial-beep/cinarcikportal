@@ -160,7 +160,7 @@
     <!-- 3. KATEGORİ FİLTRE BAR -->
     <div class="mb-8 overflow-x-auto">
       <div class="flex gap-2 pb-2 border-b border-zinc-800" id="categoryFilter">
-        <% const categories = [['Tümü', t('catAll')], ['Gündem', t('catAgenda')], ['Spor', t('catSports')], ['Yaşam', t('catLife')], ['Duyurular', t('catAnnouncements')], ['Diğer Haberler', t('catOtherNews')]]; %>
+        <% const categories = [['Tümü', t('catAll')], ['Gündem', t('catAgenda')], ['Spor', t('catSports')], ['Yaşam', t('catLife')], ['Duyurular', t('catAnnouncements')]]; %>
         <% categories.forEach((entry, i) => { const cat = entry[0]; %>
           <button type="button" data-cat="<%= cat %>"
             class="cat-btn <%= i === 0
@@ -225,13 +225,6 @@
             <% }) %>
           </div>
         <% } %>
-
-        <!-- DİĞER HABERLER (Online) -->
-        <div id="trending-section" class="mt-6" style="display:none;">
-          <div id="trending-news-list" class="divide-zinc-800/60">
-            <div class="text-zinc-500 text-sm py-4"><%= t('loading') %></div>
-          </div>
-        </div>
 
       </div>
 
@@ -374,9 +367,6 @@
   if (!filterBar) return;
   var btns = filterBar.querySelectorAll('.cat-btn');
   var cards = document.querySelectorAll('.news-card-item');
-  var trendingSection = document.getElementById('trending-section');
-  var sidebar = document.getElementById('news-sidebar');
-  var mainGrid = trendingSection ? trendingSection.closest('.lg\\:grid-cols-12') : null;
 
   btns.forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -389,70 +379,15 @@
       btn.classList.remove('bg-zinc-900/90', 'text-zinc-400');
       btn.classList.add('bg-red-600', 'text-white', 'font-bold');
 
-      if (cat === 'Diğer Haberler') {
-        cards.forEach(function(card) { card.style.display = 'none'; });
-        if (sidebar) sidebar.style.display = 'none';
-        if (mainGrid) { mainGrid.style.gridTemplateColumns = '1fr'; }
-        if (trendingSection && !trendingSection.getAttribute('data-empty')) {
-          trendingSection.style.display = 'block';
+      cards.forEach(function(card) {
+        if (cat === 'Tümü' || card.getAttribute('data-category') === cat) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
         }
-      } else {
-        if (trendingSection) trendingSection.style.display = 'none';
-        if (sidebar) sidebar.style.display = '';
-        if (mainGrid) { mainGrid.style.gridTemplateColumns = ''; }
-        cards.forEach(function(card) {
-          if (cat === 'Tümü' || card.getAttribute('data-category') === cat) {
-            card.style.display = '';
-          } else {
-            card.style.display = 'none';
-          }
-        });
-      }
+      });
     });
   });
 })();
 </script>
 
-<script>
-(function() {
-  var section = document.getElementById('trending-section');
-  var list = document.getElementById('trending-news-list');
-  if (!section || !list) return;
-
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-
-  fetch('/api/trending-news')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data.success || !data.news || data.news.length === 0) {
-        section.setAttribute('data-empty', 'true');
-        return;
-      }
-      var h = '';
-      data.news.forEach(function(item, i) {
-        var dateStr = '';
-        if (item.pubDate) {
-          try {
-            var d = new Date(item.pubDate);
-            dateStr = d.toLocaleDateString("<%= t('dateLocale') %>", { day: 'numeric', month: 'short' });
-          } catch(e) {}
-        }
-        h += '<a href="' + esc(item.link) + '" target="_blank" rel="noopener" class="flex items-start gap-3 py-3 border-b border-zinc-800/60 hover:bg-zinc-900/40 px-3 rounded-lg transition-all group">';
-        h += '  <span class="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-600/10 text-blue-500 font-bold text-xs flex items-center justify-center mt-0.5">' + (i + 1) + '</span>';
-        h += '  <div class="flex-1 min-w-0">';
-        h += '    <h4 class="text-zinc-200 font-semibold text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">' + esc(item.title) + '</h4>';
-        h += '    <div class="flex items-center gap-2 text-[11px] text-zinc-600 mt-1">';
-        if (item.source) h += '      <span class="text-zinc-500">' + esc(item.source) + '</span>';
-        if (dateStr) h += '      <span>•</span><span>' + dateStr + '</span>';
-        h += '    </div>';
-        h += '  </div>';
-        h += '  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-zinc-700 group-hover:text-blue-400 transition-colors mt-1"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
-        h += '</a>';
-      });
-      list.innerHTML = h;
-    })
-    .catch(function() {
-      section.setAttribute('data-empty', 'true');
-    });
-})();
-</script>

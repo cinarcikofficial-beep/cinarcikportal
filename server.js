@@ -536,16 +536,12 @@ app.get('/haber/:slug', async (req, res) => {
   const article = get("SELECT * FROM news WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!article || !article.id) return res.redirect('/haberler');
   run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [article.id]);
-  const recent = all("SELECT id, slug, title, main_image_url, created_at FROM news WHERE id != ? AND status='active' ORDER BY created_at DESC LIMIT 4", [article.id]);
-  await Promise.all([
-    txFields(article, ['title', 'summary', 'content', 'category', 'badge_text'], req.lang),
-    txArray(recent, ['title'], req.lang)
-  ]);
+  await txFields(article, ['title', 'summary', 'content', 'category', 'badge_text'], req.lang);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const absUrl = siteUrl + lp + '/haber/' + (article.slug || article.id);
   res.render('news-detail', {
-    article, recent, req,
+    article, req,
     pageTitle: article.title,
     metaDescription: article.summary || i18n.t(req.lang, 'metaDescShort'),
     ogType: 'article',
