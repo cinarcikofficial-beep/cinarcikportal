@@ -1704,7 +1704,9 @@ function withUpload(mw) {
   };
 }
 
-app.get('/uploads/:file', async (req, res) => {
+// Eski kayıtlar /img/uploads/* altında URL tutuyor; dosyalar R2'de uploads/ altında.
+// express.static dosyayı bulamayınca next() ile bu rotaya düşer.
+async function serveUploadByName(req, res) {
   const name = path.basename(String(req.params.file || ''));
   if (!name || name === '.' || name === '..') return res.status(404).type('text').send('Görsel bulunamadı');
   if (R2) {
@@ -1727,7 +1729,10 @@ app.get('/uploads/:file', async (req, res) => {
     return res.sendFile(local);
   }
   res.status(404).type('text').send('Görsel bulunamadı');
-});
+}
+
+app.get('/uploads/:file', serveUploadByName);
+app.get('/img/uploads/:file', serveUploadByName);
 
 function uploadHandler(field, renderView, loadData) {
   return (req, res, next) => {
