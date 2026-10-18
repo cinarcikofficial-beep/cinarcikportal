@@ -1821,6 +1821,20 @@ app.post('/admin/duyuru-reddet/:id', isAuthenticated, (req, res) => {
   flash(res, '/admin?tab=announcements', 'Reddedildi ve silindi: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
+// Yayınla/Gizle (haberlerdeki toggle ile aynı davranış)
+app.post('/admin/duyurular/toggle/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM announcements WHERE id = ?', [req.params.id]);
+  let next = 'active';
+  if (item && item.id) {
+    next = item.status === 'active' ? 'passive' : 'active';
+    run('UPDATE announcements SET status = ? WHERE id = ?', [next, item.id]);
+  }
+  flash(res, '/admin?tab=announcements',
+    ((item && item.title) || '#' + req.params.id) + (next === 'active' ? ' yayına alındı' : ' yayından kaldırıldı (gizlendi)'),
+    next === 'active' ? 'success' : 'info');
+});
+
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
 app.post('/admin/duyurular/goruntulenme-sifirla', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
