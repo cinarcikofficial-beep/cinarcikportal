@@ -151,7 +151,7 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | Yahoo Finance (query1/query2) | USD, EUR, gram altın, BIST 100 | açık (ana kaynak) |
 | er-api.com | Döviz yedek kaynak | açık (fallback) |
 | Google News RSS | "Diğer haberler" akışı | açık API |
-| **OpenStreetMap** (`openstreetmap.org/export/embed.html`) | Mekân/firma/iletişim harita embed'i (Google keyless embed engellendiği için) | açık, anahtarsız |
+| **OpenStreetMap** (`openstreetmap.org/export/embed.html`) | Mekân/firma harita embed'i (anahtarsız; iletişim sayfası Google Maps keyless embed kullanır) | açık, anahtarsız |
 | **Nominatim** (`nominatim.openstreetmap.org`) | Harita koordinat çözümleme (adres/plus code → lat/lng) | açık (düşük hacim) |
 
 ### 5.1 Neden SMTP değil?
@@ -187,14 +187,19 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 - **Saat**: `updated` alanı `Europe/Istanbul` zaman diliminde üretilir
    (sunucu UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
 
-### 5.4 Haritalar (OpenStreetMap)
+### 5.4 Haritalar (Google Maps + OpenStreetMap)
 
-Mekân, firma ve iletişim sayfalarındaki konum haritaları **OpenStreetMap
-embed** ile gösterilir. Eskiden Google Maps keyless `output=embed` kullanılıyordu;
-Google bu anahtarsız embed'i engellediği için "www.google.com refused to connect"
-hatası alınıyordu (ayrıca mekân `map_link`'leri `maps.app.goo.gl` kısa linkiydi,
-ham haliyle iframe'e konunca reddediliyordu).
+Mekân ve firma haritaları **OpenStreetMap embed** ile gösterilir; iletişim
+sayfası **Google Maps keyless `output=embed`** kullanır (2026-10'da doğrulandı:
+embed kabuğu Google'ın kendi anahtarıyla `maps.googleapis.com/maps/api/js`
+yükler, anahtar hatası yok). Eskiden "refused to connect" alınıyordu; sorun
+anahtar değil, `maps.app.goo.gl` kısa linklerinin iframe'e konmasıydı —
+`server.js → getMapEmbedUrl()` artık koordinata çeviriyor.
 
+- **İletişim sayfası** (`views/contact.ejs`): Google Business Profile adresi
+  (Harmanlar, Poyraz Cd., 77300 Çınarcık/Yalova) sorgulanıyor; Google'ın
+  çözümlediği nokta 40.6414969, 29.1049286. Eski OSM iğnesi (40.6478, 29.1318)
+  bu adrese ~2 km doğuda kalıyordu.
 - `server.js → getMapEmbedUrl(map_link)`: `map_link`'i koordinata çevirip
   `openstreetmap.org/export/embed.html?bbox=...&marker=lat,lng` URL'i üretir.
 - **Koordinat çözümleme** (`resolveMapCoords`, in-memory cache'li):
@@ -202,9 +207,10 @@ ham haliyle iframe'e konunca reddediliyordu).
     kalıplarından koordinat çıkarımı.
   - Plus code / adres ise → **Nominatim** geocoding.
 - Koordinat çözülemezse harita gizlenir (kırık iframe kalmaz).
-- İletişim sayfası (`views/contact.ejs`) sabit Çınarcık koordinatlı OSM embed
-  kullanır. Harita olan sayfalar: mekân (`place-detail`), firma (`rehber-detail`),
+- Harita olan sayfalar: mekân (`place-detail`), firma (`rehber-detail`),
   iletişim (`contact`). Gezilecek yerler sayfası harita yerine yalnızca bağlantı gösterir.
+- **Not:** headless tarayıcı screenshot'ında Google embed'i boş görünür
+  (Google headless'ı tanıdığı için) — görsel doğrulama gerçek tarayıcıda yapılır.
 
 ## 6. Bilinen Sınırlamalar ve Riskler
 
