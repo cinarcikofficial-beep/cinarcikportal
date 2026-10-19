@@ -2103,29 +2103,34 @@ app.get('/rehber/:slug', async (req, res) => {
   ]);
   let embedMapUrl = '';
   let directionsUrl = '';
+  let embedFallback = '';
+  let embedCoords = null;
   const dirFromCoords = (c) => 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
   if (company.map_embed) {
     // Admin'in yapistirdigi Google embed kodu (tam iframe veya saf src).
     const srcMatch = String(company.map_embed).match(/src=["']([^"']+)["']/i);
-    embedMapUrl = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
+    embedFallback = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
     // pb icindeki place key (0x...:0x...) cid'ye cevrilir; yol tarifi tam firmanin
     // pin'ine gider (kamera merkezi degil).
-    const placeKey = decodeURIComponent(embedMapUrl).match(/!1s(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
+    const placeKey = decodeURIComponent(embedFallback).match(/!1s(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
     if (placeKey) {
       try {
         directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=cid:' + BigInt(placeKey[2]).toString();
       } catch (e) { directionsUrl = ''; }
     }
-    if (!directionsUrl) {
-      const embedCoords = extractMapCoords(embedMapUrl);
-      if (embedCoords) directionsUrl = dirFromCoords(embedCoords);
-    }
+    embedCoords = extractMapCoords(embedFallback);
+    if (!directionsUrl && embedCoords) directionsUrl = dirFromCoords(embedCoords);
   }
+  // Gorunum diger sayfalarla (iletisim/mekan/gezilecek yer) uyumlu olsun diye
+  // koordinattan tek tip keyless Google embed uretilir.
+  if (embedCoords) embedMapUrl = buildMapEmbedUrl(embedCoords);
   if (company.map_link) {
     const mapInfo = await getMapInfo(company.map_link, company.address);
     if (!embedMapUrl) embedMapUrl = mapInfo.embedUrl;
     if (!directionsUrl) directionsUrl = mapInfo.directionsUrl;
   }
+  // Son care: hicbir sekilde koordinat cikmadiysa admin'in ham embed'i.
+  if (!embedMapUrl) embedMapUrl = embedFallback;
   const shortDesc = stripHtml(company.description || '').slice(0, 160);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
