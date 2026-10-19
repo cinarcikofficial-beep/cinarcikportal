@@ -98,7 +98,7 @@
 
   <!-- CANLI BİLGİ ÇUBUĞU (En Üst) -->
   <div id="ticker-bar" class="bg-zinc-950 border-b border-zinc-800 text-xs">
-    <div class="max-w-7xl mx-auto px-4 py-1.5 flex items-center gap-4">
+    <div class="max-w-[90rem] mx-auto px-4 py-1.5 flex items-center gap-4">
       <div class="flex-1 min-w-0 overflow-x-auto whitespace-nowrap" id="ticker-content">
         <span class="text-zinc-500"><%= t('loading') %></span>
       </div>
@@ -107,21 +107,21 @@
   </div>
 
   <header class="site-header bg-zinc-900 bg-opacity-80 backdrop-blur-md sticky top-0 z-50 w-full shadow-md" role="banner">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-1">
+    <div class="max-w-[90rem] mx-auto flex items-center justify-between px-4 py-1">
       <a href="/" class="flex items-center" aria-label="<%= t('homeAria') %>">
-        <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 xl:w-24 xl:h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
           <img src="/img/logo-circle.png" alt="<%= t('logoAlt') %>" class="w-full h-full object-cover">
         </div>
       </a>
-      <nav id="main-nav" class="main-nav hidden md:flex items-center gap-1.5 text-sm font-semibold">
-        <a href="<%= lp %>/" class="px-3 py-2 rounded-full transition-all <%= path === '/' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏠 <%= t('home') %></a>
-        <a href="<%= lp %>/haberler" class="px-3 py-2 rounded-full transition-all <%= (path === '/haberler' || path.startsWith('/haber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📰 <%= t('news') %></a>
-        <a href="<%= lp %>/duyurular" class="px-3 py-2 rounded-full transition-all <%= path === '/duyurular' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📢 <%= t('announcements') %></a>
-        <a href="<%= lp %>/etkinlikler" class="px-3 py-2 rounded-full transition-all <%= path === '/etkinlikler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🗓️ <%= t('events') %></a>
-        <a href="<%= lp %>/mekanlar" class="px-3 py-2 rounded-full transition-all <%= (path === '/mekanlar' || path.startsWith('/mekan/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">📍 <%= t('places') %></a>
-        <a href="<%= lp %>/rehber" class="px-3 py-2 rounded-full transition-all <%= (path === '/rehber' || path.startsWith('/rehber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🏢 <%= t('guide') %></a>
-        <a href="<%= lp %>/gezilecek-yerler" class="px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">🧳 <%= t('sightseeing') %></a>
-        <a href="<%= lp %>/cinarcik-hakkinda" class="px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>">ℹ️ <%= t('about') %></a>
+      <nav id="main-nav" class="main-nav hidden lg:flex items-center gap-1 xl:gap-1.5 text-[13px] xl:text-sm font-semibold whitespace-nowrap">
+        <a href="<%= lp %>/" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">🏠 </span><%= t('home') %></a>
+        <a href="<%= lp %>/haberler" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= (path === '/haberler' || path.startsWith('/haber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">📰 </span><%= t('news') %></a>
+        <a href="<%= lp %>/duyurular" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/duyurular' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">📢 </span><%= t('announcements') %></a>
+        <a href="<%= lp %>/etkinlikler" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/etkinlikler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">🗓️ </span><%= t('events') %></a>
+        <a href="<%= lp %>/mekanlar" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= (path === '/mekanlar' || path.startsWith('/mekan/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">📍 </span><%= t('places') %></a>
+        <a href="<%= lp %>/rehber" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= (path === '/rehber' || path.startsWith('/rehber/')) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">🏢 </span><%= t('guide') %></a>
+        <a href="<%= lp %>/gezilecek-yerler" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">🧳 </span><%= t('sightseeing') %></a>
+        <a href="<%= lp %>/cinarcik-hakkinda" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">ℹ️ </span><%= t('about') %></a>
       </nav>
       <div class="nav-right flex items-center gap-1.5 sm:gap-2">
         <span class="inline-flex items-center gap-1 relative" id="lang-dropdown">
@@ -143,11 +143,11 @@
         </span>
         <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
         <% if (isAdmin) { %>
-          <a href="<%= lp %>/admin" class="hidden sm:inline-block px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
-          <a href="<%= lp %>/admin/logout" class="hidden sm:inline-block ml-2 px-3 py-1 rounded bg-gray-600 text-white hover:bg-gray-500 transition"><%= t('logout') %></a>
+          <a href="<%= lp %>/admin" class="hidden sm:inline-block lg:hidden xl:inline-block px-2.5 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
+          <a href="<%= lp %>/admin/logout" class="hidden sm:inline-block lg:hidden xl:inline-block ml-2 px-2.5 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-500 transition"><%= t('logout') %></a>
         <% } %>
       </div>
-      <button id="menu-toggle" class="md:hidden p-2 -mr-2 text-2xl text-white" aria-label="Menü" aria-expanded="false" aria-controls="main-nav">☰</button>
+      <button id="menu-toggle" class="lg:hidden p-2 -mr-2 text-2xl text-white" aria-label="Menü" aria-expanded="false" aria-controls="main-nav">☰</button>
     </div>
   </header>
 
