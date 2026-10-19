@@ -196,10 +196,16 @@ yükler, anahtar hatası yok). Eskiden "refused to connect" alınıyordu; sorun
 anahtar değil, `maps.app.goo.gl` kısa linklerinin iframe'e konmasıydı —
 `server.js → getMapEmbedUrl()` artık koordinata çeviriyor.
 
-- **İletişim sayfası** (`views/contact.ejs`): Google Business Profile adresi
-  (Harmanlar, Poyraz Cd., 77300 Çınarcık/Yalova) sorgulanıyor; Google'ın
-  çözümlediği nokta 40.6414969, 29.1049286. Eski OSM iğnesi (40.6478, 29.1318)
-  bu adrese ~2 km doğuda kalıyordu.
+- **İletişim sayfası** (`views/contact.ejs`): Google Business Profile'daki
+  gerçek pin `40.6450362, 29.1156295` (place `marmaraninincisi.com`,
+  `/g/11zzp4hh_h`); embed `?q=<lat,lon>&z=17&output=embed` — bu biçim
+  **tek "spotlit" entity** basıyor. Dikkat: adres metniyle sorgulamak
+  (`q=Harmanlar, Poyraz Cd.`) Google'ı ~1 km batıya (40.6415, 29.1049)
+  götürüyor; isimle sorgulamak (`q=marmaraninincisi.com`) ise **5 işletmelik
+  liste** açıyor (uzak işletmeler dahil) — ikisi de kullanılmadı. İğnenin
+  ismi embed'de yalnızca koordinat olarak görünür; altına mevcut
+  `maps.app.goo.gl` place linki + `googleMapOpen` başlığıyla "Google'da Aç"
+  bağlantısı eklendi.
 - `server.js → getMapEmbedUrl(map_link)`: `map_link`'i koordinata çevirip
   `openstreetmap.org/export/embed.html?bbox=...&marker=lat,lng` URL'i üretir.
 - **Koordinat çözümleme** (`resolveMapCoords`, in-memory cache'li):
