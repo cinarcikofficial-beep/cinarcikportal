@@ -972,8 +972,9 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
     txArray(others, ['title', 'summary', 'category'], req.lang)
   ]);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const embedMapUrl = await getMapEmbedUrl(item.map_link);
   res.render('sightseeing-detail', {
-    item, others,
+    item, others, embedMapUrl,
     pageTitle: item.title,
     metaDescription: (item.summary || item.description || '').replace(/<[^>]*>/g, ' ').substring(0, 155) || (item.title + ' — Çınarcık, Yalova'),
     ogImage: item.image || '',
