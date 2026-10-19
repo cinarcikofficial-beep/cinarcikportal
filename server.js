@@ -2121,14 +2121,16 @@ app.get('/rehber/:slug', async (req, res) => {
     embedCoords = extractMapCoords(embedFallback);
     if (!directionsUrl && embedCoords) directionsUrl = dirFromCoords(embedCoords);
   }
-  // Gorunum diger sayfalarla (iletisim/mekan/gezilecek yer) uyumlu olsun diye
-  // koordinattan tek tip keyless Google embed uretilir.
-  if (embedCoords) embedMapUrl = buildMapEmbedUrl(embedCoords);
+  // Gorunum diger sayfalarla uyumlu olsun diye koordinattan tek tip keyless
+  // Google embed uretilir. once map_link'den cozulen TAM pin gelir; admin'in
+  // pb embed'indeki koordinat sadece gorunum merkezidir (~350 m kayma olabilir),
+  // o yuzden sadece fallback olarak kullanilir.
   if (company.map_link) {
     const mapInfo = await getMapInfo(company.map_link, company.address);
-    if (!embedMapUrl) embedMapUrl = mapInfo.embedUrl;
+    if (mapInfo.embedUrl) embedMapUrl = mapInfo.embedUrl;
     if (!directionsUrl) directionsUrl = mapInfo.directionsUrl;
   }
+  if (!embedMapUrl && embedCoords) embedMapUrl = buildMapEmbedUrl(embedCoords);
   // Son care: hicbir sekilde koordinat cikmadiysa admin'in ham embed'i.
   if (!embedMapUrl) embedMapUrl = embedFallback;
   const shortDesc = stripHtml(company.description || '').slice(0, 160);
@@ -3223,10 +3225,10 @@ const _mapCoordCache = new Map();
 function extractMapCoords(str) {
   if (!str) return null;
   const patterns = [
-    /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+    /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/, // Google place URL: tam pin (!3d=enlem, !4d=boylam)
+    /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/, // sadece gorunum/merkez (@ sonrasi z varsa kayabilir)
     /\/search\/(-?\d{1,3}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/,
-    /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/,
-    /!2d(-?\d{1,3}\.\d+)!3d(-?\d{1,3}\.\d+)/, // Google embed pb: 2d=boylam, 3d=enlem
+    /!2d(-?\d{1,3}\.\d+)!3d(-?\d{1,3}\.\d+)/, // Google embed pb: 2d=boylam, 3d=enlem (gorunum merkezi)
     /[?&]center=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
     /[?&]q=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
     /[?&]ll=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/
