@@ -177,6 +177,16 @@
                   <div class="h-52">
                     <iframe width="100%" height="100%" style="border:0" loading="lazy" allowfullscreen src="<%= embedMapUrl %>"></iframe>
                   </div>
+                  <% if (company.map_link || directionsUrl) { %>
+                    <a href="<%= company.map_link || directionsUrl %>" target="_blank" rel="noopener noreferrer"
+                      class="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-800/80 hover:bg-zinc-800/60 transition group">
+                      <span class="flex items-center gap-2 min-w-0">
+                        <span class="shrink-0">📍</span>
+                        <span class="text-sm font-semibold text-zinc-200 truncate group-hover:text-emerald-300 transition"><%= company.name %></span>
+                      </span>
+                      <span class="shrink-0 text-sm font-semibold text-emerald-400 group-hover:text-emerald-300"><%= t('googleMapOpen') %></span>
+                    </a>
+                  <% } %>
                 </div>
               <% } %>
             </div>

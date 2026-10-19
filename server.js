@@ -3302,17 +3302,17 @@ async function resolveMapCoords(mapLink, extraQuery) {
   return coords;
 }
 
-function buildOSMEmbedUrl(coords) {
+function buildMapEmbedUrl(coords) {
   if (!coords) return '';
   const { lat, lng } = coords;
-  const dLat = 0.004, dLng = 0.006;
-  const bbox = (lng - dLng).toFixed(6) + ',' + (lat - dLat).toFixed(6) + ',' + (lng + dLng).toFixed(6) + ',' + (lat + dLat).toFixed(6);
-  return 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lng;
+  // Google keyless embed: tek "spotlit" pin basar (isim gostermez, etiket
+  // koordinat olur) - ayni bicim iletisim sayfasinda dogrulandi.
+  return 'https://www.google.com/maps?q=' + lat + ',' + lng + '&z=17&output=embed';
 }
 
 async function getMapEmbedUrl(mapLink, extraQuery) {
   if (!mapLink) return '';
-  return buildOSMEmbedUrl(await resolveMapCoords(mapLink, extraQuery));
+  return buildMapEmbedUrl(await resolveMapCoords(mapLink, extraQuery));
 }
 
 // Firma konumu: harita embed + Google yol tarifi icin koordinatli link.
@@ -3323,7 +3323,7 @@ async function getMapInfo(mapLink, extraQuery) {
   if (!mapLink) return info;
   const coords = await resolveMapCoords(mapLink, extraQuery);
   if (coords) {
-    info.embedUrl = buildOSMEmbedUrl(coords);
+    info.embedUrl = buildMapEmbedUrl(coords);
     info.directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + coords.lat + ',' + coords.lng;
   } else {
     info.directionsUrl = mapLink;

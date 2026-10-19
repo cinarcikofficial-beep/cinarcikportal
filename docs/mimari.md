@@ -151,7 +151,7 @@ Alan adı: `marmaraninincisi.com` (dikkat: ortada `ni` var)
 | Yahoo Finance (query1/query2) | USD, EUR, gram altın, BIST 100 | açık (ana kaynak) |
 | er-api.com | Döviz yedek kaynak | açık (fallback) |
 | Google News RSS | "Diğer haberler" akışı | açık API |
-| **OpenStreetMap** (`openstreetmap.org/export/embed.html`) | Mekân/firma harita embed'i (anahtarsız; iletişim sayfası Google Maps keyless embed kullanır) | açık, anahtarsız |
+| **Google Maps** (`google.com/maps?...&output=embed`) | Tüm harita embed'leri (iletişim + mekân + firma), anahtarsız | açık, anahtarsız |
 | **Nominatim** (`nominatim.openstreetmap.org`) | Harita koordinat çözümleme (adres/plus code → lat/lng) | açık (düşük hacim) |
 
 ### 5.1 Neden SMTP değil?
@@ -187,14 +187,16 @@ için tanımlı olmalı. Uygulama yalnızca `@gmail.com` adreslerine yorum izni 
 - **Saat**: `updated` alanı `Europe/Istanbul` zaman diliminde üretilir
    (sunucu UTC çalıştığı için `toLocaleTimeString('tr-TR')` 3 saat geri görünüyordu).
 
-### 5.4 Haritalar (Google Maps + OpenStreetMap)
+### 5.4 Haritalar (Google Maps)
 
-Mekân ve firma haritaları **OpenStreetMap embed** ile gösterilir; iletişim
-sayfası **Google Maps keyless `output=embed`** kullanır (2026-10'da doğrulandı:
-embed kabuğu Google'ın kendi anahtarıyla `maps.googleapis.com/maps/api/js`
-yükler, anahtar hatası yok). Eskiden "refused to connect" alınıyordu; sorun
-anahtar değil, `maps.app.goo.gl` kısa linklerinin iframe'e konmasıydı —
-`server.js → getMapEmbedUrl()` artık koordinata çeviriyor.
+Tüm harita embed'leri **Google Maps keyless `output=embed`** (2026-10'da
+doğrulandı: embed kabuğu Google'ın kendi anahtarıyla
+`maps.googleapis.com/maps/api/js` yükler, anahtar hatası yok). Mekân ve firma
+detayları eskiden **OpenStreetMap embed** kullanıyordu; tek merkezî
+`buildMapEmbedUrl()` Google formuna çevrildi — OSM'e embed kalmadı
+(Nominatim yalnız geocoding için duruyor). Eskiden "refused to connect"
+alınıyordu; sorun anahtar değil, `maps.app.goo.gl` kısa linklerinin iframe'e
+konmasıydı — `server.js → resolveMapCoords()` koordinata çeviriyor.
 
 - **İletişim sayfası** (`views/contact.ejs`): Google Business Profile'daki
   gerçek pin `40.6450362, 29.1156295` (place `marmaraninincisi.com`,
@@ -206,8 +208,10 @@ anahtar değil, `maps.app.goo.gl` kısa linklerinin iframe'e konmasıydı —
   ismi embed'de yalnızca koordinat olarak görünür; altına mevcut
   `maps.app.goo.gl` place linki + `googleMapOpen` başlığıyla "Google'da Aç"
   bağlantısı eklendi.
-- `server.js → getMapEmbedUrl(map_link)`: `map_link`'i koordinata çevirip
-  `openstreetmap.org/export/embed.html?bbox=...&marker=lat,lng` URL'i üretir.
+- `server.js → getMapEmbedUrl(map_link)` / `getMapInfo()`: çözülen koordinatı
+  `buildMapEmbedUrl()` ile `google.com/maps?q=<lat>,<lng>&z=17&output=embed`
+  URL'ine çevirir. Firma detayında admin'in girdiği `map_embed` (Google
+  Haritalar → Paylaş → Yerleştir iframe kodu) varsa öncelikle onu kullanır.
 - **Koordinat çözümleme** (`resolveMapCoords`, in-memory cache'li):
   - URL ise → redirect takibi + `@lat,lng` / `/search/lat,lng` / `!3d..!4d`
     kalıplarından koordinat çıkarımı.
