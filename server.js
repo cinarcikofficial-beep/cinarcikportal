@@ -2106,18 +2106,15 @@ app.get('/rehber/:slug', async (req, res) => {
   let embedFallback = '';
   let embedCoords = null;
   const dirFromCoords = (c) => 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
+  let pbCid = '';
   if (company.map_embed) {
     // Admin'in yapistirdigi Google embed kodu (tam iframe veya saf src).
     const srcMatch = String(company.map_embed).match(/src=["']([^"']+)["']/i);
     embedFallback = srcMatch ? srcMatch[1] : String(company.map_embed).trim();
-    // pb icindeki place key (0x...:0x...) cid'ye cevrilir; yol tarifi tam firmanin
-    // pin'ine gider (kamera merkezi degil).
-    const placeKey = decodeURIComponent(embedFallback).match(/!1s(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
-    if (placeKey) {
-      try {
-        directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=cid:' + BigInt(placeKey[2]).toString();
-      } catch (e) { directionsUrl = ''; }
-    }
+    // pb icindeki place key (0x...:0x...) cid'ye cevrilir; hem etiketli pin embed'i
+    // hem de tam firmanin pin'ine giden yol tarifi icin kullanilir.
+    pbCid = extractPlaceCid(embedFallback);
+    if (pbCid) directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=cid:' + pbCid;
     embedCoords = extractMapCoords(embedFallback);
     if (!directionsUrl && embedCoords) directionsUrl = dirFromCoords(embedCoords);
   }
@@ -2130,7 +2127,7 @@ app.get('/rehber/:slug', async (req, res) => {
     if (mapInfo.embedUrl) embedMapUrl = mapInfo.embedUrl;
     if (!directionsUrl) directionsUrl = mapInfo.directionsUrl;
   }
-  if (!embedMapUrl && embedCoords) embedMapUrl = buildMapEmbedUrl(embedCoords);
+  if (!embedMapUrl && (embedCoords || pbCid)) embedMapUrl = buildMapEmbedUrl(embedCoords, pbCid);
   // Son care: hicbir sekilde koordinat cikmadiysa admin'in ham embed'i.
   if (!embedMapUrl) embedMapUrl = embedFallback;
   const shortDesc = stripHtml(company.description || '').slice(0, 160);
@@ -3278,6 +3275,7 @@ async function resolveMapCoords(mapLink, extraQuery) {
   const cacheKey = mapLink + '|' + (extraQuery || '');
   if (_mapCoordCache.has(cacheKey)) return _mapCoordCache.get(cacheKey);
   let coords = null;
+  let cid = '';
   try {
     const town = 'Çınarcık, Yalova, Türkiye';
     const buildTerms = (q) => {
@@ -3293,8 +3291,13 @@ async function resolveMapCoords(mapLink, extraQuery) {
         headers: { 'user-agent': 'cinarcik-portal/1.0' },
         signal: AbortSignal.timeout(6000)
       });
+      cid = extractPlaceCid(r.url);
       coords = extractMapCoords(r.url);
-      if (!coords) coords = extractMapCoords(await r.text());
+      if (!coords) {
+        const body = await r.text();
+        if (!cid) cid = extractPlaceCid(body);
+        coords = extractMapCoords(body);
+      }
       // share.google / google search linkleri koordinat icermiyor; q parametresinden
       // firma adi alinir ve adres varyantlariyla Nominatim'den konum cozulur.
       if (!coords) {
@@ -3306,16 +3309,30 @@ async function resolveMapCoords(mapLink, extraQuery) {
       coords = await nominatimSearch(buildTerms(mapLink));
     }
   } catch (e) { coords = null; }
+  if (coords && cid) coords.cid = cid;
   _mapCoordCache.set(cacheKey, coords);
   return coords;
 }
 
-function buildMapEmbedUrl(coords) {
+// Google place URL / embed pb icindeki place key (0x...:0x...) ondalik cid'ye cevrilir.
+// ?cid=...&output=embed bicimi etiketli yer pin'i basar (koordinatli q= embed'inde pin gorunmez).
+function extractPlaceCid(str) {
+  if (!str) return '';
+  let s = String(str);
+  try { s = decodeURIComponent(s); } catch (e) { /* bozuk escape - ham haliyle dene */ }
+  const m = s.match(/!1s(0x[0-9a-f]+):(0x[0-9a-f]+)/i);
+  if (!m) return '';
+  try { return BigInt(m[2]).toString(); } catch (e) { return ''; }
+}
+
+function buildMapEmbedUrl(coords, cid) {
+  const placeCid = cid || (coords && coords.cid) || '';
+  if (placeCid) return 'https://www.google.com/maps?cid=' + placeCid + '&output=embed';
   if (!coords) return '';
   const { lat, lng } = coords;
-  // Google keyless embed: tek "spotlit" pin basar (isim gostermez, etiket
-  // koordinat olur) - ayni bicim iletisim sayfasinda dogrulandi.
-  return 'https://www.google.com/maps?q=' + lat + ',' + lng + '&z=17&output=embed';
+  // Dropped pin (yer key'i olmayan koordinatlar): klasik maps.google.com embed'i
+  // kirmizi pin basar; www.google.com/maps?q= biciminde pin gorunmuyordu.
+  return 'https://maps.google.com/maps?q=' + lat + ',' + lng + '&hl=tr&z=17&output=embed';
 }
 
 async function getMapEmbedUrl(mapLink, extraQuery) {
@@ -3332,7 +3349,10 @@ async function getMapInfo(mapLink, extraQuery) {
   const coords = await resolveMapCoords(mapLink, extraQuery);
   if (coords) {
     info.embedUrl = buildMapEmbedUrl(coords);
-    info.directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + coords.lat + ',' + coords.lng;
+    // cid varsa yol tarifi tam yer pin'ine gider (koordinat merkezi degil).
+    info.directionsUrl = coords.cid
+      ? 'https://www.google.com/maps/dir/?api=1&destination=cid:' + coords.cid
+      : 'https://www.google.com/maps/dir/?api=1&destination=' + coords.lat + ',' + coords.lng;
   } else {
     info.directionsUrl = mapLink;
   }
