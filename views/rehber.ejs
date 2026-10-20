@@ -2,7 +2,6 @@
 <% locals.pageTitle = t('guide') %>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   body { font-family: 'Inter', sans-serif; }
   .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
   .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -61,7 +60,7 @@
           <!-- Logo -->
           <div class="h-52 flex items-center justify-center bg-gradient-to-br from-zinc-950 to-zinc-900 relative overflow-hidden">
             <% if (img) { %>
-              <img src="<%= img %>" alt="<%= company.name %>" class="max-w-[85%] max-h-[80%] object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg">
+              <img src="<%= img %>" alt="<%= company.name %>" loading="lazy" decoding="async" class="max-w-[85%] max-h-[80%] object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-lg">
             <% } else { %>
               <span class="text-6xl opacity-80 group-hover:scale-110 transition-transform duration-300"><%= emoji %></span>
             <% } %>

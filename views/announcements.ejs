@@ -41,7 +41,7 @@
     %>
     <div class="card announcement-card ann-full relative flex flex-col">
       <span class="announce-tag <%= a.category === 'ilan' ? 'tag-ilan' : a.category === 'etkinlik' ? 'tag-etkinlik' : 'tag-duyuru' %>"><%= a.category === 'ilan' ? t('ad') : a.category === 'etkinlik' ? t('event') : t('announcement') %></span>
-      <% if (a.image) { %><img src="<%= img(a.image) %>" alt="<%= a.title %>" class="w-full h-64 object-cover ann-img-frame rounded-xl mb-3" /><% } %>
+      <% if (a.image) { %><img src="<%= img(a.image) %>" alt="<%= a.title %>" loading="lazy" decoding="async" class="w-full h-64 object-cover ann-img-frame rounded-xl mb-3" /><% } %>
       <h3 class="text-lg font-bold text-white mb-1 line-clamp-2 min-h-[3.5rem]"><%= a.title %></h3>
       <span class="card-date block mb-3"><%= dateStr %></span>
       <div class="article-body flex-1 text-sm text-zinc-300 leading-relaxed">

@@ -36,7 +36,7 @@
     empty.classList.add('hidden');
     grid.innerHTML = list.map(function(it) {
       var img = it.img
-        ? '<img src="' + esc(it.img) + '" alt="" class="w-full h-40 object-cover">'
+        ? '<img src="' + esc(it.img) + '" alt="" loading="lazy" decoding="async" class="w-full h-40 object-cover">'
         : '<div class="w-full h-40 bg-zinc-800 flex items-center justify-center text-4xl">' + (EMOJI[it.t] || '★') + '</div>';
       return '<div class="rounded-2xl border border-zinc-800/80 bg-zinc-900/70 overflow-hidden">'
         + '<a href="' + LP + esc(it.u) + '" class="block hover:opacity-90 transition">' + img + '</a>'

@@ -17,7 +17,7 @@ const translations = {
     forecastReal: 'gerçek tahmin', forecastHist: 'tarihsel ortalama',
     heroTagline: "Marmara'nın Huzurlu Kıyısı",
     heroSlide1Title: 'Kuşbakışı Çınarcık', heroSlide1Sub: "Marmara'nın mavisiyle buluşan sahil kasabası",
-    heroSlide2Title: 'Cumhuriyet Meydanı', heroSlide2Sub: 'Meydanınızda Atatürk Anıtımız',
+    heroSlide2Title: 'Cumhuriyet Meydanı', heroSlide2Sub: 'Meydanımızda Atatürk Anıtımız',
     heroSlide3Title: "Marmara'nın İncisi", heroSlide3Sub: 'Sahil meydanı ve simge yapılar',
     heroSlide4Title: 'Sahil Boyunca', heroSlide4Sub: 'Sakin deniz, yeşil tepeler ve huzur',
     heroSlide5Title: 'Çınarcık Feneri', heroSlide5Sub: 'Sahilin simgesi şirin fener',

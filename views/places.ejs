@@ -2,7 +2,6 @@
 <% locals.pageTitle = t('places') %>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   body { font-family: 'Inter', sans-serif; }
   .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
   .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -117,7 +116,7 @@
             <div class="card-layout">
               <!-- Image -->
               <div class="card-image-wrap" onclick="togglePlaceDetail('<%= place.id %>')">
-                <img src="<%= img %>" alt="<%= place.name %>">
+                <img src="<%= img %>" alt="<%= place.name %>" loading="lazy" decoding="async">
                 <span class="category-badge"><%= place.category || t('place') %></span>
                 <% if (place.is_featured == 1) { %>
                   <span class="featured-badge"><%= t('featured') %></span>
@@ -173,7 +172,7 @@
                   <div class="detail-media">
                     <% if (img) { %>
                       <div class="hero-image-wrap" onclick="openLightbox(0)">
-                        <img id="hero-img-<%= place.id %>" src="<%= img %>" alt="<%= place.name %>">
+                        <img id="hero-img-<%= place.id %>" src="<%= img %>" alt="<%= place.name %>" loading="lazy" decoding="async">
                         <div class="overlay-label"><span><%= t('viewLarge') %></span></div>
                       </div>
                     <% } %>
@@ -182,7 +181,7 @@
                       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem" id="gallery-<%= place.id %>">
                         <% gallery.slice(0, 6).forEach(function(gImg, gi) { %>
                           <div class="gallery-thumb" onclick="swapHeroImage('<%= place.id %>', '<%= gImg %>', <%= gi %>)">
-                            <img src="<%= gImg %>" alt="<%= t('gallery') %> <%= gi + 1 %>">
+                            <img src="<%= gImg %>" alt="<%= t('gallery') %> <%= gi + 1 %>" loading="lazy" decoding="async">
                           </div>
                         <% }) %>
                         <% if (gallery.length > 6) { %>

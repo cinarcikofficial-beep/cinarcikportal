@@ -504,6 +504,10 @@ app.get('/', async (req, res) => {
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
     headlines, regularNews, weekEvents, sea,
+    // LCP: hero 1. slayt + manşet ilk görseli <head>'de preload edilir (layout.ejs)
+    preloadImages: ['/images/cinar/1.webp'].concat(
+      headlines[0] && headlines[0].main_image_url && String(headlines[0].main_image_url).indexOf('/uploads/') === 0
+        ? [res.locals.img(headlines[0].main_image_url)] : []),
     pageTitle: 'Çınarcık Haber, Mekan ve Gezi Rehberi | ' + i18n.t(req.lang, 'heroTagline'),
     metaDescription: i18n.t(req.lang, 'metaDesc'),
     pageSchema: {
@@ -1706,11 +1710,53 @@ function finishUploads(req, res, done) {
   });
 }
 
+// Yüklenen fotoğrafları R2'ye gitmeden önce küçültür: max 1600px + WebP q70.
+// Orijinal (telefon) fotoğraflar 2-8 MB olabiliyordu — LCP ve bandwidth için en
+// büyük kazanç bu. Hata olursa dosya olduğu gibi yüklenir (akış bozulmaz).
+async function optimizeUploadedImages(req) {
+  const files = [];
+  if (req.file) files.push(req.file);
+  if (req.files) {
+    if (Array.isArray(req.files)) files.push.apply(files, req.files);
+    else Object.keys(req.files).forEach(function(k) {
+      const v = req.files[k];
+      if (Array.isArray(v)) files.push.apply(files, v);
+    });
+  }
+  const fsp = require('fs');
+  const sharp = require('sharp');
+  await Promise.all(files.map(async function(file) {
+    if (!file || !file.path || !/^image\/(jpeg|png|webp)$/.test(file.mimetype || '')) return;
+    try {
+      const before = fsp.statSync(file.path).size;
+      const out = await sharp(file.path)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .webp({ quality: 70, smartSubsample: true })
+        .toBuffer();
+      if (out.length >= before) return; // küçülmediyse dokunma
+      const newPath = file.path.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
+      fsp.writeFileSync(newPath, out);
+      if (newPath !== file.path) { try { fsp.unlinkSync(file.path); } catch (e) {} }
+      file.path = newPath;
+      file.filename = require('path').basename(newPath);
+      file.mimetype = 'image/webp';
+      console.log('[img] optimize:', file.filename, Math.round(before / 1024) + 'KB -> ' + Math.round(out.length / 1024) + 'KB');
+    } catch (e) {
+      console.warn('[img] optimize atlandi (' + file.filename + '):', e.message);
+    }
+  }));
+}
+
 function withUpload(mw) {
   return function(req, res, next) {
     mw(req, res, function(err) {
       if (err) return next(err);
-      finishUploads(req, res, next);
+      optimizeUploadedImages(req).then(function() {
+        finishUploads(req, res, next);
+      }).catch(function(e) {
+        console.warn('[img] optimize hata:', e.message);
+        finishUploads(req, res, next);
+      });
     });
   };
 }
@@ -2361,7 +2407,24 @@ app.post('/admin/firmalar/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback';
+
+// redirect_uri istek host'undan dinamik üretilir: istek localhost'a gelirse
+// http://localhost:3000, canlı domain'e gelirse SITE_URL (veya localhost OLMAYAN
+// GOOGLE_CALLBACK_URL env override'ı) kullanılır.
+// DİKKAT: Google Cloud Console → Authorized redirect URIs içinde şunlar ekli OLMALI:
+//   http://localhost:3000/auth/google/callback   (lokal test)
+//   https://marmaraninincisi.com/auth/google/callback  (canlı)
+// Eski hata: .env'deki GOOGLE_CALLBACK_URL=localhost'a sabitti → canlıda Google
+// girişi yapan herkes localhost:3000'e düşüyordu (ERR_CONNECTION_REFUSED).
+function googleRedirectUri(req) {
+  const host = String((req.get('host') || '')).toLowerCase().split(':')[0];
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'http://localhost:3000/auth/google/callback';
+  }
+  const envCb = process.env.GOOGLE_CALLBACK_URL;
+  if (envCb && !envCb.includes('localhost')) return envCb.replace(/\/+$/, '');
+  return (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/+$/, '') + '/auth/google/callback';
+}
 
 // Env değişken kontrolü
 if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
@@ -2375,24 +2438,13 @@ if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET === 'YOUR_GOOGLE_CLIENT_SECRET
 } else {
   console.log('\x1b[32m✓ GOOGLE_CLIENT_SECRET yüklendi.\x1b[0m');
 }
-console.log('\x1b[36m→ GOOGLE_CALLBACK_URL:\x1b[0m', GOOGLE_CALLBACK_URL);
+console.log('\x1b[36m→ Google callback (dinamik):\x1b[0m');
+console.log('   lokal : http://localhost:3000/auth/google/callback');
+console.log('   canlı : ' + (process.env.GOOGLE_CALLBACK_URL && !process.env.GOOGLE_CALLBACK_URL.includes('localhost')
+  ? process.env.GOOGLE_CALLBACK_URL
+  : (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/+$/, '') + '/auth/google/callback'));
 
-// Alan adı uyuşmazlığı koruması: callback URL, SITE_URL alan adıyla aynı olmalı.
-// Farklıysa Google girişi sonrası kullanıcı geçersiz/eksik SSL'li domain'e
-// yönlendirilir → tarayıcı "This connection is not private" uyarısı gösterir.
-(function validateCallbackHost() {
-  try {
-    const siteHost = new URL(process.env.SITE_URL || 'https://marmaraninincisi.com').host;
-    const cbHost = new URL(GOOGLE_CALLBACK_URL).host;
-    if (cbHost !== siteHost && cbHost !== 'localhost:3000' && cbHost !== 'localhost') {
-      console.warn('\x1b[31m✗ GOOGLE_CALLBACK_URL alan adı SITE_URL ile uyuşmuyor!\x1b[0m');
-      console.warn('   SITE_URL host:    ' + siteHost);
-      console.warn('   CALLBACK host:    ' + cbHost);
-      console.warn('   → Google girişi "This connection is not private" hatası verir.');
-      console.warn('   → Render env: GOOGLE_CALLBACK_URL=https://' + siteHost + '/auth/google/callback');
-    }
-  } catch (e) { /* geçersiz URL — üstteki log yeterli */ }
-})();
+// (Eski statik callback-host doğrulaması kaldırıldı — redirect_uri artık isteğe göre dinamik.)
 
 // Auth config endpoint
 app.get('/api/auth/config', (req, res) => {
@@ -2420,7 +2472,7 @@ app.get('/auth/google', (req, res) => {
   if (returnTo) req.session.returnTo = returnTo;
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_CALLBACK_URL,
+    redirect_uri: googleRedirectUri(req),
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
@@ -2450,7 +2502,7 @@ app.get('/auth/google/callback', async (req, res) => {
         code,
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: GOOGLE_CALLBACK_URL,
+        redirect_uri: googleRedirectUri(req),
         grant_type: 'authorization_code'
       })
     });
@@ -2459,7 +2511,7 @@ app.get('/auth/google/callback', async (req, res) => {
     
     if (tokenData.error) {
       console.error('Token hatası:', tokenData.error, tokenData.error_description);
-      console.error('Gönderilen parametreler: client_id=' + GOOGLE_CLIENT_ID.substring(0, 15) + '..., redirect_uri=' + GOOGLE_CALLBACK_URL);
+      console.error('Gönderilen parametreler: client_id=' + GOOGLE_CLIENT_ID.substring(0, 15) + '..., redirect_uri=' + googleRedirectUri(req));
       return res.redirect('/auth/error?type=' + encodeURIComponent(tokenData.error) + '&desc=' + encodeURIComponent(tokenData.error_description || ''));
     }
     
