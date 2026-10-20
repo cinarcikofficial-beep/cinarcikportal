@@ -208,7 +208,7 @@
 
   <script>
   (function() {
-    var S = <%- JSON.stringify({ minChars: t('searchMinChars'), noResults: t('searchNoResults'), loading: t('loading'), connError: t('connError'), favSaved: t('favSaved'), favList: t('favList'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
+    var S = <%- JSON.stringify({ minChars: t('searchMinChars'), noResults: t('searchNoResults'), loading: t('loading'), connError: t('connError'), favSaved: t('favSaved'), favRemove: t('favRemove'), favList: t('favList'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
     var LP = '<%= typeof lp !== 'undefined' ? lp : '' %>';
     var modal = document.getElementById('search-modal');
     var input = document.getElementById('search-input');
@@ -262,7 +262,7 @@
       els.forEach(function(el, idx) { el.classList.toggle('is-active', idx === active); });
       if (els[active]) els[active].scrollIntoView({ block: 'nearest' });
     }
-    function render(list, q) {
+    function render(list, q, favMode) {
       items = list;
       active = list.length ? 0 : -1;
       if (!list.length) { resultsEl.innerHTML = ''; setStatus(S.noResults); return; }
@@ -289,6 +289,7 @@
           + (it.meta ? '<span class="search-meta">' + esc(it.meta) + '</span>' : '')
           + '</span>'
           + '<span class="search-type">' + esc(TYPE_LABEL[it.type] || '') + '</span>'
+          + (favMode ? '<button type="button" class="search-fav-del" data-del-type="' + esc(it.type) + '" data-del-id="' + esc(it.id) + '" title="' + esc(S.favRemove || '') + '" aria-label="' + esc(S.favRemove || '') + '">✕</button>' : '')
           + '</a>';
       });
       resultsEl.innerHTML = html;
@@ -296,6 +297,15 @@
         el.addEventListener('mouseenter', function() { setActive(parseInt(el.dataset.i, 10)); });
       });
     }
+    // Kaydettiklerim satırındaki ✕: favoriden kaldırır, satırı panelden siler (gezinmeyi engeller)
+    resultsEl.addEventListener('click', function(e) {
+      var b = e.target && e.target.closest ? e.target.closest('.search-fav-del') : null;
+      if (!b) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.Favs.remove(b.getAttribute('data-del-type'), String(b.getAttribute('data-del-id')));
+      renderFavs();
+    });
     function search(q) {
       var hint = resultsEl.parentElement.querySelector('.search-fav-hint');
       if (hint) hint.style.display = 'none';
@@ -324,7 +334,7 @@
       var list = favs.slice().reverse().slice(0, 8).map(function(f) {
         return { type: f.t, id: f.id, emoji: ({ news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢' })[f.t] || '★', title: f.title, meta: '', url: f.u };
       });
-      render(list, '');
+      render(list, '', true);
       var lbl = resultsEl.parentElement.querySelector('.search-fav-hint');
       if (!lbl) {
         lbl = document.createElement('div');
