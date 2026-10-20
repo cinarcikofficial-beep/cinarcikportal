@@ -265,7 +265,8 @@ a.card.place-card { padding: 0; }
 .announce-tag.tag-duyuru { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .announce-tag.tag-etkinlik { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 
-/* Duyuru/ilan görselleri: afişler kırpılmasın — contain + nötr çerçeve */
+/* Duyuru/ilan kart görselleri: ayrılan alanı object-cover ile doldurur
+   (oran bozulmaz, merkezden kırpılır); çerçeve yüklenirken görünür */
 .ann-img-frame { background: rgba(255, 255, 255, 0.04); }
 html.light .ann-img-frame { background: #f1f5f9; }
 

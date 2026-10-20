@@ -136,7 +136,7 @@
     <% announcements.forEach(a => { %>
     <a href="/duyuru/<%= a.slug || a.id %>" class="card announcement-card block group">
       <span class="announce-tag <%= a.category === 'ilan' ? 'tag-ilan' : a.category === 'etkinlik' ? 'tag-etkinlik' : 'tag-duyuru' %>"><%= a.category === 'ilan' ? t('ad') : a.category === 'etkinlik' ? t('event') : t('announcement') %></span>
-      <% if (a.image) { %><img src="<%= a.image %>" alt="<%= a.title %>" class="w-full h-40 object-contain ann-img-frame rounded-t-xl mb-2" /><% } %>
+      <% if (a.image) { %><img src="<%= a.image %>" alt="<%= a.title %>" class="w-full h-40 object-cover ann-img-frame rounded-xl mb-2" /><% } %>
       <h3 class="group-hover:text-emerald-400 transition-colors"><%= a.title %></h3>
       <p><%= String(a.content || '').replace(/<[^>]*>/g, ' ').substring(0, 120) %>...</p>
       <span class="card-date"><%= new Date(a.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>

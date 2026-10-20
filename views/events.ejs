@@ -30,7 +30,7 @@
       </div>
       <a href="/duyuru/<%= ev.slug || ev.id %>" class="card announcement-card ann-full relative flex-1 flex flex-col group">
         <span class="announce-tag tag-etkinlik"><%= t('event') %></span>
-        <% if (ev.image) { %><img src="<%= img(ev.image) %>" alt="<%= ev.title %>" class="w-full h-44 object-contain ann-img-frame rounded-xl mb-3" /><% } %>
+      <% if (ev.image) { %><img src="<%= img(ev.image) %>" alt="<%= ev.title %>" class="w-full h-44 object-cover ann-img-frame rounded-xl mb-3" /><% } %>
         <h3 class="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors"><%= ev.title %></h3>
         <span class="card-date block mb-2"><%= d.toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
         <div class="text-sm text-zinc-300 line-clamp-2"><%= isRich ? ev.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180) : String(ev.content || '').replace(/\s+/g, ' ').trim().slice(0, 180) %></div>
@@ -48,7 +48,7 @@
     %>
     <a href="/duyuru/<%= ev.slug || ev.id %>" class="card announcement-card ann-full relative flex flex-col group">
       <span class="announce-tag tag-etkinlik"><%= t('event') %></span>
-      <% if (ev.image) { %><img src="<%= img(ev.image) %>" alt="<%= ev.title %>" class="w-full h-44 object-contain ann-img-frame rounded-xl mb-3" /><% } %>
+      <% if (ev.image) { %><img src="<%= img(ev.image) %>" alt="<%= ev.title %>" class="w-full h-44 object-cover ann-img-frame rounded-xl mb-3" /><% } %>
       <h3 class="text-lg font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors"><%= ev.title %></h3>
       <span class="card-date block mb-2"><%= new Date(ev.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
       <div class="text-sm text-zinc-300 line-clamp-2"><%= isRich ? ev.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180) : String(ev.content || '').replace(/\s+/g, ' ').trim().slice(0, 180) %></div>
