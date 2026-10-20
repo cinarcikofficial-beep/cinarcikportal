@@ -78,7 +78,9 @@
         "name": "Marmara'nın İncisi",
         "url": "<%= siteUrl %>/",
         "logo": "<%= siteUrl %>/img/logo-circle.png",
-        "sameAs": [],
+        "sameAs": [
+          "https://maps.google.com/?cid=14140722854821185587"
+        ],
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Çınarcık",
@@ -190,23 +192,25 @@
     </div>
   </div>
 
-  <!-- HIZLI ARAMA PANELİ (Ctrl+K) -->
-  <div id="search-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-label="<%= t('searchBtn') %>" onclick="if(event.target===this)closeSearchModal()">
-    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-2xl mt-16 sm:mt-24 mx-4 sm:mx-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
+  <!-- HIZLI ARAMA PANELİ (Ctrl+K) — kapatma: ESC, ✕ butonu veya karanlık alana dokunma/tıklama -->
+  <div id="search-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-label="<%= t('searchBtn') %>">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeSearchModal()"></div>
+    <div class="relative w-full max-w-2xl mt-10 sm:mt-24 mx-4 sm:mx-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
       <div class="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
         <span class="text-zinc-500 text-lg" aria-hidden="true">🔍</span>
         <input id="search-input" type="search" autocomplete="off" spellcheck="false"
           placeholder="<%= t('searchPlaceholder') %>"
           class="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-500 text-base outline-none py-1" />
-        <kbd class="hidden sm:inline-block text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 select-none">ESC</kbd>
+        <kbd class="hidden md:inline-block text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 select-none">ESC</kbd>
+        <button type="button" id="search-close" aria-label="<%= t('close') %>" onclick="closeSearchModal()"
+          class="shrink-0 w-9 h-9 -mr-1.5 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700/60 active:scale-90 transition select-none">✕</button>
       </div>
-      <div id="search-results" class="max-h-[60vh] overflow-y-auto p-2"></div>
-      <div id="search-status" class="text-zinc-500 text-sm text-center py-8 px-4"><%= t('searchMinChars') %></div>
+      <div id="search-results" class="max-h-[45vh] sm:max-h-[60vh] overflow-y-auto overscroll-contain p-2"></div>
+      <div id="search-status" class="text-zinc-500 text-sm text-center py-6 sm:py-8 px-4"><%= t('searchMinChars') %></div>
       <div class="px-4 py-2 border-t border-zinc-800 text-[11px] text-zinc-600 flex items-center justify-between gap-3 select-none">
         <a href="<%= lp %>/kaydettiklerim" id="search-favs-link" class="shrink-0 text-zinc-500 hover:text-amber-300 transition font-semibold">★ <%= t('favList') %> <span id="search-fav-count" class="fav-count" style="display:none">0</span></a>
-        <span class="flex items-center gap-3 shrink-0">
-          <span class="hidden sm:inline">↑ ↓ <%= t('searchBtn') %> · Enter</span>
+        <span class="hidden sm:flex items-center gap-3 shrink-0">
+          <span>↑ ↓ <%= t('searchBtn') %> · Enter</span>
           <span>Ctrl + K</span>
         </span>
       </div>
@@ -353,11 +357,15 @@
     }
     function openSearchModal() {
       modal.classList.remove('hidden');
-      input.focus();
+      document.body.style.overflow = 'hidden';
+      try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
       input.select();
       renderFavs();
     }
-    window.closeSearchModal = function() { modal.classList.add('hidden'); };
+    window.closeSearchModal = function() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    };
 
     openBtn.addEventListener('click', openSearchModal);
     input.addEventListener('input', function() {

@@ -1710,6 +1710,14 @@ html.light .back-link:hover {
   outline: none;
 }
 
+/* Dokunmatik cihazlar: arama satırlarında büyük dokunma hedefi + basma geri bildirimi */
+@media (pointer: coarse) {
+  .search-item { -webkit-tap-highlight-color: transparent; }
+  .search-item:active { background: rgba(255, 255, 255, 0.1); }
+  .search-fav-del { width: 34px; height: 34px; font-size: 13px; }
+  #search-close { width: 40px; height: 40px; }
+}
+
 /* Mikro-animasyonlar: scroll reveal (html.has-reveal JS tarafında eklenir) */
 html.has-reveal .reveal {
   opacity: 0;
