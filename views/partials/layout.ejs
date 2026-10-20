@@ -141,6 +141,10 @@
             <% }); %>
           </div>
         </span>
+        <button id="fav-open" type="button" aria-label="<%= t('favList') %>" title="<%= t('favList') %>" style="display:none"
+          class="px-2.5 py-1.5 rounded-lg bg-zinc-800 text-amber-300 border border-zinc-700 hover:border-amber-500/50 focus:outline-none transition text-sm leading-none">★<span id="fav-count" class="fav-count" style="display:none">0</span></button>
+        <button id="search-open" type="button" aria-label="<%= t('searchBtn') %>" title="<%= t('searchBtn') %> (Ctrl+K)" aria-haspopup="dialog"
+          class="px-2.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition text-sm leading-none">🔍</button>
         <button id="theme-toggle" title="<%= t('themeToggle') %>" class="px-3 py-1 rounded bg-zinc-800 text-white hover:bg-zinc-700 transition text-sm">☀️</button>
         <% if (isAdmin) { %>
           <a href="<%= lp %>/admin" class="hidden sm:inline-block lg:hidden xl:inline-block px-2.5 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"><%= t('management') %></a>
@@ -179,6 +183,288 @@
     </div>
   </div>
 
+  <!-- HIZLI ARAMA PANELİ (Ctrl+K) -->
+  <div id="search-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-label="<%= t('searchBtn') %>" onclick="if(event.target===this)closeSearchModal()">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-2xl mt-16 sm:mt-24 mx-4 sm:mx-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
+        <span class="text-zinc-500 text-lg" aria-hidden="true">🔍</span>
+        <input id="search-input" type="search" autocomplete="off" spellcheck="false"
+          placeholder="<%= t('searchPlaceholder') %>"
+          class="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-500 text-base outline-none py-1" />
+        <kbd class="hidden sm:inline-block text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 select-none">ESC</kbd>
+      </div>
+      <div id="search-results" class="max-h-[60vh] overflow-y-auto p-2"></div>
+      <div id="search-status" class="text-zinc-500 text-sm text-center py-8 px-4"><%= t('searchMinChars') %></div>
+      <div class="px-4 py-2 border-t border-zinc-800 text-[11px] text-zinc-600 flex items-center justify-between gap-3 select-none">
+        <a href="<%= lp %>/kaydettiklerim" id="search-favs-link" class="shrink-0 text-zinc-500 hover:text-amber-300 transition font-semibold">★ <%= t('favList') %> <span id="search-fav-count" class="fav-count" style="display:none">0</span></a>
+        <span class="flex items-center gap-3 shrink-0">
+          <span class="hidden sm:inline">↑ ↓ <%= t('searchBtn') %> · Enter</span>
+          <span>Ctrl + K</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var S = <%- JSON.stringify({ minChars: t('searchMinChars'), noResults: t('searchNoResults'), loading: t('loading'), connError: t('connError'), favSaved: t('favSaved'), favList: t('favList'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
+    var LP = '<%= typeof lp !== 'undefined' ? lp : '' %>';
+    var modal = document.getElementById('search-modal');
+    var input = document.getElementById('search-input');
+    var resultsEl = document.getElementById('search-results');
+    var statusEl = document.getElementById('search-status');
+    var openBtn = document.getElementById('search-open');
+    if (!modal || !input || !resultsEl || !statusEl || !openBtn) return;
+
+    var TYPE_LABEL = { news: S.news, places: S.places, announcements: S.announcements, sightseeing: S.sightseeing, guide: S.guide };
+    var items = [], active = -1, seq = 0, timer = null;
+    var cache = new Map();
+
+    // Favori sayacı: panel satırı + header'daki ★ butonu (ilk kayıttan sonra görünür)
+    var favCountEl = document.getElementById('search-fav-count');
+    var favOpenBtn = document.getElementById('fav-open');
+    var favHeaderCount = document.getElementById('fav-count');
+    function favTotal() {
+      try { var v = JSON.parse(localStorage.getItem('cinarcik_favs_v1')); return Array.isArray(v) ? v.length : 0; }
+      catch (e) { return 0; }
+    }
+    function syncFavs() {
+      var n = favTotal();
+      if (favCountEl) { favCountEl.textContent = n; favCountEl.style.display = n ? 'inline-flex' : 'none'; }
+      if (favOpenBtn) favOpenBtn.style.display = n ? 'inline-flex' : 'none';
+      if (favHeaderCount) { favHeaderCount.textContent = n; favHeaderCount.style.display = n ? 'inline-flex' : 'none'; }
+    }
+    window.addEventListener('favs:changed', syncFavs);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncFavs);
+    else syncFavs();
+    if (favOpenBtn) favOpenBtn.addEventListener('click', function() { location.href = LP + '/kaydettiklerim'; });
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function escRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function hl(text, q) {
+      var e = esc(text);
+      if (!q) return e;
+      return e.replace(new RegExp('(' + escRe(esc(q)) + ')', 'ig'), '<mark>$1</mark>');
+    }
+    function setStatus(msg) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('hidden', !msg);
+    }
+    function setActive(i) {
+      if (!items.length) return;
+      active = (i + items.length) % items.length;
+      var els = resultsEl.querySelectorAll('.search-item');
+      els.forEach(function(el, idx) { el.classList.toggle('is-active', idx === active); });
+      if (els[active]) els[active].scrollIntoView({ block: 'nearest' });
+    }
+    function render(list, q) {
+      items = list;
+      active = list.length ? 0 : -1;
+      if (!list.length) { resultsEl.innerHTML = ''; setStatus(S.noResults); return; }
+      setStatus('');
+      // Kaydedilenler arama ile entegrasyon: favorideki sonuçlar başa alınıp ★ rozeti alır
+      var favs = (window.Favs && typeof window.Favs.has === 'function') ? window.Favs : null;
+      var sorted = list.slice();
+      if (favs) {
+        sorted.sort(function(a, b) {
+          var fa = favs.has(a.type, a.id) ? 1 : 0;
+          var fb = favs.has(b.type, b.id) ? 1 : 0;
+          return fb - fa;
+        });
+      }
+      var html = '';
+      sorted.forEach(function(it, i) {
+        var saved = favs ? favs.has(it.type, it.id) : false;
+        html += '<a class="search-item px-3 py-2.5 rounded-xl' + (i === 0 ? ' is-active' : '') + '" href="' + LP + esc(it.url) + '" data-i="' + i + '">'
+          + '<span class="search-ic">' + esc(it.emoji) + '</span>'
+          + '<span class="search-body">'
+          + '<span class="search-title">' + hl(it.title, q)
+          + (saved ? ' <span class="search-saved" title="' + esc(S.favSaved || '') + '">★</span>' : '')
+          + '</span>'
+          + (it.meta ? '<span class="search-meta">' + esc(it.meta) + '</span>' : '')
+          + '</span>'
+          + '<span class="search-type">' + esc(TYPE_LABEL[it.type] || '') + '</span>'
+          + '</a>';
+      });
+      resultsEl.innerHTML = html;
+      resultsEl.querySelectorAll('.search-item').forEach(function(el) {
+        el.addEventListener('mouseenter', function() { setActive(parseInt(el.dataset.i, 10)); });
+      });
+    }
+    function search(q) {
+      var hint = resultsEl.parentElement.querySelector('.search-fav-hint');
+      if (hint) hint.style.display = 'none';
+      if (q.length < 2) { renderFavs(); return; }
+      if (cache.has(q)) { render(cache.get(q), q); return; }
+      var my = ++seq;
+      setStatus(S.loading);
+      fetch('/api/search?q=' + encodeURIComponent(q))
+        .then(function(r) { if (!r.ok) throw new Error('http'); return r.json(); })
+        .then(function(d) {
+          if (my !== seq) return;
+          var list = d.results || [];
+          cache.set(q, list);
+          if (cache.size > 40) cache.delete(cache.keys().next().value);
+          render(list, q);
+        })
+        .catch(function() {
+          if (my !== seq) return;
+          items = []; resultsEl.innerHTML = ''; setStatus(S.connError);
+        });
+    }
+    // Sorgu yokken kaydedilenleri öneri olarak listele
+    function renderFavs() {
+      var favs = (window.Favs && typeof window.Favs.list === 'function') ? window.Favs.list() : [];
+      if (!favs.length) { items = []; resultsEl.innerHTML = ''; setStatus(S.minChars); return; }
+      var list = favs.slice().reverse().slice(0, 8).map(function(f) {
+        return { type: f.t, id: f.id, emoji: ({ news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢' })[f.t] || '★', title: f.title, meta: '', url: f.u };
+      });
+      render(list, '');
+      var lbl = resultsEl.parentElement.querySelector('.search-fav-hint');
+      if (!lbl) {
+        lbl = document.createElement('div');
+        lbl.className = 'search-fav-hint px-4 pt-2 pb-1 text-[11px] text-zinc-500 uppercase tracking-wide';
+        lbl.textContent = S.favList;
+        resultsEl.parentElement.insertBefore(lbl, resultsEl);
+      }
+      lbl.style.display = '';
+    }
+    function openSearchModal() {
+      modal.classList.remove('hidden');
+      input.focus();
+      input.select();
+      renderFavs();
+    }
+    window.closeSearchModal = function() { modal.classList.add('hidden'); };
+
+    openBtn.addEventListener('click', openSearchModal);
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      var q = input.value.trim();
+      timer = setTimeout(function() { search(q); }, 200);
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+      else if (e.key === 'Enter') {
+        var els = resultsEl.querySelectorAll('.search-item');
+        if (els[active]) { e.preventDefault(); window.location.href = els[active].href; }
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (modal.classList.contains('hidden')) openSearchModal(); else window.closeSearchModal();
+      } else if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        window.closeSearchModal();
+      }
+    });
+  })();
+  </script>
+
+  <!-- MİKRO-ANİMASYONLAR: grid kartlarında scroll reveal (JS yoksa/reduced-motion: içerik görünür kalır) -->
+  <script>
+  (function() {
+    function init() {
+      if (location.pathname.indexOf('/admin') === 0) return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var targets = [];
+      document.querySelectorAll('main .grid').forEach(function(g) {
+        if (g.closest('.hero, #slider, #hero-slider, [class*="hero"]')) return;
+        if (g.classList.contains('no-reveal')) return;
+        if (g.children.length < 2 || g.children.length > 40 || !g.querySelector('a')) return;
+        Array.prototype.push.apply(targets, g.children);
+      });
+      if (!targets.length || !('IntersectionObserver' in window)) return;
+      document.documentElement.classList.add('has-reveal');
+      targets.forEach(function(el, i) {
+        el.classList.add('reveal');
+        el.style.setProperty('--rd', String(i % 8));
+      });
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(en) {
+          if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+        });
+      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.04 });
+      targets.forEach(function(el) { io.observe(el); });
+      // Güven ağı: 3 sn içinde hâlâ görünür olmayan (observer kaçırırsa) açılır
+      setTimeout(function() { targets.forEach(function(el) { el.classList.add('in'); }); }, 3000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+  </script>
+
+  <!-- FAVORİLER: localStorage tabanlı kayıt (giriş gerektirmez) + [data-fav] buton yönetimi -->
+  <script>
+  (function() {
+    var LABEL = <%- JSON.stringify({ add: t('favAdd'), saved: t('favSaved') }) %>;
+    var KEY = 'cinarcik_favs_v1', CAP = 100;
+    function read() {
+      try { var v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; }
+      catch (e) { return []; }
+    }
+    function write(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+    function idx(list, t, id) {
+      for (var i = 0; i < list.length; i++) if (list[i].t === t && String(list[i].id) === String(id)) return i;
+      return -1;
+    }
+    function has(t, id) { return idx(read(), t, id) !== -1; }
+    function toggle(entry) {
+      var list = read(), i = idx(list, entry.t, String(entry.id));
+      if (i !== -1) list.splice(i, 1);
+      else {
+        list.push({ t: entry.t, id: String(entry.id), u: entry.u, title: entry.title, img: entry.img || '', ts: Date.now() });
+        if (list.length > CAP) list.shift();
+      }
+      write(list);
+      window.dispatchEvent(new CustomEvent('favs:changed'));
+      return i === -1;
+    }
+    function remove(t, id) {
+      var list = read(), i = idx(list, t, id);
+      if (i !== -1) { list.splice(i, 1); write(list); window.dispatchEvent(new CustomEvent('favs:changed')); }
+    }
+    window.Favs = { list: read, has: has, toggle: toggle, remove: remove };
+
+    function same(a, b) {
+      return a.getAttribute('data-fav-type') === b.getAttribute('data-fav-type')
+        && String(a.getAttribute('data-fav-id')) === String(b.getAttribute('data-fav-id'));
+    }
+    function paint(btn) {
+      var on = has(btn.getAttribute('data-fav-type'), btn.getAttribute('data-fav-id'));
+      btn.classList.toggle('is-saved', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.innerHTML = (on ? '♥' : '♡') + '<span>' + (on ? LABEL.saved : LABEL.add) + '</span>';
+    }
+    function paintAll() { document.querySelectorAll('[data-fav]').forEach(paint); }
+    document.addEventListener('click', function(e) {
+      var btn = e.target && e.target.closest ? e.target.closest('[data-fav]') : null;
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toggle({
+        t: btn.getAttribute('data-fav-type'),
+        id: btn.getAttribute('data-fav-id'),
+        u: btn.getAttribute('data-fav-url'),
+        title: btn.getAttribute('data-fav-title'),
+        img: btn.getAttribute('data-fav-img')
+      });
+      document.querySelectorAll('[data-fav]').forEach(function(b) { if (same(b, btn)) paint(b); });
+      btn.classList.remove('fav-pop');
+      void btn.offsetWidth;
+      btn.classList.add('fav-pop');
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintAll);
+    else paintAll();
+  })();
+  </script>
+
   <main class="main-content"><%- typeof body !== 'undefined' ? body : '' %></main>
   <footer class="bg-zinc-900 border-t border-zinc-800 text-gray-300 pt-10 pb-6" role="contentinfo">
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
@@ -200,6 +486,7 @@
           <li><a href="<%= lp %>/etkinlikler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('events') %></a></li>
           <li><a href="<%= lp %>/deniz" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sea') %></a></li>
           <li><a href="<%= lp %>/gizlilik" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('privacy') %></a></li>
+          <li><a href="<%= lp %>/kaydettiklerim" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">★</span> <%= t('favList') %></a></li>
           <li><a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('places') %></a></li>
           <li><a href="<%= lp %>/gezilecek-yerler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sightseeing') %></a></li>
           <li><a href="<%= lp %>/rehber" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('guide') %></a></li>

@@ -21,9 +21,12 @@
               <div class="flex items-center gap-4">
                 <h1 class="text-3xl md:text-4xl font-black text-white"><%= place.name %></h1>
                 <% if (place.is_featured == 1) { %>
-                  <span class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">🏆 <%= t('featured') %></span>
+                  <span class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">⭐ <%= t('featured') %></span>
                 <% } %>
               </div>
+              <button type="button" class="fav-btn" data-fav data-fav-type="places" data-fav-id="<%= place.id %>"
+                data-fav-url="/mekan/<%= place.slug || place.id %>" data-fav-title="<%= place.name %>"
+                data-fav-img="<%= place.main_image_url || '' %>" aria-pressed="false"></button>
             </div>
 
     <!-- 1. Photo Gallery -->

@@ -16,6 +16,11 @@
       <span class="text-zinc-500 text-sm"><%= new Date(article.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
     </div>
     <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-4"><%= article.title %></h1>
+    <div class="mb-4">
+      <button type="button" class="fav-btn" data-fav data-fav-type="news" data-fav-id="<%= article.id %>"
+        data-fav-url="/haber/<%= article.slug || article.id %>" data-fav-title="<%= article.title %>"
+        data-fav-img="<%= article.main_image_url || '' %>" aria-pressed="false"></button>
+    </div>
     <% if (article.views_count) { %>
     <div class="flex items-center gap-2 text-zinc-500 text-sm mb-4">
       <span>👁️</span>

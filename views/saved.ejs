@@ -1,0 +1,63 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('favList') %>
+
+<div class="page-banner">
+  <h1>★ <%= t('favList') %></h1>
+  <p>Marmara'nın İncisi</p>
+</div>
+
+<section class="section">
+  <div id="fav-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 no-reveal"></div>
+  <div id="fav-empty" class="text-center text-zinc-500 max-w-xl mx-auto py-10 text-sm leading-relaxed"><%= t('favEmpty') %></div>
+</section>
+
+<script>
+(function() {
+  if (!window.Favs) return;
+  var LP = '<%= typeof lp !== 'undefined' ? lp : '' %>';
+  var S = <%- JSON.stringify({ remove: t('favRemove'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
+  var EMOJI = { news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢' };
+  var grid = document.getElementById('fav-grid');
+  var empty = document.getElementById('fav-empty');
+  if (!grid || !empty) return;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function render() {
+    var list = window.Favs.list().slice().reverse();
+    if (!list.length) {
+      grid.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    grid.innerHTML = list.map(function(it) {
+      var img = it.img
+        ? '<img src="' + esc(it.img) + '" alt="" class="w-full h-40 object-cover">'
+        : '<div class="w-full h-40 bg-zinc-800 flex items-center justify-center text-4xl">' + (EMOJI[it.t] || '★') + '</div>';
+      return '<div class="rounded-2xl border border-zinc-800/80 bg-zinc-900/70 overflow-hidden">'
+        + '<a href="' + LP + esc(it.u) + '" class="block hover:opacity-90 transition">' + img + '</a>'
+        + '<div class="p-4">'
+        + '<div class="flex items-start justify-between gap-3">'
+        + '<a href="' + LP + esc(it.u) + '" class="font-bold text-white hover:text-emerald-300 transition truncate">' + esc(it.title) + '</a>'
+        + '<span class="shrink-0 text-[10px] uppercase tracking-wide text-zinc-500 border border-zinc-800 rounded px-1.5 py-0.5">'
+        + esc(S[it.t] || '') + '</span>'
+        + '</div>'
+        + '<div class="mt-3 flex justify-end">'
+        + '<button type="button" class="fav-remove-btn" data-fav-del data-fav-type="' + esc(it.t) + '" data-fav-id="' + esc(it.id) + '">'
+        + '✕ ' + esc(S.remove) + '</button>'
+        + '</div></div></div>';
+    }).join('');
+  }
+  document.addEventListener('click', function(e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-fav-del]') : null;
+    if (!b) return;
+    window.Favs.remove(b.getAttribute('data-fav-type'), String(b.getAttribute('data-fav-id')));
+    render();
+  });
+  render();
+})();
+</script>

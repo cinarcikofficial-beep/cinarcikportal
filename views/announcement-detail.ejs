@@ -18,6 +18,11 @@
       <span class="card-date"><%= dateStr %></span>
     </div>
     <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight leading-tight"><%= announcement.title %></h1>
+    <div class="mt-2 mb-2">
+      <button type="button" class="fav-btn" data-fav data-fav-type="announcements" data-fav-id="<%= announcement.id %>"
+        data-fav-url="/duyuru/<%= announcement.slug || announcement.id %>" data-fav-title="<%= announcement.title %>"
+        data-fav-img="<%= announcement.image || '' %>" aria-pressed="false"></button>
+    </div>
     <% if (announcement.views_count) { %>
     <div class="flex items-center gap-2 text-zinc-500 text-sm mt-2">
       <span>👁️</span>

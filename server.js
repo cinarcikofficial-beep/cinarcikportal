@@ -768,6 +768,16 @@ app.get('/gizlilik', (req, res) => {
   });
 });
 
+// Kaydettiklerim — liste tamamen istemci tarafinda localStorage'dan okunur
+// (giris gerektirmez); sayfa indexlenmesin diye noindex.
+app.get('/kaydettiklerim', (req, res) => {
+  res.locals.robotsMeta = 'noindex, nofollow';
+  res.render('saved', {
+    pageTitle: i18n.t(req.lang, 'favList'),
+    metaDescription: i18n.t(req.lang, 'favList')
+  });
+});
+
 app.get('/duyuru/:id', async (req, res) => {
   const { get, run } = require('./db');
   const key = req.params.id;
@@ -3213,10 +3223,50 @@ app.get('/api/trending-news', async (req, res) => {
   }
 });
 
-// ---- Harita koordinat çözümleme & OpenStreetMap embed ----
-// Google Maps keyless embed (output=embed) artik engellendigi icin keysiz,
-// guvenilir OpenStreetMap embed kullanilir. map_link (Google kisa link /
-// Google Maps URL / plus code / adres) koordinata cevrilir ve cache'lenir.
+// ---- Hizli site ici arama (Ctrl+K paneli) ----
+// 5 icerik tablosunda baslik/ozet/alan uzerinden LIKE arama; public
+// listelemelerdeki status='active' filtresi burada da gecerli.
+// Donus: { results: [{ type, emoji, title, meta, url }] } — url on ekisiz (tr'de bos).
+app.get('/api/search', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2 || q.length > 80) return res.json({ results: [] });
+  const esc = q.replace(/[\\%_]/g, (m) => '\\' + m);
+  const like = '%' + esc + '%';
+  const { all } = require('./db');
+  const out = [];
+  const add = (rows, type, emoji, urlOf, metaOf) => {
+    for (const r of rows) out.push({ type, id: r.id, emoji, title: r.title, meta: metaOf(r), url: urlOf(r) });
+  };
+  try {
+    add(all(`SELECT id, title, slug, summary, category FROM news
+      WHERE status='active' AND (title LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')
+      ORDER BY views_count DESC, created_at DESC LIMIT 4`, [like, like]),
+      'news', '📰', (r) => '/haber/' + (r.slug || r.id), (r) => r.category || '');
+    add(all(`SELECT id, name AS title, slug, category, address FROM places
+      WHERE status='active' AND (name LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\')
+      ORDER BY is_featured DESC, sort_order ASC LIMIT 4`, [like, like, like]),
+      'places', '📍', (r) => '/mekan/' + (r.slug || r.id), (r) => r.category || r.address || '');
+    add(all(`SELECT id, title, slug, category FROM announcements
+      WHERE status='active' AND title LIKE ? ESCAPE '\\'
+      ORDER BY created_at DESC LIMIT 4`, [like]),
+      'announcements', '📢', (r) => '/duyuru/' + (r.slug || r.id), (r) => r.category || '');
+    add(all(`SELECT id, title, slug, summary, location FROM sightseeing
+      WHERE status='active' AND (title LIKE ? ESCAPE '\\' OR location LIKE ? ESCAPE '\\')
+      ORDER BY sort_order ASC LIMIT 4`, [like, like]),
+      'sightseeing', '🧳', (r) => '/gezilecek-yer/' + (r.slug || r.id), (r) => r.location || '');
+    add(all(`SELECT id, name AS title, slug, category, address FROM companies
+      WHERE status='active' AND (name LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\' OR sector LIKE ? ESCAPE '\\')
+      ORDER BY is_featured DESC, sort_order ASC LIMIT 3`, [like, like, like]),
+      'guide', '🏢', (r) => '/rehber/' + (r.slug || r.id), (r) => r.category || r.address || '');
+  } catch (e) {
+    return res.json({ results: [] });
+  }
+  res.json({ results: out.slice(0, 15) });
+});
+
+// ---- Harita koordinat çözümleme ----
+// map_link (Google kisa link / Google Maps URL / plus code / adres) koordinata
+// cevrilir ve cache'lenir; yer key'i varsa cid de uretilir (etiketli pin).
 const _mapCoordCache = new Map();
 
 function extractMapCoords(str) {

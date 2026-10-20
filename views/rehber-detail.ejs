@@ -42,6 +42,9 @@
             <% if (company.is_featured == 1) { %>
               <span class="bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-emerald-500/20"><%= t('featured') %></span>
             <% } %>
+            <button type="button" class="fav-btn" data-fav data-fav-type="guide" data-fav-id="<%= company.id %>"
+              data-fav-url="/rehber/<%= company.slug || company.id %>" data-fav-title="<%= company.name %>"
+              data-fav-img="<%= company.logo_url || '' %>" aria-pressed="false"></button>
           </div>
           <div class="flex flex-wrap items-center gap-2 mt-2">
             <span class="bg-zinc-800 text-zinc-300 text-xs font-medium px-3 py-1 rounded-full border border-zinc-700/50"><%= company.category || t('general') %></span>

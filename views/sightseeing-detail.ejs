@@ -45,7 +45,12 @@
     <div class="absolute bottom-0 left-0 right-0 p-5 md:p-7 on-photo">
       <span class="inline-flex items-center rounded-full border border-pink-500/20 bg-pink-500/10 px-3 py-1 text-xs font-medium text-pink-400 backdrop-blur"><%= item.category || t('general') %></span>
       <h1 class="text-white text-2xl md:text-4xl font-black tracking-tight mt-2 mb-1"><%= item.title %></h1>
-      <p class="text-zinc-300 text-sm md:text-base">📍 <%= item.location || t('cinarcikYalova') %></p>
+      <div class="flex flex-wrap items-center gap-3">
+        <p class="text-zinc-300 text-sm md:text-base">📍 <%= item.location || t('cinarcikYalova') %></p>
+        <button type="button" class="fav-btn" data-fav data-fav-type="sightseeing" data-fav-id="<%= item.id %>"
+          data-fav-url="/gezilecek-yer/<%= item.slug || item.id %>" data-fav-title="<%= item.title %>"
+          data-fav-img="<%= item.image || '' %>" aria-pressed="false"></button>
+      </div>
     </div>
   </div>
 
