@@ -9,6 +9,12 @@
 - İletişim dili: Türkçe. commit/push sadece kullanıcı açıkça isteyince; commit mesajları ASCII.
 - Görsel deposu: Cloudflare R2 aktif (`uploads/` key'leri; local mirror yükleme sonrası silinir). DB'de URL'ler hep göreli: `/uploads/x` (R2) veya `/img/uploads/x` (lokal fallback). `/uploads/*` yanıt başlığı `Cache-Control: public, max-age=31536000, immutable` → **Cloudflare edge cache MISS→HIT doğrulandı** (görseller origin'e gelmiyor).
 
+## Bekleyen deploy — YÜKLENMEDİ (zip hazır) — yükleme yapınca bu bölümü SİL
+- **Durum (20 Eki):** commit/push tamam, henüz cPanel'e yüklenmedi. Kullanıcı "en son yapılacaklar bitince toplu upload" diyor.
+- **Zip:** `%TEMP%\opencode\cinarcik-deploy.zip` (12.36 MB; `52ed83b` itibarıyla güncel, package.json değişmedi → NPM Install yok). Yeni iş girerse yeniden üret.
+- **İçerik:** `dd6395e` Ctrl+K arama + favoriler (Kaydettiklerim) + scroll-reveal · `7b70d82` docs · `b61f895` arama panelinde Kaydettiklerim satırlarına ✕ kaldır butonu · `52ed83b` ilan/duyuru kart görselleri `object-cover`.
+- **Hazırlık tek komut:** `powershell -ExecutionPolicy Bypass -File scripts\prepare-deploy.ps1` (lint + node --check + zip; hata olursa zip üretilmez). Yükleme adımları §Genel'de.
+
 ## Kritik konvansiyonlar
 - Her EJS/JS değişikliği sonrası: `npm run lint:ejs` + `node --check server.js` (FAIL olmamalı).
 - `db/cinarcik.db` repo'da version'lanıyor; şema migration'ları `db/index.js`'te `PRAGMA table_info` + `ALTER TABLE` ile.
