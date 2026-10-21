@@ -29,6 +29,7 @@
   <link rel="alternate" hreflang="en" href="<%= siteUrl %>/en<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="ru" href="<%= siteUrl %>/ru<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="ar" href="<%= siteUrl %>/ar<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="de" href="<%= siteUrl %>/de<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="x-default" href="<%= siteUrl %><%= path === '/' ? '/' : path %>">
 
   <!-- Open Graph -->
@@ -107,7 +108,9 @@
 
   <!-- CANLI BİLGİ ÇUBUĞU (En Üst) -->
   <div id="ticker-bar" class="bg-zinc-950 border-b border-zinc-800 text-xs">
-    <div class="max-w-[90rem] mx-auto px-4 py-1.5 flex items-center gap-4">
+    <div class="max-w-[90rem] mx-auto px-4 py-1.5 flex items-center gap-2 lg:gap-3 xl:gap-4">
+      <!-- Logo genişliği kadar boşluk: ticker ilk öğe ("Çınarcık") nav'daki "Ana Sayfa" ile dikey hizalanır -->
+      <span class="hidden lg:block shrink-0 w-14 sm:w-16 md:w-20 xl:w-24" aria-hidden="true"></span>
       <div class="flex-1 min-w-0 overflow-x-auto whitespace-nowrap" id="ticker-content">
         <span class="text-zinc-500"><%= t('loading') %></span>
       </div>
@@ -117,7 +120,8 @@
 
   <header class="site-header bg-zinc-900 bg-opacity-80 backdrop-blur-md sticky top-0 z-50 w-full shadow-md" role="banner">
     <div class="max-w-[90rem] mx-auto flex items-center justify-between px-4 py-1">
-      <a href="/" class="flex items-center" aria-label="<%= t('homeAria') %>">
+      <div class="flex items-center gap-2 lg:gap-3 xl:gap-4 min-w-0">
+      <a href="/" class="flex items-center shrink-0" aria-label="<%= t('homeAria') %>">
         <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 xl:w-24 xl:h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
           <img src="/img/logo-circle.png" alt="<%= t('logoAlt') %>" class="w-full h-full object-cover">
         </div>
@@ -132,15 +136,16 @@
         <a href="<%= lp %>/gezilecek-yerler" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">🧳 </span><%= t('sightseeing') %></a>
         <a href="<%= lp %>/cinarcik-hakkinda" class="px-2.5 xl:px-3 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden xl:inline' %>">ℹ️ </span><%= t('about') %></a>
       </nav>
+      </div>
       <div class="nav-right flex items-center gap-1.5 sm:gap-2">
         <span class="inline-flex items-center gap-1 relative" id="lang-dropdown">
           <button id="lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Dil seçimi" title="Dil seçimi"
             class="px-2 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-sm font-semibold cursor-pointer hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition flex items-center gap-1.5">
-            <img src="https://flagcdn.com/w40/<%= ({tr:'tr',en:'gb',ru:'ru',ar:'sa'})[lang] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
+            <img src="https://flagcdn.com/w40/<%= ({tr:'tr',en:'gb',ru:'ru',ar:'sa',de:'de'})[lang] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
             <span><%= lang.toUpperCase() %></span>
           </button>
           <div id="lang-menu" class="hidden absolute right-0 top-full mt-1 w-40 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[60] py-1 overflow-hidden">
-            <% [['tr','tr','Türkçe'],['en','gb','English'],['ru','ru','Русский'],['ar','sa','العربية']].forEach(function(item){ %>
+            <% [['tr','tr','Türkçe'],['en','gb','English'],['ru','ru','Русский'],['ar','sa','العربية'],['de','de','Deutsch']].forEach(function(item){ %>
               <% var l = item[0]; var langHref = (l === 'tr' ? '' : '/' + l) + (path === '/' ? '/' : path); %>
               <a href="<%= langHref %>" class="flex items-center gap-2 px-3 py-2 text-sm <%= lang === l ? 'text-emerald-400 bg-zinc-700/50' : 'text-zinc-200 hover:bg-zinc-700' %> transition-colors">
                 <img src="https://flagcdn.com/w40/<%= item[1] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
@@ -509,6 +514,7 @@
           <li><a href="<%= lp %>/duyurular" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('annList') %></a></li>
           <li><a href="<%= lp %>/etkinlikler" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('events') %></a></li>
           <li><a href="<%= lp %>/deniz" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('sea') %></a></li>
+          <li><a href="<%= lp %>/ulasim" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('ulasim') %></a></li>
           <li><a href="<%= lp %>/gizlilik" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('privacy') %></a></li>
           <li><a href="<%= lp %>/kaydettiklerim" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">★</span> <%= t('favList') %></a></li>
           <li><a href="<%= lp %>/mekanlar" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('places') %></a></li>
@@ -572,14 +578,13 @@
         return ' <span class="text-zinc-500 text-[10px]">→' + changeStr + '</span>';
       }
 
-      // Hava Durumu (tıklanabilir)
-      h += '<span class="ticker-item ticker-weather" onclick="openWeatherModal()" style="cursor:pointer" title="Tahmini gör">';
-      h += '<span class="text-emerald-200/90">Çınarcık</span> ';
-      h += '<span class="w-ic">' + (d.weather.icon || '') + '</span> ';
-      h += '<span class="text-white font-bold">' + d.weather.temp + '</span> ';
-      h += '<span class="text-emerald-100/70">' + d.weather.description + '</span>';
-      h += ' <span class="text-emerald-300/70 text-[10px]">▸</span>';
-      h += '</span>';
+      // Hava Durumu — ticker'da (üst satır)
+      var wInner = '<span class="text-emerald-200/90">Çınarcık</span> ' +
+        '<span class="w-ic">' + (d.weather.icon || '') + '</span> ' +
+        '<span class="text-white font-bold">' + d.weather.temp + '</span> ' +
+        '<span class="text-emerald-100/70">' + d.weather.description + '</span>' +
+        ' <span class="text-emerald-300/70 text-[10px]">▸</span>';
+      h += '<span class="ticker-item ticker-weather" onclick="openWeatherModal()" style="cursor:pointer" title="Tahmini gör">' + wInner + '</span>';
       h += '<span class="ticker-sep">|</span>';
       // Döviz
       h += '<span class="ticker-item"><span class="text-zinc-500">USD</span> <span class="text-emerald-400 font-semibold">' + formatNum(d.usd) + ' ₺</span>' + changeHtml(d.usdChange) + '</span>';
@@ -958,6 +963,7 @@
     var p = window.location.pathname.replace(/^\/(en|ru|ar)(?=\/|$)/, '') || '/';
     var qs = new URLSearchParams(window.location.search);
     if (p === '/deniz') gtag('event', 'view_sea');
+    if (p === '/ulasim') gtag('event', 'view_ulasim');
     if (p === '/etkinlikler') gtag('event', 'view_events');
     if (p === '/gizlilik') gtag('event', 'view_privacy');
     if (qs.get('gonderildi') === '1' && p === '/duyurular') gtag('event', 'ilan_submitted');

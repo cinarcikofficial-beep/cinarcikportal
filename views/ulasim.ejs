@@ -1,0 +1,187 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = t('ulasimTitle') %>
+<%
+  var dayShorts = String(t('dayShorts')).split(',').map(function(s){ return s.trim(); });
+  var dayNames = String(t('dayNames')).split(',').map(function(s){ return s.trim(); });
+  var jsDay = new Date().getDay(); // 0 = Pazar
+  var todayNum = jsDay === 0 ? 7 : jsDay; // gunler: 1 = Pazartesi .. 7 = Pazar
+  var updatedAt = '';
+  if (transport && transport.updatedAt) {
+    var raw = String(transport.updatedAt);
+    var iso = raw.indexOf('T') === -1
+      ? raw.replace(' ', 'T') + 'Z'
+      : (raw.indexOf('Z') === -1 && !/[+-]\d\d:\d\d$/.test(raw) ? raw + 'Z' : raw);
+    var up = new Date(iso);
+    if (!isNaN(up.getTime())) {
+      var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+      updatedAt = p2(up.getDate()) + '.' + p2(up.getMonth() + 1) + '.' + up.getFullYear() + ' ' + p2(up.getHours()) + ':' + p2(up.getMinutes());
+    }
+  }
+%>
+
+<div class="page-banner">
+  <h1>🚌 <%= t('ulasimTitle') %></h1>
+  <p><%= t('ulasimSub') %></p>
+</div>
+
+<section class="section">
+  <% if (!transport) { %>
+  <div class="empty-state">
+    <div class="empty-icon">🚌</div>
+    <h3><%= t('ulasimEmpty') %></h3>
+    <a href="/cinarcik-hakkinda" class="inline-block mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all"><%= t('aboutCinarcik') %></a>
+  </div>
+  <% } else { %>
+
+  <div id="ulasim-saatler" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg mb-6"
+       data-days="<%- dayNames.map(function(s){ return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }).join('|') %>"
+       data-no-svc="<%- t('ulasimNoService').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>">
+    <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+        <span>🕐</span> <%= t('ulasimTimes') %>
+      </h2>
+      <span class="text-xs text-zinc-500"><%= t('ulasimSub') %></span>
+    </div>
+    <div class="p-4">
+      <div id="day-tabs" class="day-tabs mb-5" role="tablist" aria-label="<%= t('ulasimTimes') %>">
+        <% for (var d = 1; d <= 7; d++) { %>
+        <button type="button" role="tab" class="day-tab<%= d === todayNum ? ' active' : '' %>" data-day="<%= d %>" aria-selected="<%= d === todayNum ? 'true' : 'false' %>">
+          <%= dayShorts[d - 1] %><small class="<%= d === todayNum ? '' : 'hidden' %>"><%= t('ulasimToday') %></small>
+        </button>
+        <% } %>
+      </div>
+
+      <% (transport.hatlar || []).forEach(function(hat) { %>
+      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-4 last:mb-0 transition-colors hover:border-emerald-500/30">
+        <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
+          <span class="text-emerald-400">🚌</span> <%= hat.ad %>
+        </h3>
+        <% if (hat.aciklama) { %>
+        <p class="text-[10px] uppercase tracking-wide text-emerald-500/70 font-semibold mb-3"><%= hat.aciklama %></p>
+        <% } else { %>
+        <div class="mb-1"></div>
+        <% } %>
+        <div class="space-y-4">
+          <% (hat.kalkislar || []).forEach(function(k) { %>
+          <%
+            var anyToday = (k.seferler || []).some(function(s) {
+              return (s.gunler || []).indexOf(todayNum) !== -1;
+            });
+          %>
+          <div class="kalkis-block">
+            <h4 class="text-zinc-300 text-[13px] font-bold mb-2">
+              <%= k.yer %> <span class="text-zinc-500 font-semibold text-xs">— <%= t('ulasimDeparture') %></span>
+            </h4>
+            <div class="flex flex-wrap gap-2">
+              <% (k.seferler || []).forEach(function(s) { %>
+              <%
+                var gunler = (s.gunler || []);
+                var visible = gunler.indexOf(todayNum) !== -1;
+              %>
+              <span class="time-chip<%= visible ? '' : ' hidden' %>" data-gunler="<%= gunler.join(',') %>" data-saat="<%= s.saat %>">
+                <b><%= s.saat %></b>
+                <span class="chip-note chip-next-label"><%= t('ulasimNext') %></span>
+                <% if (s.not) { %><span class="chip-note chip-real-note"><%= s.not %></span><% } %>
+              </span>
+              <% }) %>
+            </div>
+            <p class="no-service mt-2<%= anyToday ? ' hidden' : '' %>"><%= t('ulasimNoService').replace('[[day]]', dayNames[todayNum - 1]) %></p>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <% if (transport.ucretler && transport.ucretler.length) { %>
+  <div class="section-header mb-4"><h2>💰 <%= t('ulasimFees') %></h2></div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <% transport.ucretler.forEach(function(u) { %>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-bold mb-3"><%= u.baslik %></h3>
+      <div class="space-y-2">
+        <% (u.satirlar || []).forEach(function(s) { %>
+        <div class="flex items-start justify-between gap-3 text-sm border-b border-zinc-800/70 pb-2 last:border-0 last:pb-0">
+          <span class="text-zinc-300"><%= s.ad %></span>
+          <span class="text-emerald-400 font-bold whitespace-nowrap"><%= s.tutar %></span>
+        </div>
+        <% }) %>
+      </div>
+      <% if (u.not) { %>
+      <p class="text-[11px] text-zinc-500 mt-3 leading-relaxed"><%= u.not %></p>
+      <% } %>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <a href="<%= lp %>/deniz" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🌊 <%= t('seaTitle') %></a>
+    <a href="<%= lp %>/" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🏠 <%= t('home') %></a>
+  </div>
+  <p class="text-xs text-zinc-500">
+    <%= t('dataSource') %>:
+    <a href="https://cinarcik.bel.tr/cinarcik/ulasim" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Çınarcık Belediyesi — Ulaşım</a>
+    <%= t('autoUpdated') %><% if (updatedAt) { %> · <%= t('lastUpdate') %>: <%= updatedAt %><% } %>
+  </p>
+  <% } %>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('ulasim-saatler');
+  if (!root) return;
+  var DAYS = (root.getAttribute('data-days') || '').split('|');
+  var NO_SVC = root.getAttribute('data-no-svc') || '';
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('#day-tabs .day-tab'));
+  var blocks = Array.prototype.slice.call(root.querySelectorAll('.kalkis-block'));
+
+  function applyDay(day) {
+    var jsDay = new Date().getDay();
+    var todayNum = jsDay === 0 ? 7 : jsDay;
+    var isToday = day === todayNum;
+    var now = new Date();
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+
+    tabs.forEach(function (b) {
+      var on = Number(b.getAttribute('data-day')) === day;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      var small = b.querySelector('small');
+      if (small) small.classList.toggle('hidden', !on);
+    });
+
+    blocks.forEach(function (block) {
+      var any = false;
+      var nextMarked = false;
+      var chips = Array.prototype.slice.call(block.querySelectorAll('.time-chip'));
+      chips.forEach(function (chip) {
+        var gunler = (chip.getAttribute('data-gunler') || '').split(',');
+        var vis = gunler.indexOf(String(day)) !== -1;
+        chip.classList.toggle('hidden', !vis);
+        chip.classList.remove('is-past', 'is-next');
+        if (!vis) return;
+        any = true;
+        var past = false;
+        var saat = chip.getAttribute('data-saat') || '';
+        if (isToday && saat.length >= 5) {
+          past = Number(saat.slice(0, 2)) * 60 + Number(saat.slice(3, 5)) < nowMin;
+        }
+        if (past) chip.classList.add('is-past');
+        else if (!nextMarked) { chip.classList.add('is-next'); nextMarked = true; }
+      });
+      var msg = block.querySelector('.no-service');
+      if (msg) {
+        msg.textContent = NO_SVC.replace('[[day]]', DAYS[day - 1] || '');
+        msg.classList.toggle('hidden', any);
+      }
+    });
+  }
+
+  tabs.forEach(function (b) {
+    b.addEventListener('click', function () { applyDay(Number(b.getAttribute('data-day'))); });
+  });
+  applyDay((function () { var d = new Date().getDay(); return d === 0 ? 7 : d; })());
+})();
+</script>

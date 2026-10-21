@@ -52,14 +52,15 @@ const IDENTITY_COLS = {
   users: ['username'],
   pharmacies: ['name', 'phone'],
   ferry_schedules: ['origin', 'destination'],
+  city_transport: ['id'],
   place_reviews: ['place_id', 'user_name', 'comment'],
   content_translations: ['lang', 'src_hash'],
   about_page: []
 };
 
-// İçeriği tek kaynaktan gelen tablolar (nöbetçi eczane, sefer saatleri):
-// bu tablolarda birleşim tüm liste tarafında yenisi olandan yapılır.
-const SET_TABLES = ['pharmacies', 'ferry_schedules'];
+// İçeriği tek kaynaktan gelen tablolar (nöbetçi eczane, sefer saatleri,
+// belediye ulaşım): bu tablolarda birleşim tüm liste tarafında yenisi olandan yapılır.
+const SET_TABLES = ['pharmacies', 'ferry_schedules', 'city_transport'];
 
 // ON DELETE CASCADE ile birlikte silinen alt tablolar (silme kaydına eklenir).
 const CASCADE_CHILDREN = {
@@ -874,6 +875,14 @@ function createTables() {
     const cols = ferryCols[0].values.map(r => r[1]);
     if (!cols.includes('origin')) db.run("ALTER TABLE ferry_schedules ADD COLUMN origin TEXT NOT NULL DEFAULT 'Çınarcık İskele'");
   }
+  db.run(`
+    CREATE TABLE IF NOT EXISTS city_transport (
+      id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id = 1),
+      data_json TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS contact_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

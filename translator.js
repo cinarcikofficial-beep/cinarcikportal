@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { get, run } = require('./db');
 
-const LANGS = ['en', 'ru', 'ar'];
+const LANGS = ['en', 'ru', 'ar', 'de'];
 const mem = new Map();
 let tableReady = false;
 let active = 0;

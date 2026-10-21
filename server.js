@@ -174,7 +174,7 @@ setInterval(() => {
 
 const i18n = require('./i18n');
 app.use((req, res, next) => {
-  const m = req.url.match(/^\/(en|ru|ar)(?=\/|$|\?)/);
+  const m = req.url.match(/^\/(en|ru|ar|de)(?=\/|$|\?)/);
   req.lang = m ? m[1] : 'tr';
   if (m) {
     // Query string'i koru: '/en?x=1' → '/?x=1'. Yalnızca path kesiilirse
@@ -354,7 +354,7 @@ function buildFerryGroups(rows) {
 app.get('/sitemap.xml', (req, res) => {
   const { all } = require('./db');
   const base = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
-  const langs = ['', '/en', '/ru', '/ar'];
+  const langs = ['', '/en', '/ru', '/ar', '/de'];
   const entries = [];
 
   const addEntry = (path, lastmod) => {
@@ -370,6 +370,7 @@ app.get('/sitemap.xml', (req, res) => {
     .forEach(p => addEntry(p, STATIC_LASTMOD));
   // Yeni eklenen sayfalar (ilk indeks tarihi)
   ['/etkinlikler', '/deniz', '/gizlilik'].forEach(p => addEntry(p, '2026-10-17'));
+  ['/ulasim'].forEach(p => addEntry(p, '2026-10-20'));
 
   // Haberler (son 500)
   try {
@@ -762,6 +763,15 @@ app.get('/deniz', async (req, res) => {
     sea,
     pageTitle: i18n.t(req.lang, 'seaTitle'),
     metaDescription: i18n.t(req.lang, 'seaMetaDesc')
+  });
+});
+
+// Çınarcık içi ulaşım — belediye sayfasından otomatik çekilen sefer saatleri
+app.get('/ulasim', (req, res) => {
+  res.render('ulasim', {
+    transport: getCityTransport(),
+    pageTitle: i18n.t(req.lang, 'ulasimTitle'),
+    metaDescription: i18n.t(req.lang, 'ulasimMetaDesc')
   });
 });
 
@@ -1354,11 +1364,41 @@ app.get('/admin/logout', (req, res) => {
   res.redirect('/');
 });
 
+// Bugünkü haber trafiği: page_views logundan (/haber/<slug>, /<lang>/haber/<slug>,
+// /api/news/<slug>)slug bazında günlük sayı türetilir — ek sayaç kolonu gerekmez.
+function newsDailyViewsToday() {
+  const { all } = require('./db');
+  const rows = all(`SELECT path, COUNT(*) AS c FROM page_views
+    WHERE date(created_at) = date('now')
+      AND (path LIKE '%/haber/%' OR path LIKE '%/api/news/%')
+    GROUP BY path`);
+  const byKey = {};
+  let total = 0;
+  for (const r of rows) {
+    const p = String(r.path || '');
+    const m = p.match(/\/(?:[a-z]{2}\/)?haber\/([^\/]+)$/) || p.match(/\/api\/news\/([^\/]+)$/);
+    if (!m) continue;
+    const c = Number(r.c) || 0;
+    let key;
+    try { key = decodeURIComponent(m[1]); } catch (e) { key = m[1]; }
+    byKey[key] = (byKey[key] || 0) + c;
+    total += c;
+  }
+  return { byKey, total };
+}
+
+function withNewsViewsToday(news, daily) {
+  return news.map(n => Object.assign({}, n, {
+    views_today: daily.byKey[String(n.slug || n.id)] || 0
+  }));
+}
+
 app.get('/admin', isAuthenticated, async (req, res) => {
   const { all, get } = require('./db');
   const announcements = all("SELECT * FROM announcements ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, sort_order ASC, created_at DESC");
   const places = all('SELECT * FROM places ORDER BY sort_order ASC, is_featured DESC, created_at DESC');
-  const news = all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC");
+  const dailyViews = newsDailyViewsToday();
+  const news = withNewsViewsToday(all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC"), dailyViews);
   const newsCount = get('SELECT COUNT(*) as cnt FROM news');
   const companies = all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC');
   const pendingComments = get("SELECT COUNT(*) as cnt FROM comments WHERE status = 'pending'");
@@ -1368,6 +1408,7 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   res.render('admin/dashboard', {
     announcements, places, news,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
+    newsTodayViews: dailyViews.total || 0,
     companies,
     pendingCommentsCount: (pendingComments && pendingComments.cnt) ? pendingComments.cnt : 0,
     totalCommentsCount: (totalComments && totalComments.cnt) ? totalComments.cnt : 0,
@@ -1378,8 +1419,9 @@ app.get('/admin', isAuthenticated, async (req, res) => {
 
 app.get('/admin/haberler', isAuthenticated, (req, res) => {
   const { all } = require('./db');
-  const news = all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC');
-  res.render('admin/news-list', { news });
+  const dailyViews = newsDailyViewsToday();
+  const news = withNewsViewsToday(all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC'), dailyViews);
+  res.render('admin/news-list', { news, todayViews: dailyViews.total || 0 });
 });
 
 // ---- Admin sıralama (▲/▼ taşıma) ----
@@ -3663,6 +3705,109 @@ async function safeSyncSefer() {
   }
 }
 
+// ==================== ÇINARCIK İÇİ ULAŞIM (Belediye) ====================
+// Kaynak: Çınarcık Belediyesi ulaşım sayfası. 7 günlük tüm sefer verisi
+// sayfanın hydration betiğinde tek JS literal olarak gömülüdür (SSR'da sadece
+// bugünün günü görünür); HTML'den çıkarılıp city_transport tablosuna yazılır.
+const ULASIM_SOURCE = 'https://cinarcik.bel.tr/cinarcik/ulasim';
+const ULASIM_SYNC_MS = 60 * 60 * 1000; // 1 saatte bir
+
+// JS literal'ının JSON olmayan tek farkı anahtarlardaki tırnaktır; dizi ve
+// nesne başlangıçlarını (dışarıdayken) izleyip anahtarları tırnaklar.
+// String içi metinler korunur; beklenmedik format JSON.parse'ta patlar ve
+// önceki veri korunur.
+function jsLiteralToJson(literal) {
+  let out = '';
+  let i = 0;
+  let inStr = null;
+  while (i < literal.length) {
+    const c = literal[i];
+    if (inStr) {
+      out += c;
+      if (c === '\\') { out += literal[i + 1] || ''; i += 2; continue; }
+      if (c === inStr) inStr = null;
+      i++;
+      continue;
+    }
+    if (c === '"' || c === "'") { inStr = c; out += c; i++; continue; }
+    if (c === '{' || c === ',') {
+      out += c;
+      i++;
+      const m = /^\s*([A-Za-z_][A-Za-z0-9_]*\s*):/.exec(literal.slice(i, i + 64));
+      if (m) {
+        out += '"' + m[1].replace(/\s+$/, '') + '":';
+        i += m[0].length;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+function extractCityTransport(html) {
+  const at = html.indexOf('ulasim:');
+  if (at === -1) throw new Error('ulasim veri bloğu bulunamadı');
+  const start = html.indexOf('{', at);
+  if (start === -1) throw new Error('ulasim veri bloğu açılış parantezi yok');
+  let depth = 0, inStr = null, esc = false, end = -1;
+  for (let k = start; k < html.length; k++) {
+    const c = html[k];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === inStr) inStr = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; continue; }
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) { end = k; break; } }
+  }
+  if (end === -1) throw new Error('ulasim veri bloğu kapanış parantezi yok');
+  const data = JSON.parse(jsLiteralToJson(html.slice(start, end + 1)));
+  if (!data || !Array.isArray(data.hatlar) || !data.hatlar.length) throw new Error('ulasim: hat listesi boş');
+  if (!Array.isArray(data.ucretler)) data.ucretler = [];
+  return data;
+}
+
+async function syncUlasim() {
+  const { run } = require('./db');
+  const res = await fetch(ULASIM_SOURCE, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = extractCityTransport(await res.text());
+  run('DELETE FROM city_transport');
+  run('INSERT INTO city_transport (id, data_json, source_url, updated_at) VALUES (1,?,?,datetime(\'now\'))',
+    [JSON.stringify(data), ULASIM_SOURCE]);
+  let sefer = 0;
+  data.hatlar.forEach(h => (h.kalkislar || []).forEach(k => sefer += (k.seferler || []).length));
+  console.log('[ulasim] ' + data.hatlar.length + ' hat / ' + sefer + ' sefer güncellendi');
+  return data;
+}
+
+async function safeSyncUlasim() {
+  try {
+    await syncUlasim();
+  } catch (e) {
+    console.error('[ulasim] senkronizasyon hatası:', e.message);
+  }
+}
+
+function getCityTransport() {
+  const { get } = require('./db');
+  try {
+    const row = get('SELECT data_json, updated_at FROM city_transport WHERE id = 1');
+    if (!row || !row.data_json) return null;
+    const data = JSON.parse(row.data_json);
+    if (!data || !Array.isArray(data.hatlar) || !data.hatlar.length) return null;
+    data.updatedAt = row.updated_at || '';
+    return data;
+  } catch (e) {
+    console.error('[ulasim] kayıt okunamadı:', e.message);
+    return null;
+  }
+}
+
 
 app.use((req, res) => {
   res.locals.robotsMeta = 'noindex, nofollow';
@@ -3694,6 +3839,8 @@ initDb().then(() => {
   setInterval(safeSyncNobetci, NOBETCI_SYNC_MS);
   safeSyncSefer();
   setInterval(safeSyncSefer, FERRY_SYNC_MS);
+  safeSyncUlasim();
+  setInterval(safeSyncUlasim, ULASIM_SYNC_MS);
 
   app.listen(PORT, () => {
     console.log(`Marmara'nın İncisi http://localhost:${PORT} adresinde çalışıyor`);
