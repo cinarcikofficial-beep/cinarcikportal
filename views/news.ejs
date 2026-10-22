@@ -73,7 +73,7 @@
                 <% headlines.slice(0, 10).forEach((n, i) => { %>
                   <button type="button" data-slide="<%= i %>" title="<%= n.title %>"
                     class="manset-nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-bold text-xs shadow-lg transition-all <%= i >= 4 ? 'max-sm:hidden' : '' %>
-                      <%= i === 0 ? 'bg-red-600 text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700' %>">
+                      <%= i === 0 ? 'active bg-red-600 text-white' : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700' %>">
                     <%= i + 1 %>
                   </button>
                 <% }) %>
@@ -285,10 +285,10 @@
     var btns = navEl.querySelectorAll('.manset-nav-btn');
     btns.forEach(function(btn, i) {
       if (i === currentSlide) {
-        btn.classList.add('bg-red-600', 'text-white');
+        btn.classList.add('active', 'bg-red-600', 'text-white');
         btn.classList.remove('bg-zinc-800/80', 'text-zinc-300');
       } else {
-        btn.classList.remove('bg-red-600', 'text-white');
+        btn.classList.remove('active', 'bg-red-600', 'text-white');
         btn.classList.add('bg-zinc-800/80', 'text-zinc-300');
       }
     });

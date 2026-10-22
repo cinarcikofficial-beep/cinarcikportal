@@ -310,6 +310,7 @@
             </form>
             <a href="/admin/duyuru-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Duyuru</a>
           </div>
+          <span class="text-zinc-500 text-xs whitespace-nowrap">Bugün: <span class="text-emerald-400 font-semibold"><%= announcementsTodayViews || 0 %></span> görüntülenme</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-zinc-300">
@@ -359,6 +360,7 @@
                 </td>
                 <td class="p-4 text-center whitespace-nowrap">
                   <span class="inline-block px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-semibold"><%= Number(item.views_count) || 0 %></span>
+                  <span class="inline-block px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold ml-1" title="Bugünkü görüntülenme">↗ <%= Number(item.views_today) || 0 %></span>
                   <form method="POST" action="/admin/duyurular/<%= item.id %>/goruntulenme-sifirla" style="display:inline">
                     <button type="submit" data-confirm="Bu duyuru/ilanın görüntelenme sayısı sıfırlansın mı?" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
                   </form>
@@ -407,6 +409,7 @@
             </form>
             <a href="/admin/mekan-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Mekan</a>
           </div>
+          <span class="text-zinc-500 text-xs whitespace-nowrap">Bugün: <span class="text-emerald-400 font-semibold"><%= placesTodayViews || 0 %></span> görüntülenme</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-zinc-300">
@@ -455,6 +458,7 @@
                 <td class="p-4 text-zinc-400"><%= item.category || item.type || '-' %></td>
                 <td class="p-4 text-center whitespace-nowrap">
                   <span class="inline-block px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-semibold"><%= Number(item.views_count) || 0 %></span>
+                  <span class="inline-block px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold ml-1" title="Bugünkü görüntülenme">↗ <%= Number(item.views_today) || 0 %></span>
                   <form method="POST" action="/admin/mekanlar/<%= item.id %>/goruntulenme-sifirla" style="display:inline">
                     <button type="submit" data-confirm="Bu mekanın görüntülenme sayısı sıfırlansın mı?" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
                   </form>
@@ -490,6 +494,7 @@
             </form>
             <a href="/admin/firma-ekle" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all">➕ Yeni Firma</a>
           </div>
+          <span class="text-zinc-500 text-xs whitespace-nowrap">Bugün: <span class="text-emerald-400 font-semibold"><%= companiesTodayViews || 0 %></span> görüntülenme</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-zinc-300">
@@ -538,6 +543,7 @@
                 <td class="p-4 text-zinc-400"><%= item.category || 'Genel' %></td>
                 <td class="p-4 text-center whitespace-nowrap">
                   <span class="inline-block px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-200 text-xs font-semibold"><%= Number(item.views_count) || 0 %></span>
+                  <span class="inline-block px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold ml-1" title="Bugünkü görüntülenme">↗ <%= Number(item.views_today) || 0 %></span>
                   <form method="POST" action="/admin/firmalar/<%= item.id %>/goruntulenme-sifirla" style="display:inline">
                     <button type="submit" data-confirm="Bu firmanın görüntülenme sayısı sıfırlansın mı?" class="inline-flex items-center justify-center w-7 h-7 align-middle bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded-lg transition-all text-xs ml-1" title="Görüntilenmeyi Sıfırla">🔄</button>
                   </form>

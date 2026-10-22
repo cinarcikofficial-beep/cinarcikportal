@@ -1034,9 +1034,10 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
 
 app.get('/admin/gezilecek-yerler', isAuthenticated, (req, res) => {
   const { all, parseGallery } = require('./db');
-  const items = all('SELECT * FROM sightseeing ORDER BY sort_order ASC, created_at DESC');
+  const daily = dailyViewsToday();
+  const items = withViewsToday(all('SELECT * FROM sightseeing ORDER BY sort_order ASC, created_at DESC'), daily.sightseeing);
   items.forEach(i => { i.gallery = parseGallery(i.gallery_images); });
-  res.render('admin/sightseeing', { items });
+  res.render('admin/sightseeing', { items, todayViews: daily.sightseeing.total || 0 });
 });
 
 app.get('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res) => {
@@ -1364,43 +1365,66 @@ app.get('/admin/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Bugünkü haber trafiği: page_views logundan (/haber/<slug>, /<lang>/haber/<slug>,
-// /api/news/<slug>)slug bazında günlük sayı türetilir — ek sayaç kolonu gerekmez.
-function newsDailyViewsToday() {
-  const { all } = require('./db');
-  const rows = all(`SELECT path, COUNT(*) AS c FROM page_views
-    WHERE date(created_at) = date('now')
-      AND (path LIKE '%/haber/%' OR path LIKE '%/api/news/%')
-    GROUP BY path`);
-  const byKey = {};
-  let total = 0;
-  for (const r of rows) {
-    const p = String(r.path || '');
-    const m = p.match(/\/(?:[a-z]{2}\/)?haber\/([^\/]+)$/) || p.match(/\/api\/news\/([^\/]+)$/);
-    if (!m) continue;
-    const c = Number(r.c) || 0;
-    let key;
-    try { key = decodeURIComponent(m[1]); } catch (e) { key = m[1]; }
-    byKey[key] = (byKey[key] || 0) + c;
-    total += c;
-  }
-  return { byKey, total };
+// Bugünkü içerik trafiği: page_views logundan slug bazında günlük sayı türetilir
+// (ek sayaç kolonu gerekmez). Dil prefix'li (/en/haber/..) ve API yolları da kapsanır.
+// "Gün" = Türkiye saati (UTC+3, yaz saati yok) 00:00–24:00. created_at UTC
+// yazıldığı için aralık TRT'ye çevrilerek verilir.
+const TRT_OFFSET_MS = 3 * 3600 * 1000;
+
+function trtDayRange(nowMs = Date.now()) {
+  const t = new Date(nowMs + TRT_OFFSET_MS); // UTC alanları artık TRT takvimini verir
+  const start = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) - TRT_OFFSET_MS;
+  const iso = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  return [iso(start), iso(start + 24 * 3600 * 1000)];
 }
 
-function withNewsViewsToday(news, daily) {
-  return news.map(n => Object.assign({}, n, {
-    views_today: daily.byKey[String(n.slug || n.id)] || 0
+const DAILY_VIEW_TYPES = ['news', 'announcements', 'places', 'sightseeing', 'companies'];
+const DAILY_VIEW_PATTERNS = [
+  ['news', /\/(?:[a-z]{2}\/)?haber\/([^\/]+)$/],
+  ['news', /\/api\/news\/([^\/]+)$/],
+  ['announcements', /\/(?:[a-z]{2}\/)?duyuru\/([^\/]+)$/],
+  ['places', /\/(?:[a-z]{2}\/)?mekan\/([^\/]+)$/],
+  ['sightseeing', /\/(?:[a-z]{2}\/)?gezilecek-yer\/([^\/]+)$/],
+  ['companies', /\/(?:[a-z]{2}\/)?rehber\/([^\/]+)$/]
+];
+
+function dailyViewsToday() {
+  const { all } = require('./db');
+  const [start, end] = trtDayRange();
+  const rows = all(`SELECT path, COUNT(*) AS c FROM page_views
+    WHERE created_at >= ? AND created_at < ?
+    GROUP BY path`, [start, end]);
+  const out = {};
+  for (const t of DAILY_VIEW_TYPES) out[t] = { byKey: {}, total: 0 };
+  for (const r of rows) {
+    const p = String(r.path || '');
+    for (const [type, re] of DAILY_VIEW_PATTERNS) {
+      const m = p.match(re);
+      if (!m) continue;
+      let key;
+      try { key = decodeURIComponent(m[1]); } catch (e) { key = m[1]; }
+      const c = Number(r.c) || 0;
+      out[type].byKey[key] = (out[type].byKey[key] || 0) + c;
+      out[type].total += c;
+    }
+  }
+  return out;
+}
+
+function withViewsToday(rows, daily) {
+  return rows.map(r => Object.assign({}, r, {
+    views_today: (daily.byKey[String(r.slug || r.id)] || 0)
   }));
 }
 
 app.get('/admin', isAuthenticated, async (req, res) => {
   const { all, get } = require('./db');
-  const announcements = all("SELECT * FROM announcements ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, sort_order ASC, created_at DESC");
-  const places = all('SELECT * FROM places ORDER BY sort_order ASC, is_featured DESC, created_at DESC');
-  const dailyViews = newsDailyViewsToday();
-  const news = withNewsViewsToday(all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC"), dailyViews);
+  const daily = dailyViewsToday();
+  const announcements = withViewsToday(all("SELECT * FROM announcements ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, sort_order ASC, created_at DESC"), daily.announcements);
+  const places = withViewsToday(all('SELECT * FROM places ORDER BY sort_order ASC, is_featured DESC, created_at DESC'), daily.places);
+  const news = withViewsToday(all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC"), daily.news);
   const newsCount = get('SELECT COUNT(*) as cnt FROM news');
-  const companies = all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC');
+  const companies = withViewsToday(all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC'), daily.companies);
   const pendingComments = get("SELECT COUNT(*) as cnt FROM comments WHERE status = 'pending'");
   const totalComments = get('SELECT COUNT(*) as cnt FROM comments');
   const unreadMessages = get("SELECT COUNT(*) as cnt FROM contact_messages WHERE status = 'new'");
@@ -1408,7 +1432,10 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   res.render('admin/dashboard', {
     announcements, places, news,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
-    newsTodayViews: dailyViews.total || 0,
+    newsTodayViews: daily.news.total || 0,
+    announcementsTodayViews: daily.announcements.total || 0,
+    placesTodayViews: daily.places.total || 0,
+    companiesTodayViews: daily.companies.total || 0,
     companies,
     pendingCommentsCount: (pendingComments && pendingComments.cnt) ? pendingComments.cnt : 0,
     totalCommentsCount: (totalComments && totalComments.cnt) ? totalComments.cnt : 0,
@@ -1419,9 +1446,9 @@ app.get('/admin', isAuthenticated, async (req, res) => {
 
 app.get('/admin/haberler', isAuthenticated, (req, res) => {
   const { all } = require('./db');
-  const dailyViews = newsDailyViewsToday();
-  const news = withNewsViewsToday(all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC'), dailyViews);
-  res.render('admin/news-list', { news, todayViews: dailyViews.total || 0 });
+  const dailyViews = dailyViewsToday();
+  const news = withViewsToday(all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC'), dailyViews.news);
+  res.render('admin/news-list', { news, todayViews: dailyViews.news.total || 0 });
 });
 
 // ---- Admin sıralama (▲/▼ taşıma) ----
@@ -2266,15 +2293,17 @@ app.get('/rehber/:slug', async (req, res) => {
 // Admin firma yönetimi
 app.get('/admin/firmalar', isAuthenticated, (req, res) => {
   const { all } = require('./db');
-  const companies = all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC');
-  res.render('admin/company-list', { companies });
+  const daily = dailyViewsToday();
+  const companies = withViewsToday(all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC'), daily.companies);
+  res.render('admin/company-list', { companies, todayViews: daily.companies.total || 0 });
 });
 
 app.get('/admin/raporlar', isAuthenticated, (req, res) => {
   const { all, get } = require('./db');
   const now = new Date();
   const iso = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
-  const dayStart = now.toISOString().slice(0, 10) + ' 00:00:00';
+  // "Bugün" ve günlük grafik serisi Türkiye saati (UTC+3) 00:00–24:00 aralığına göre.
+  const dayStart = trtDayRange(now.getTime())[0];
   const d7 = iso(new Date(now.getTime() - 7 * 24 * 3600 * 1000));
   const d30 = iso(new Date(now.getTime() - 30 * 24 * 3600 * 1000));
 
@@ -2299,7 +2328,7 @@ app.get('/admin/raporlar', isAuthenticated, (req, res) => {
 
   const topPages = all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
     FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY path ORDER BY views DESC LIMIT 20`, [d30]);
-  const daily = all(`SELECT date(created_at) AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
+  const daily = all(`SELECT date(created_at, '+3 hours') AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
     FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY day ORDER BY day ASC`, [d30]);
   const recent = all('SELECT * FROM page_views ORDER BY id DESC LIMIT 100')
     .map(r => Object.assign(r, { is_internal: isPrivateIp(r.ip) }));
@@ -2308,7 +2337,7 @@ app.get('/admin/raporlar', isAuthenticated, (req, res) => {
   daily.forEach(r => { dailyMap[r.day] = r; });
   const labels = [], viewsSeries = [], uniquesSeries = [];
   for (let i = 29; i >= 0; i--) {
-    const key = new Date(now.getTime() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const key = new Date(now.getTime() + TRT_OFFSET_MS - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
     labels.push(key.slice(5));
     viewsSeries.push((dailyMap[key] && dailyMap[key].views) || 0);
     uniquesSeries.push((dailyMap[key] && dailyMap[key].uniques) || 0);
