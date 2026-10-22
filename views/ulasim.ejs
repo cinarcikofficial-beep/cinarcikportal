@@ -72,7 +72,7 @@
             <h4 class="text-zinc-300 text-[13px] font-bold mb-2">
               <%= k.yer %> <span class="text-zinc-500 font-semibold text-xs">— <%= t('ulasimDeparture') %></span>
             </h4>
-            <div class="flex flex-wrap gap-2">
+            <div class="time-chips flex flex-wrap gap-2">
               <% (k.seferler || []).forEach(function(s) { %>
               <%
                 var gunler = (s.gunler || []);
@@ -183,5 +183,10 @@
     b.addEventListener('click', function () { applyDay(Number(b.getAttribute('data-day'))); });
   });
   applyDay((function () { var d = new Date().getDay(); return d === 0 ? 7 : d; })());
+  var strip = document.getElementById('day-tabs');
+  var activeTab = strip && strip.querySelector('.day-tab.active');
+  if (strip && activeTab && strip.scrollWidth > strip.clientWidth) {
+    strip.scrollLeft = activeTab.offsetLeft - (strip.clientWidth - activeTab.offsetWidth) / 2;
+  }
 })();
 </script>

@@ -1825,6 +1825,46 @@ html.light .time-chip .chip-note { color: #64748b; }
 html.light .time-chip.is-next .chip-next-label { color: #047857; }
 html.light .no-service { color: #64748b; }
 
+/* Ulaşım — mobil (≤640px): gün sekmeleri yatay şerit, çipler ızgara */
+@media (max-width: 640px) {
+  .day-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    margin-left: -4px;
+    margin-right: -4px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .day-tabs::-webkit-scrollbar { display: none; }
+  .day-tab {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    min-height: 42px;
+    padding: 8px 16px;
+  }
+  .time-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+  }
+  .time-chip {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    padding: 7px 6px;
+    font-size: 15px;
+  }
+  .time-chip.is-next {
+    grid-column: span 2;
+  }
+  .time-chip .chip-next-label { font-size: 10px; }
+}
+
 /* Mikro-animasyonlar: scroll reveal (html.has-reveal JS tarafında eklenir) */
 html.has-reveal .reveal {
   opacity: 0;
