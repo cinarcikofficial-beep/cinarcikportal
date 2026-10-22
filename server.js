@@ -875,13 +875,9 @@ app.get('/mekan/:id', async (req, res) => {
     const { get, all, run } = require('./db');
     const key = req.params.id;
     const place = get('SELECT * FROM places WHERE slug = ? OR id = ?', [key, isNaN(parseInt(key)) ? -1 : key]);
-    if (!place) {
-      return res.status(404).render('place-detail', {
-        place: null,
-        places: [],
-        embedMapUrl: '',
-        pageTitle: 'Mekan Bulunamadı'
-      });
+    if (!place || !place.id) {
+      res.locals.robotsMeta = 'noindex, nofollow';
+      return res.status(404).render('error', { title: 'Sayfa Bulunamadı', message: 'Aradığınız sayfa taşınmış veya kaldırılmış olabilir.', error: null });
     }
     const lp = req.lang === 'tr' ? '' : '/' + req.lang;
     const canon = place.slug || String(place.id);
