@@ -1033,7 +1033,7 @@ app.get('/admin/gezilecek-yerler', isAuthenticated, (req, res) => {
   const daily = dailyViewsToday();
   const items = withViewsToday(all('SELECT * FROM sightseeing ORDER BY sort_order ASC, created_at DESC'), daily.sightseeing);
   items.forEach(i => { i.gallery = parseGallery(i.gallery_images); });
-  res.render('admin/sightseeing', { items, todayViews: daily.sightseeing.total || 0 });
+    res.render('admin/sightseeing', { items, todayViews: sumViewsToday(items) });
 });
 
 app.get('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res) => {
@@ -1409,8 +1409,15 @@ function dailyViewsToday() {
 
 function withViewsToday(rows, daily) {
   return rows.map(r => Object.assign({}, r, {
-    views_today: (daily.byKey[String(r.slug || r.id)] || 0)
+    // Eski id'li URL'lerden (301 taramalari) gelen goruntulenmeler de slug satirina yazilsin
+    views_today: (daily.byKey[String(r.slug || r.id)] || 0) + (r.slug ? (daily.byKey[String(r.id)] || 0) : 0)
   }));
+}
+
+// Basliklar satir toplamiyla hesaplanir: silinmis/gesik path key'leri yuzunden
+// baslik satir toplamindan buyuk gorunmesin.
+function sumViewsToday(rows) {
+  return rows.reduce((s, r) => s + (Number(r.views_today) || 0), 0);
 }
 
 app.get('/admin', isAuthenticated, async (req, res) => {
@@ -1428,10 +1435,10 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   res.render('admin/dashboard', {
     announcements, places, news,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
-    newsTodayViews: daily.news.total || 0,
-    announcementsTodayViews: daily.announcements.total || 0,
-    placesTodayViews: daily.places.total || 0,
-    companiesTodayViews: daily.companies.total || 0,
+    newsTodayViews: sumViewsToday(news),
+    announcementsTodayViews: sumViewsToday(announcements),
+    placesTodayViews: sumViewsToday(places),
+    companiesTodayViews: sumViewsToday(companies),
     companies,
     pendingCommentsCount: (pendingComments && pendingComments.cnt) ? pendingComments.cnt : 0,
     totalCommentsCount: (totalComments && totalComments.cnt) ? totalComments.cnt : 0,
@@ -1444,7 +1451,7 @@ app.get('/admin/haberler', isAuthenticated, (req, res) => {
   const { all } = require('./db');
   const dailyViews = dailyViewsToday();
   const news = withViewsToday(all('SELECT * FROM news ORDER BY sort_order ASC, created_at DESC'), dailyViews.news);
-  res.render('admin/news-list', { news, todayViews: dailyViews.news.total || 0 });
+  res.render('admin/news-list', { news, todayViews: sumViewsToday(news) });
 });
 
 // ---- Admin sıralama (▲/▼ taşıma) ----
@@ -2291,7 +2298,7 @@ app.get('/admin/firmalar', isAuthenticated, (req, res) => {
   const { all } = require('./db');
   const daily = dailyViewsToday();
   const companies = withViewsToday(all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC'), daily.companies);
-  res.render('admin/company-list', { companies, todayViews: daily.companies.total || 0 });
+  res.render('admin/company-list', { companies, todayViews: sumViewsToday(companies) });
 });
 
 app.get('/admin/raporlar', isAuthenticated, (req, res) => {
