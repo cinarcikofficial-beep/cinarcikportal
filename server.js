@@ -338,7 +338,7 @@ function buildFerryGroups(rows) {
   const order = { eminonu: 0 };
   const itemsOf = (origin, match) => rows
     .filter(r => r.origin === origin && match(ferryKey(r.destination)))
-    .map(r => ({ label: ferryShortName(r.destination), columns: r.columns }))
+    .map(r => ({ label: ferryShortName(r.destination), columns: r.columns, prices: r.prices || [] }))
     .sort((a, b) => (order[ferryKey(a.label)] ?? 9) - (order[ferryKey(b.label)] ?? 9));
 
   const groups = [];
@@ -488,7 +488,9 @@ app.get('/', async (req, res) => {
   const ferryRows = all('SELECT * FROM ferry_schedules ORDER BY id ASC').map(r => {
     let columns = [];
     try { columns = JSON.parse(r.data_json || '[]'); } catch (e) { columns = []; }
-    return { origin: r.origin || 'Çınarcık İskele', destination: r.destination, columns, updated_at: r.updated_at };
+    let prices = [];
+    try { prices = JSON.parse(r.prices_json || '[]'); } catch (e) { prices = []; }
+    return { origin: r.origin || 'Çınarcık İskele', destination: r.destination, columns, prices, updated_at: r.updated_at };
   });
   const lang = req.lang;
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
@@ -504,6 +506,7 @@ app.get('/', async (req, res) => {
   ]);
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
+    transport: getCityTransport(),
     headlines, regularNews, weekEvents, sea,
     // LCP: hero 1. slayt + manşet ilk görseli <head>'de preload edilir (layout.ejs)
     preloadImages: ['/images/cinar/1.webp'].concat(
@@ -3705,6 +3708,20 @@ function parseTarifeTable(html) {
   }));
 }
 
+// Aynı yanıt gövdesindeki fiyat rozetleri: <div id="fiyatDiv"> ... Tam : 400 TL ...
+function parseFerryPrices(html) {
+  const m = String(html || '').match(/<div id="fiyatDiv"[\s\S]*?<\/div>/);
+  if (!m) return [];
+  const items = [];
+  const liRe = /<li[^>]*>([\s\S]*?)<\/li>/g;
+  let x;
+  while ((x = liRe.exec(m[0])) !== null) {
+    const txt = decodeEntities(String(x[1]).replace(/<[^>]+>/g, ' '));
+    if (txt) items.push(txt);
+  }
+  return items;
+}
+
 async function fetchDirection(dir) {
   const ua = { 'User-Agent': 'Mozilla/5.0' };
 
@@ -3732,13 +3749,21 @@ async function fetchDirection(dir) {
 
     const columns = parseTarifeTable(html);
     if (!columns) continue;
-    results.push({ origin: dir.origin, destination: decodeEntities(v.Value), columns });
+    results.push({ origin: dir.origin, destination: decodeEntities(v.Value), columns, prices: parseFerryPrices(html) });
   }
   return results;
 }
 
 async function syncSeferSaatleri() {
-  const { run } = require('./db');
+  const { run, all } = require('./db');
+
+  // Turyol bazen fiyat bloğu olmadan sayfa döndürür; önceki fiyatları koru
+  const prevPrices = {};
+  try {
+    all('SELECT origin, destination, prices_json FROM ferry_schedules').forEach(r => {
+      try { prevPrices[r.origin + '|' + r.destination] = JSON.parse(r.prices_json || '[]'); } catch (e) {}
+    });
+  } catch (e) {}
 
   const results = [];
   for (const dir of FERRY_DIRECTIONS) {
@@ -3753,8 +3778,10 @@ async function syncSeferSaatleri() {
 
   run('DELETE FROM ferry_schedules');
   results.forEach(r => {
-    run('INSERT INTO ferry_schedules (origin, destination, data_json, updated_at) VALUES (?,?,?,datetime(\'now\'))',
-      [r.origin, r.destination, JSON.stringify(r.columns)]);
+    const key = r.origin + '|' + r.destination;
+    const prices = (r.prices && r.prices.length) ? r.prices : (prevPrices[key] || []);
+    run('INSERT INTO ferry_schedules (origin, destination, data_json, prices_json, updated_at) VALUES (?,?,?,?,datetime(\'now\'))',
+      [r.origin, r.destination, JSON.stringify(r.columns), JSON.stringify(prices)]);
   });
   console.log('[sefer saatleri] ' + results.length + ' güzergâh güncellendi');
   return results.length;

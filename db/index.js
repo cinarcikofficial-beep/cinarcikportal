@@ -867,6 +867,7 @@ function createTables() {
       origin TEXT NOT NULL DEFAULT 'Çınarcık İskele',
       destination TEXT NOT NULL,
       data_json TEXT DEFAULT '[]',
+      prices_json TEXT DEFAULT '[]',
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -874,6 +875,7 @@ function createTables() {
   if (ferryCols[0]) {
     const cols = ferryCols[0].values.map(r => r[1]);
     if (!cols.includes('origin')) db.run("ALTER TABLE ferry_schedules ADD COLUMN origin TEXT NOT NULL DEFAULT 'Çınarcık İskele'");
+    if (!cols.includes('prices_json')) db.run("ALTER TABLE ferry_schedules ADD COLUMN prices_json TEXT DEFAULT '[]'");
   }
   db.run(`
     CREATE TABLE IF NOT EXISTS city_transport (
