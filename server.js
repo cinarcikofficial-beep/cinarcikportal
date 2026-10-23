@@ -1,3 +1,8 @@
+// Sunucu saati Türkiye'ye sabitlenir (Spaceship passenger UTC-4 gibi
+// saat diliminde başlatılabiliyor; sefer "sıradaki" vurgusu ve "bugün"
+// tabı 7 saat kaymasın). Tüm Date çağrılarından ÖNCE set edilmeli.
+process.env.TZ = 'Europe/Istanbul';
+
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
