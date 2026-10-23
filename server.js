@@ -1127,8 +1127,9 @@ app.post('/admin/gezilecek-yerler/goruntulenme-sifirla', isAuthenticated, (req, 
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM sightseeing').t || 0;
   run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now')");
-  console.log(`[admin] Gezilecek yer görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
-  flash(res, '/admin/gezilecek-yerler', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
+  const daily = clearDailyViews('sightseeing', null);
+  console.log(`[admin] Gezilecek yer görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/gezilecek-yerler', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
 });
 
 app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1137,7 +1138,8 @@ app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (r
   if (item && item.id) {
     const prev = Number(item.views_count) || 0;
     run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
-    console.log(`[admin] Gezilecek yer görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+    const daily = clearDailyViews('sightseeing', [item.slug, item.id]);
+    console.log(`[admin] Gezilecek yer görüntülenmesi sıfırlandı: "${item.title}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
   let back = '/admin/gezilecek-yerler';
   try {
@@ -1420,6 +1422,27 @@ function sumViewsToday(rows) {
   return rows.reduce((s, r) => s + (Number(r.views_today) || 0), 0);
 }
 
+// Gunluk ("Bugun") sayaclari sifirlama: bugunku (TRT) page_views satirlarini siler.
+// keys = null ise tipin tum gunluk satirlari, yoksa sadece verilen slug/id anahtarlarinin satirlari.
+function clearDailyViews(type, keys) {
+  const { all, run } = require('./db');
+  const pat = DAILY_VIEW_PATTERNS.find(p => p[0] === type);
+  if (!pat) return 0;
+  const [start, end] = trtDayRange();
+  const rows = all('SELECT id, path FROM page_views WHERE created_at >= ? AND created_at < ?', [start, end]);
+  const want = keys ? new Set(keys.map(String)) : null;
+  let n = 0;
+  for (const r of rows) {
+    const m = String(r.path || '').match(pat[1]);
+    if (!m) continue;
+    let k; try { k = decodeURIComponent(m[1]); } catch (e) { k = m[1]; }
+    if (want && !want.has(String(k))) continue;
+    run('DELETE FROM page_views WHERE id = ?', [r.id]);
+    n++;
+  }
+  return n;
+}
+
 app.get('/admin', isAuthenticated, async (req, res) => {
   const { all, get } = require('./db');
   const daily = dailyViewsToday();
@@ -1525,8 +1548,9 @@ app.post('/admin/haberler/goruntulenme-sifirla', isAuthenticated, (req, res) => 
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM news').t || 0;
   run("UPDATE news SET views_count = 0, views_reset_at = datetime('now'), updated_at = datetime('now')");
-  console.log(`[admin] Görüntelenme sayıları sıfırlandı (toplam ${total} görüntülenme) - ${req.session.adminUser || 'admin'}`);
-  flash(res, '/admin/haberler', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
+  const daily = clearDailyViews('news', null);
+  console.log(`[admin] Görüntelenme sayıları sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/haberler', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
 });
 
 app.post('/admin/haberler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1535,7 +1559,8 @@ app.post('/admin/haberler/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
   if (item && item.id) {
     const prev = Number(item.views_count) || 0;
     run("UPDATE news SET views_count = 0, views_reset_at = datetime('now'), updated_at = datetime('now') WHERE id = ?", [item.id]);
-    console.log(`[admin] Haber görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+    const daily = clearDailyViews('news', [item.slug, item.id]);
+    console.log(`[admin] Haber görüntülenmesi sıfırlandı: "${item.title}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
   let back = '/admin/haberler';
   try {
@@ -1969,8 +1994,9 @@ app.post('/admin/duyurular/goruntulenme-sifirla', isAuthenticated, (req, res) =>
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM announcements').t || 0;
   run("UPDATE announcements SET views_count = 0, views_reset_at = datetime('now')");
-  console.log(`[admin] Duyuru/ilan görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
-  flash(res, '/admin?tab=announcements', 'Görüntülenme sayaçları sıfırlandı (' + total + ')', 'info');
+  const daily = clearDailyViews('announcements', null);
+  console.log(`[admin] Duyuru/ilan görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin?tab=announcements', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
 });
 
 app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1979,7 +2005,8 @@ app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res
   if (item && item.id) {
     const prev = Number(item.views_count) || 0;
     run("UPDATE announcements SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
-    console.log(`[admin] Duyuru/ilan görüntülenmesi sıfırlandı: "${item.title}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+    const daily = clearDailyViews('announcements', [item.slug, item.id]);
+    console.log(`[admin] Duyuru/ilan görüntülenmesi sıfırlandı: "${item.title}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
   let back = '/admin?tab=announcements';
   try {
@@ -2164,7 +2191,8 @@ app.post('/admin/mekanlar/goruntulenme-sifirla', isAuthenticated, (req, res) => 
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM places').t || 0;
   run("UPDATE places SET views_count = 0, views_reset_at = datetime('now')");
-  console.log(`[admin] Mekan görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  const daily = clearDailyViews('places', null);
+  console.log(`[admin] Mekan görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   let back = '/admin?tab=places';
   try {
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
@@ -2179,7 +2207,8 @@ app.post('/admin/mekanlar/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
   if (item && item.id) {
     const prev = Number(item.views_count) || 0;
     run("UPDATE places SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
-    console.log(`[admin] Mekan görüntülenmesi sıfırlandı: "${item.name}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+    const daily = clearDailyViews('places', [item.slug, item.id]);
+    console.log(`[admin] Mekan görüntülenmesi sıfırlandı: "${item.name}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
   let back = '/admin?tab=places';
   try {
@@ -2452,7 +2481,8 @@ app.post('/admin/firmalar/goruntulenme-sifirla', isAuthenticated, (req, res) => 
   const { run, get } = require('./db');
   const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM companies').t || 0;
   run("UPDATE companies SET views_count = 0, views_reset_at = datetime('now')");
-  console.log(`[admin] Firma görüntülenmeleri sıfırlandı (toplam ${total}) - ${req.session.adminUser || 'admin'}`);
+  const daily = clearDailyViews('companies', null);
+  console.log(`[admin] Firma görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   let back = '/admin?tab=companies';
   try {
     const ref = new URL(req.get('Referer') || '', 'http://localhost');
@@ -2467,7 +2497,8 @@ app.post('/admin/firmalar/:id/goruntulenme-sifirla', isAuthenticated, (req, res)
   if (item && item.id) {
     const prev = Number(item.views_count) || 0;
     run("UPDATE companies SET views_count = 0, views_reset_at = datetime('now') WHERE id = ?", [item.id]);
-    console.log(`[admin] Firma görüntülenmesi sıfırlandı: "${item.name}" (${prev}) - ${req.session.adminUser || 'admin'}`);
+    const daily = clearDailyViews('companies', [item.slug, item.id]);
+    console.log(`[admin] Firma görüntülenmesi sıfırlandı: "${item.name}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
   let back = '/admin/firmalar';
   try {

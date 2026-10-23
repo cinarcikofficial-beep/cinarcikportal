@@ -32,7 +32,7 @@
   </div>
 
   <% if (announcement.image) { %>
-  <img src="<%= img(announcement.image) %>" alt="<%= announcement.title %>" class="w-full max-h-[640px] object-contain ann-img-frame rounded-2xl mb-6" />
+  <img src="<%= img(announcement.image) %>" alt="<%= announcement.title %>" class="ann-zoom w-full max-h-[640px] object-contain ann-img-frame rounded-2xl mb-6" />
   <% } %>
 
   <div class="article-body text-gray-300 leading-relaxed">
@@ -43,3 +43,5 @@
     <% } %>
   </div>
 </div>
+
+<%- include('partials/zoom-lightbox') %>

@@ -1,0 +1,63 @@
+<div id="ann-lb" class="lightbox-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="<%= t('gallery') %>">
+  <button class="lightbox-close" type="button" aria-label="Kapat">&times;</button>
+  <img id="ann-lb-img" src="" alt="" />
+</div>
+
+<script>
+(function () {
+  var lb = document.getElementById('ann-lb');
+  var lbImg = document.getElementById('ann-lb-img');
+  if (!lb || !lbImg) return;
+
+  var prevOverflow = '';
+  var touchStartY = null;
+  var moved = 0;
+
+  function isOpen() { return lb.style.display === 'flex'; }
+  function openLb(src, alt) {
+    lbImg.src = src;
+    lbImg.alt = alt || '';
+    prevOverflow = document.body.style.overflow;
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeAnnLb() {
+    if (!isOpen()) return;
+    lb.style.display = 'none';
+    lbImg.src = '';
+    document.body.style.overflow = prevOverflow;
+  }
+  window.closeAnnLb = closeAnnLb;
+
+  document.addEventListener('click', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'IMG' || lb.contains(el)) return;
+    if (!el.matches('.ann-zoom, .rich-desc img')) return;
+    e.preventDefault();
+    openLb(el.currentSrc || el.src, el.alt);
+  });
+
+  lb.addEventListener('click', function () { closeAnnLb(); });
+
+  lb.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) { touchStartY = null; return; }
+    touchStartY = e.touches[0].clientY;
+    moved = 0;
+  }, { passive: true });
+
+  lb.addEventListener('touchmove', function (e) {
+    if (touchStartY === null) return;
+    moved = e.touches[0].clientY - touchStartY;
+  }, { passive: true });
+
+  lb.addEventListener('touchend', function () {
+    touchStartY = null;
+    if (Math.abs(moved) > 60) { closeAnnLb(); return; }
+    if (Math.abs(moved) <= 10) closeAnnLb();
+  }, { passive: true });
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Escape' || e.key === 'Esc') && isOpen()) closeAnnLb();
+  });
+})();
+</script>

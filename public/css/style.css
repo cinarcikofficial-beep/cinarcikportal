@@ -952,6 +952,23 @@ html.light .ann-img-frame { background: #f1f5f9; }
 .lightbox-prev { left: 20px; }
 .lightbox-next { right: 20px; }
 
+/* Duyuru/etkinlik gorsel yaklastirma (zoom) lightbox'i */
+.ann-zoom { cursor: zoom-in; }
+.ann-zoom:hover { opacity: 0.92; }
+.rich-desc img { cursor: zoom-in; }
+#ann-lb { touch-action: none; }
+#ann-lb .lightbox-close {
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+  width: 46px;
+  height: 46px;
+  line-height: 42px;
+  padding: 0;
+  font-size: 1.9rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+}
+
 /* ---------- Empty State ---------- */
 .empty-state {
   text-align: center;
