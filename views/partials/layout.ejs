@@ -807,7 +807,7 @@
   <script>
   (function() {
     var ICONS = { success: '✓', info: 'i', error: '✕' };
-    var TITLES = { success: 'İşlem tamamlandı', info: 'Bilgi', error: 'Hata' };
+    var TITLES = { success: '<%= t('toastDone') %>', info: '<%= t('toastInfo') %>', error: '<%= t('toastError') %>' };
     function adminToast(text, type, title) {
       var root = document.getElementById('admin-toast-root');
       if (!root || !text) return;
@@ -856,6 +856,48 @@
       var qs = params.toString();
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
     }
+  })();
+  </script>
+
+  <!-- HTML5 doğrulama balonlarını site diline çevir: form[data-i18n-validate] -->
+  <script>
+  (function() {
+    var MSG = <%= JSON.stringify({ req: t('valRequired'), min: t('valMinLength'), email: t('valEmail') }) %>;
+    function msgFor(el) {
+      var v = el.validity;
+      if (v.valueMissing) return MSG.req;
+      if (v.typeMismatch) return MSG.email;
+      if (v.tooShort) return String(MSG.min).replace('{n}', el.minLength > 0 ? el.minLength : '').replace('{c}', String(el.value.length));
+      return MSG.req;
+    }
+    function init() {
+      document.querySelectorAll('form[data-i18n-validate]').forEach(function(form) {
+        form.setAttribute('novalidate', '');
+        form.addEventListener('submit', function(e) {
+          var firstBad = null;
+          Array.prototype.forEach.call(form.elements, function(el) {
+            if (el.willValidate) {
+              el.setCustomValidity('');
+              if (!el.validity.valid) {
+                el.setCustomValidity(msgFor(el));
+                if (!firstBad) firstBad = el;
+              }
+            }
+          });
+          if (firstBad) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            firstBad.reportValidity();
+            firstBad.addEventListener('input', function once() {
+              firstBad.setCustomValidity('');
+              firstBad.removeEventListener('input', once);
+            });
+          }
+        }, true);
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
   })();
   </script>
 

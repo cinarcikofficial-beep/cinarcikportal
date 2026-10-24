@@ -819,6 +819,7 @@ function createTables() {
       status TEXT DEFAULT 'active',
       user_name TEXT DEFAULT '',
       user_email TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 999,
       views_count INTEGER DEFAULT 0,
       views_reset_at TEXT DEFAULT NULL,
@@ -832,6 +833,7 @@ function createTables() {
     if (!cols.includes('status')) db.run("ALTER TABLE announcements ADD COLUMN status TEXT DEFAULT 'active'");
     if (!cols.includes('user_name')) db.run("ALTER TABLE announcements ADD COLUMN user_name TEXT DEFAULT ''");
     if (!cols.includes('user_email')) db.run("ALTER TABLE announcements ADD COLUMN user_email TEXT DEFAULT ''");
+    if (!cols.includes('phone')) db.run("ALTER TABLE announcements ADD COLUMN phone TEXT DEFAULT ''");
     if (!cols.includes('sort_order')) db.run("ALTER TABLE announcements ADD COLUMN sort_order INTEGER DEFAULT 999");
     if (!cols.includes('views_count')) db.run("ALTER TABLE announcements ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('views_reset_at')) db.run("ALTER TABLE announcements ADD COLUMN views_reset_at TEXT DEFAULT NULL");
@@ -1016,6 +1018,10 @@ function createTables() {
       FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE
     )
   `);
+  // Yorum begenileri: anonim, localStorage tarafında tekil; API count +1/-1
+  const commentColsRes = db.exec("PRAGMA table_info(comments)");
+  const commentCols = commentColsRes[0] ? commentColsRes[0].values.map(r => r[1]) : [];
+  if (!commentCols.includes('likes_count')) db.run('ALTER TABLE comments ADD COLUMN likes_count INTEGER DEFAULT 0');
 
   db.run(`
     CREATE TABLE IF NOT EXISTS page_views (

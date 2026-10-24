@@ -256,7 +256,7 @@ function isAuthenticated(req, res, next) {
 }
 
 // Ortak mail gönderici: Brevo/SendGrid HTTP API → SMTP fallback → konsol
-async function sendPortalMail({ to, subject, text, replyTo, logTag }) {
+async function sendPortalMail({ to, subject, text, html, replyTo, logTag }) {
   const tag = logTag || 'mail';
   const apiKey = process.env.EMAIL_API_KEY;
 
@@ -275,6 +275,7 @@ async function sendPortalMail({ to, subject, text, replyTo, logTag }) {
         subject,
         textContent: text
       };
+      if (html) payload.htmlContent = html;
       if (replyTo) payload.replyTo = { email: replyTo };
     } else {
       url = 'https://api.sendgrid.com/v3/mail/send';
@@ -285,6 +286,7 @@ async function sendPortalMail({ to, subject, text, replyTo, logTag }) {
         subject,
         content: [{ type: 'text/plain', value: text }]
       };
+      if (html) payload.content.push({ type: 'text/html', value: html });
       if (replyTo) payload.reply_to = { email: replyTo };
     }
     const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
@@ -316,7 +318,8 @@ async function sendPortalMail({ to, subject, text, replyTo, logTag }) {
     to,
     replyTo: replyTo || undefined,
     subject,
-    text
+    text,
+    html: html || undefined
   });
 }
 
@@ -553,8 +556,10 @@ app.get('/haber/:slug', async (req, res) => {
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const absUrl = siteUrl + lp + '/haber/' + (article.slug || article.id);
+  const commentCaptchaImage = svgDataUri(issueCaptcha(req));
   res.render('news-detail', {
     article, req,
+    commentCaptchaImage,
     pageTitle: article.title,
     metaDescription: article.summary || i18n.t(req.lang, 'metaDescShort'),
     ogType: 'article',
@@ -2026,53 +2031,105 @@ app.post('/admin/duyurular/:id/goruntulenme-sifirla', isAuthenticated, (req, res
 
 // ==================== KULLANICI İLAN/İLAN VERME ====================
 
-function requireGoogleAuthPage(req, res, next) {
-  if (req.session.isGoogleAuth && req.session.googleUser) return next();
-  req.session.returnTo = req.originalUrl;
-  res.redirect('/auth/google');
-}
+// İlan verme sayfası serbest (Google girişi zorunlu değil; varsa kullanıcı bilgileri önceden doldurulur)
 
-app.get('/ilan-ver', requireGoogleAuthPage, (req, res) => {
+app.get('/ilan-ver', (req, res) => {
   const code = issueCaptcha(req);
-  res.render('ilan-ver', { user: req.session.googleUser, error: null, form: {}, captchaImage: svgDataUri(code) });
+  const user = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+  res.render('ilan-ver', {
+    user,
+    error: null,
+    form: {
+      user_name: user ? user.name : '',
+      user_email: user ? user.email : '',
+      phone: ''
+    },
+    captchaImage: svgDataUri(code)
+  });
 });
 
-app.post('/ilan-ver', requireGoogleAuthPage, function(req, res, next) {
+app.post('/ilan-ver', function(req, res, next) {
   withUpload(upload.single('image'))(req, res, function(err) {
-    if (err) return res.render('ilan-ver', { user: req.session.googleUser, error: 'Görsel yüklenemedi.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+    const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
+    if (err) {
+      if (isJson) return res.status(400).json({ success: false, error: 'Görsel yüklenemedi: ' + (err.message || 'Geçersiz dosya.') });
+      const user = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+      return res.render('ilan-ver', { user, error: 'Görsel yüklenemedi.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+    }
     next();
   });
 }, (req, res) => {
   const { run } = require('./db');
-  const user = req.session.googleUser;
+  const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
+  const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+
+  const userName = String(req.body.user_name || req.body.name || (gUser ? gUser.name : '')).trim();
+  const userEmail = String(req.body.user_email || req.body.email || (gUser ? gUser.email : '')).trim();
+  const userPhone = String(req.body.phone || req.body.user_phone || '').trim();
   const title = String(req.body.title || '').trim();
   const content = String(req.body.content || '').trim();
   const category = ['duyuru', 'ilan', 'etkinlik'].includes(req.body.category) ? req.body.category : 'ilan';
   const captcha = String(req.body.captcha || '').trim().toUpperCase();
 
-  if (title.length < 5 || content.length < 20) {
-    return res.render('ilan-ver', { user, error: 'Başlık en az 5, içerik en az 20 karakter olmalıdır.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+  function fail(errMsg) {
+    if (isJson) return res.status(400).json({ success: false, error: errMsg });
+    return res.render('ilan-ver', {
+      user: gUser,
+      error: errMsg,
+      form: req.body || {},
+      captchaImage: svgDataUri(issueCaptcha(req))
+    });
+  }
+
+  if (!userName || userName.length < 2) {
+    return fail('Lütfen adınızı ve soyadınızı belirtin.');
+  }
+  if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+    return fail('Lütfen geçerli bir e-posta adresi girin.');
+  }
+  if (title.length < 5 || title.length > 120) {
+    return fail('Başlık 5 ile 120 karakter arasında olmalıdır.');
+  }
+  if (content.length < 20 || content.length > 4000) {
+    return fail('İçerik 20 ile 4000 karakter arasında olmalıdır.');
   }
   if (!captchaOk(req, captcha)) {
-    return res.render('ilan-ver', { user, error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+    return fail('Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.');
   }
+
   const image = req.file ? pubUrl(req.file) : '';
   const { slugify: annSlugify, ensureUniqueSlug: annUniqueSlug } = require('./db');
   const slug = annUniqueSlug(annSlugify(title), null, 'announcements');
   const eventDateRaw = String(req.body.event_date || '');
   const event_date = category === 'etkinlik' && /^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw) ? eventDateRaw : null;
-  run("INSERT INTO announcements (title, slug, content, category, image, status, user_name, user_email, event_date) VALUES (?,?,?,?,?,?,?,?,?)",
-    [title.slice(0, 120), slug, content.slice(0, 4000), category, image, 'pending', user.name || '', user.email || '', event_date]);
+
+  run("INSERT INTO announcements (title, slug, content, category, image, status, user_name, user_email, phone, event_date) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    [title.slice(0, 120), slug, content.slice(0, 4000), category, image, 'pending', userName.slice(0, 80), userEmail.slice(0, 120), userPhone.slice(0, 40), event_date]);
+
   req.session.captchaCodes = [];
-  const turMap = { ilan: 'ilan', duyuru: 'duyuru', etkinlik: 'etkinlik' };
+
+  const turMap = { ilan: 'İlan', duyuru: 'Duyuru', etkinlik: 'Etkinlik' };
   sendPortalMail({
     to: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com',
-    subject: '📝 Yeni ' + (turMap[category] || 'ilan') + ' başvurusu: ' + title.slice(0, 60),
-    text: 'Tür: ' + (turMap[category] || 'ilan') + '\nBaşlık: ' + title + '\nGönderen: ' + (user.name || '') + ' <' + (user.email || '') + '>\nGörsel: ' + (image || '-') + '\n\nİçerik:\n' + content,
-    replyTo: user.email || '',
+    subject: '📝 Yeni ' + (turMap[category] || 'İlan') + ' başvurusu: ' + title.slice(0, 60),
+    text: 'Tür: ' + (turMap[category] || 'İlan') +
+      '\nBaşlık: ' + title +
+      '\nGönderen: ' + userName + ' <' + userEmail + '>' +
+      (userPhone ? '\nTelefon: ' + userPhone : '') +
+      (event_date ? '\nEtkinlik Tarihi: ' + event_date : '') +
+      '\nGörsel: ' + (image || 'Yok') +
+      '\n\nİçerik:\n' + content,
+    replyTo: userEmail || '',
     logTag: 'ilan-ver'
   }).catch(e => console.error('[ilan-ver] bildirim maili gönderilemedi:', e.message));
-  res.redirect('/duyurular?gonderildi=1');
+
+  if (isJson) {
+    return res.json({
+      success: true,
+      message: 'İlanınız başarıyla alındı. Yönetici onayından sonra yayınlanacaktır.'
+    });
+  }
+  flash(res, '/duyurular?gonderildi=1', 'İlanınız alındı; onaylandıktan sonra yayınlanacak');
 });
 
 app.get('/admin/hakkinda', isAuthenticated, (req, res) => {
@@ -2694,8 +2751,19 @@ app.get('/api/auth/me', (req, res) => {
 // Onaylanmış yorumları getir
 app.get('/api/comments/:newsId', (req, res) => {
   const { all } = require('./db');
-  const comments = all("SELECT id, user_name, user_avatar, content, created_at FROM comments WHERE news_id = ? AND status = 'approved' ORDER BY created_at DESC", [req.params.newsId]);
+  const comments = all("SELECT id, user_name, user_avatar, content, created_at, likes_count FROM comments WHERE news_id = ? AND status = 'approved' ORDER BY likes_count DESC, created_at DESC", [req.params.newsId]);
   res.json({ success: true, comments });
+});
+
+// Yorum beğeni toggle (anonim; localStorage tekil, sunucu sadece count tutar)
+app.post('/api/comments/:id/like', (req, res) => {
+  const { run, get } = require('./db');
+  const comment = get('SELECT id, likes_count FROM comments WHERE id = ?', [req.params.id]);
+  if (!comment.id) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
+  const liked = !!req.body.liked;
+  const next = Math.max(0, (Number(comment.likes_count) || 0) + (liked ? 1 : -1));
+  run('UPDATE comments SET likes_count = ? WHERE id = ?', [next, req.params.id]);
+  res.json({ success: true, likes: next });
 });
 
 // Google auth middleware
@@ -2706,13 +2774,30 @@ function requireGoogleAuth(req, res, next) {
   return res.status(401).json({ success: false, error: 'Google ile giriş yapmanız gerekiyor' });
 }
 
-// Yeni yorum ekle (sadece Google auth ile)
-app.post('/api/comments', requireGoogleAuth, (req, res) => {
-  const { run } = require('./db');
-  const { news_id, content } = req.body;
-  const user = req.session.googleUser;
+// Yeni yorum ekle (girişsiz: ad + e-posta + güvenlik kodu; onaylı yayın)
+app.post('/api/comments', (req, res) => {
+  const { run, get } = require('./db');
+  const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+  const name = String(req.body.name || '').trim() || (gUser ? gUser.name : '');
+  // Google ile giriş yapıldıysa ad/e-posta sunucu tarafında kilitlenir (body'deki değerler yok sayılır)
+  const email = gUser ? gUser.email : String(req.body.email || '').trim();
+  const captcha = String(req.body.captcha || '').trim().toUpperCase();
+  const content = String(req.body.content || '').trim();
+  const newsId = parseInt(req.body.news_id);
 
-  if (!news_id || !content) {
+  if (!newsId || !get('SELECT id FROM news WHERE id = ?', [newsId]).id) {
+    return res.status(400).json({ success: false, error: 'Haber bulunamadı' });
+  }
+
+  if (!name || name.length < 2) {
+    return res.status(400).json({ success: false, error: 'Lütfen ad soyad girin' });
+  }
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, error: 'Geçerli bir e-posta adresi girin' });
+  }
+
+  if (!content) {
     return res.status(400).json({ success: false, error: 'Yorum içeriği gerekli' });
   }
 
@@ -2720,10 +2805,17 @@ app.post('/api/comments', requireGoogleAuth, (req, res) => {
     return res.status(400).json({ success: false, error: 'Yorum 1000 karakteri aşamaz' });
   }
 
-  run("INSERT INTO comments (news_id, user_name, user_email, user_avatar, content, status) VALUES (?,?,?,?,?,?)",
-    [news_id, user.name, user.email, user.avatar, content, 'pending']);
+  if (!captchaOk(req, captcha)) {
+    return res.status(400).json({ success: false, error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.' });
+  }
 
-  res.json({ success: true, message: 'Yorumunuz alındı, onaylandıktan sonra yayınlanacaktır' });
+  req.session.captchaCodes = [];
+
+  run("INSERT INTO comments (news_id, user_name, user_email, user_avatar, content, status) VALUES (?,?,?,?,?,?)",
+    [newsId, name, email, gUser ? gUser.avatar : null, content, 'pending']);
+
+  const inserted = get("SELECT id FROM comments WHERE user_email = ? AND news_id = ? ORDER BY id DESC LIMIT 1", [email, newsId]);
+  res.json({ success: true, id: inserted ? inserted.id : undefined, message: 'Yorumunuz alındı, onaylandıktan sonra yayınlanacaktır' });
 });
 
 // Admin yorum yönetimi
@@ -2735,11 +2827,43 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
   res.render('admin/comments', { pendingComments, approvedComments, hiddenComments });
 });
 
-// Yorum onayla
+// Yorum onayla + yazarına otomatik "yayına alındı" maili
 app.post('/admin/comments/approve/:id', isAuthenticated, (req, res) => {
-  const { run } = require('./db');
+  const { run, get } = require('./db');
+  const comment = get("SELECT c.*, n.title as news_title, n.slug as news_slug FROM comments c LEFT JOIN news n ON c.news_id = n.id WHERE c.id = ?", [req.params.id]);
+  if (!comment.id) return flash(res, '/admin/comments', 'Yorum bulunamadı', 'error');
   run("UPDATE comments SET status = 'approved' WHERE id = ?", [req.params.id]);
-  flash(res, '/admin/comments', 'Yorum onaylandı ve yayında');
+
+  // Zaten yayındaysa mail tekrar gönderilmez; e-postası bilinmiyorsa da sessizce atlanır
+  if (comment.status !== 'approved' && comment.user_email) {
+    const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+    const newsUrl = siteUrl + '/haber/' + (comment.news_slug || comment.news_id);
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const excerpt = String(comment.content || '').substring(0, 200) + ((comment.content || '').length > 200 ? '…' : '');
+    const mailHtml = '<div style="font-family:Segoe UI,Arial,sans-serif;background:#f4f4f5;padding:24px">'
+      + '<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e4e4e7">'
+      + '<p style="margin:0 0 14px;color:#18181b;font-size:15px">Merhaba <strong>' + esc(comment.user_name) + '</strong>,</p>'
+      + '<p style="margin:0 0 14px;color:#18181b;font-size:15px">&ldquo;<strong>' + esc(comment.news_title || 'haber') + '</strong>&rdquo; başlıklı haberin altındaki yorumunuz onaylandı ve artık yayında.</p>'
+      + '<p style="margin:0 0 14px;color:#3f3f46;font-size:14px;background:#f9fafb;border-radius:8px;padding:12px">&ldquo;' + esc(excerpt) + '&rdquo;</p>'
+      + '<p style="margin:0 0 24px"><a href="' + esc(newsUrl) + '" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:11px 22px;border-radius:10px">Yorumunuzu görmek için tıklayın →</a></p>'
+      + '<p style="margin:0 0 4px;color:#52525b;font-size:13px">Katkınız için teşekkürler!</p>'
+      + '<p style="margin:0;color:#52525b;font-size:13px">Marmara&rsquo;nın İncisi ekibi</p>'
+      + '</div></div>';
+    sendPortalMail({
+      to: comment.user_email,
+      subject: '✓ Yorumunuz yayına alındı — Marmara\u2019nın İncisi',
+      text: 'Merhaba ' + (comment.user_name || '') + ',\n\n'
+        + '"' + (comment.news_title || 'haber') + '" başlıklı haberin altındaki yorumunuz onaylandı ve artık yayında.\n\n'
+        + 'Yorumunuz: ' + excerpt + '\n\n'
+        + 'Haberin linki: ' + newsUrl + '\n\n'
+        + 'Katkınız için teşekkürler!\nMarmara\u2019nın İncisi ekibi',
+      html: mailHtml,
+      replyTo: process.env.ADMIN_2FA_EMAIL || '',
+      logTag: 'yorum-onay'
+    }).catch(e => console.error('[yorum-onay] bildirim maili gönderilemedi:', e.message));
+  }
+
+  flash(res, '/admin/comments', 'Yorum onaylandı ve yayında' + (comment.user_email ? '; yazara bildirim maili gönderildi' : ''));
 });
 
 // Yorum görünürlük değiştir (approved<->hidden)

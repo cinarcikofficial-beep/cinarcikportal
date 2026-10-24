@@ -25,25 +25,54 @@
     <% } %>
 
     <div class="card p-6 sm:p-8">
-      <div class="flex items-center gap-3 mb-6 pb-5 border-b border-zinc-800/70">
-        <% if (user && user.avatar) { %>
-          <img src="<%= user.avatar %>" alt="" class="w-10 h-10 rounded-full border border-zinc-700">
-        <% } %>
-        <div class="min-w-0">
-          <p class="text-white font-semibold text-sm truncate"><%= user ? user.name : '' %></p>
-          <p class="text-zinc-500 text-xs truncate"><%= user ? user.email : '' %></p>
+      <% if (user && user.email) { %>
+        <div class="flex items-center gap-3 mb-6 pb-5 border-b border-zinc-800/70">
+          <% if (user.avatar) { %>
+            <img src="<%= user.avatar %>" alt="" class="w-10 h-10 rounded-full border border-zinc-700">
+          <% } %>
+          <div class="min-w-0">
+            <p class="text-white font-semibold text-sm truncate"><%= user.name %></p>
+            <p class="text-zinc-500 text-xs truncate"><%= user.email %></p>
+          </div>
+          <a href="/auth/google/logout?return=/ilan-ver" class="ml-auto text-xs text-zinc-500 hover:text-red-400 transition-colors shrink-0"><%= t('logout') %></a>
         </div>
-        <a href="/auth/google/logout?return=/duyurular" class="ml-auto text-xs text-zinc-500 hover:text-red-400 transition-colors shrink-0"><%= t('logout') %></a>
-      </div>
+      <% } %>
 
-      <form action="/ilan-ver" method="POST" enctype="multipart/form-data" class="space-y-5" id="ilan-form">
-        <div>
-          <label for="category" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('categoryLabel') %></label>
-          <select id="category" name="category" class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
-            <option value="ilan" <%= form.category !== 'duyuru' && form.category !== 'etkinlik' ? 'selected' : '' %>><%= t('ad') %></option>
-            <option value="duyuru" <%= form.category === 'duyuru' ? 'selected' : '' %>><%= t('announcement') %></option>
-            <option value="etkinlik" <%= form.category === 'etkinlik' ? 'selected' : '' %>><%= t('event') %></option>
-          </select>
+      <form action="/ilan-ver" method="POST" enctype="multipart/form-data" data-i18n-validate class="space-y-5" id="ilan-form">
+        <!-- Kullanıcı İletişim Bilgileri -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="user_name" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('nameLabel') %></label>
+            <input type="text" id="user_name" name="user_name" required minlength="2" maxlength="80"
+              value="<%= form.user_name || form.name || (user ? user.name : '') %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+              placeholder="Adınız Soyadınız">
+          </div>
+          <div>
+            <label for="user_email" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('emailLabel') %> *</label>
+            <input type="email" id="user_email" name="user_email" required maxlength="120"
+              value="<%= form.user_email || form.email || (user ? user.email : '') %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+              placeholder="ornek@email.com">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="phone" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('phoneLabel') %> (<%= t('listingOptional') %>)</label>
+            <input type="tel" id="phone" name="phone" maxlength="30"
+              value="<%= form.phone || '' %>"
+              class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+              placeholder="05XX XXX XX XX">
+          </div>
+          <div>
+            <label for="category" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('categoryLabel') %></label>
+            <select id="category" name="category" class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
+              <option value="ilan" <%= form.category !== 'duyuru' && form.category !== 'etkinlik' ? 'selected' : '' %>>🏷️ <%= t('ad') %></option>
+              <option value="duyuru" <%= form.category === 'duyuru' ? 'selected' : '' %>>📢 <%= t('announcement') %></option>
+              <option value="etkinlik" <%= form.category === 'etkinlik' ? 'selected' : '' %>>🎉 <%= t('event') %></option>
+            </select>
+          </div>
         </div>
 
         <div id="event-date-wrap" class="<%= form.category === 'etkinlik' ? '' : 'hidden' %>">
@@ -58,7 +87,7 @@
           <input type="text" id="title" name="title" maxlength="120" required minlength="5"
             value="<%= form.title || '' %>"
             class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-            placeholder="<%= t('listingTitlePlaceholder') %>">
+            placeholder="<%= t('titleLabel') %>">
         </div>
 
         <div>
@@ -80,33 +109,22 @@
           <div class="flex items-center gap-3 flex-wrap">
             <img id="captcha-img" src="<%= captchaImage %>" alt="<%= t('securityCodeAlt') %>"
               title="<%= t('refresh') %>" onclick="refreshCaptcha()"
-              class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none">
+              class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none cursor-pointer">
             <input id="c-captcha" type="text" name="captcha" required maxlength="5" autocomplete="off"
               inputmode="text" autocapitalize="characters" spellcheck="false"
               placeholder="<%= t('captchaPlaceholder') %>"
               class="w-40 bg-zinc-900 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm uppercase tracking-widest placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
             <button type="button" onclick="refreshCaptcha()"
-              class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-3 rounded-xl text-xs font-bold transition"><%= t('refresh') %></button>
+              class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-3 rounded-xl text-xs font-bold transition cursor-pointer"><%= t('refresh') %></button>
           </div>
           <p class="text-zinc-600 text-xs mt-2"><%= t('captchaNote') %></p>
         </div>
 
         <button type="submit"
-          class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3.5 rounded-xl transition-all">
+          class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-950/40 cursor-pointer">
           <%= t('listingSubmit') %>
         </button>
       </form>
     </div>
   </div>
 </section>
-
-<script>
-(function() {
-  var sel = document.getElementById('category');
-  var wrap = document.getElementById('event-date-wrap');
-  if (!sel || !wrap) return;
-  function toggle() { wrap.classList.toggle('hidden', sel.value !== 'etkinlik'); }
-  sel.addEventListener('change', toggle);
-  toggle();
-})();
-</script>
