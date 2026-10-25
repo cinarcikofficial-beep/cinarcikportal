@@ -1402,14 +1402,15 @@ function trtDayRange(nowMs = Date.now()) {
   return [iso(start), iso(start + 24 * 3600 * 1000)];
 }
 
-const DAILY_VIEW_TYPES = ['news', 'announcements', 'places', 'sightseeing', 'companies'];
+const DAILY_VIEW_TYPES = ['news', 'announcements', 'places', 'sightseeing', 'companies', 'photos'];
 const DAILY_VIEW_PATTERNS = [
   ['news', /\/(?:[a-z]{2}\/)?haber\/([^\/]+)$/],
   ['news', /\/api\/news\/([^\/]+)$/],
   ['announcements', /\/(?:[a-z]{2}\/)?duyuru\/([^\/]+)$/],
   ['places', /\/(?:[a-z]{2}\/)?mekan\/([^\/]+)$/],
   ['sightseeing', /\/(?:[a-z]{2}\/)?gezilecek-yer\/([^\/]+)$/],
-  ['companies', /\/(?:[a-z]{2}\/)?rehber\/([^\/]+)$/]
+  ['companies', /\/(?:[a-z]{2}\/)?rehber\/([^\/]+)$/],
+  ['photos', /\/(?:[a-z]{2}\/)?api\/foto-gor\/([^\/]+)$/]
 ];
 
 function dailyViewsToday() {
@@ -2078,7 +2079,9 @@ app.post('/admin/duyurular/toggle/:id', isAuthenticated, (req, res) => {
 app.get('/admin/fotograflar', isAuthenticated, (req, res) => {
   const { all } = require('./db');
   const items = all("SELECT * FROM photo_submissions ORDER BY (status = 'pending') DESC, created_at DESC");
-  res.render('admin/photos', { items });
+  const daily = dailyViewsToday().photos || { byKey: {}, total: 0 };
+  items.forEach(p => { p.views_today = daily.byKey[String(p.id)] || 0; });
+  res.render('admin/photos', { items, photosTodayViews: daily.total });
 });
 
 app.post('/admin/fotograflar/onayla/:id', isAuthenticated, (req, res) => {
@@ -2125,6 +2128,33 @@ app.post('/admin/fotograflar/sil/:id', isAuthenticated, (req, res) => {
   if (item && item.image) deleteUploadedMedia(item.image);
   run('DELETE FROM photo_submissions WHERE id = ?', [req.params.id]);
   flash(res, '/admin/fotograflar', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
+});
+
+// Fotoğraf görüntülenme sıfırlama (toplu + satır bazlı)
+app.post('/admin/fotograflar/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const total = get('SELECT COALESCE(SUM(views_count), 0) AS t FROM photo_submissions').t || 0;
+  run('UPDATE photo_submissions SET views_count = 0');
+  const daily = clearDailyViews('photos', null);
+  console.log(`[admin] Fotoğraf görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/fotograflar', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
+});
+
+app.post('/admin/fotograflar/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM photo_submissions WHERE id = ?', [req.params.id]);
+  if (item && item.id) {
+    const prev = Number(item.views_count) || 0;
+    run('UPDATE photo_submissions SET views_count = 0 WHERE id = ?', [item.id]);
+    const daily = clearDailyViews('photos', [item.id]);
+    console.log(`[admin] Fotoğraf görüntülenmesi sıfırlandı: "${item.title}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
+  }
+  let back = '/admin/fotograflar';
+  try {
+    const ref = new URL(req.get('Referer') || '', 'http://localhost');
+    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
+  } catch (e) {}
+  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
@@ -2986,6 +3016,23 @@ app.post('/api/comments/:id/like', (req, res) => {
   const next = Math.max(0, (Number(comment.likes_count) || 0) + (liked ? 1 : -1));
   run('UPDATE comments SET likes_count = ? WHERE id = ?', [next, req.params.id]);
   res.json({ success: true, likes: next });
+});
+
+// "Sizlerden Gelen" fotoğraf görüntülenme sayacı (lightbox açılışında 1 kez)
+app.post('/api/foto-gor/:id', (req, res) => {
+  const { get, run } = require('./db');
+  const p = get("SELECT id FROM photo_submissions WHERE id = ? AND status = 'active'", [req.params.id]);
+  if (!p.id) return res.status(404).json({ success: false, error: 'Fotoğraf bulunamadı' });
+  run('UPDATE photo_submissions SET views_count = views_count + 1 WHERE id = ?', [p.id]);
+  logPageView({
+    path: '/api/foto-gor/' + p.id,
+    method: 'POST',
+    status: 200,
+    ip: req.ip,
+    user_agent: req.headers['user-agent'] || '',
+    referrer: req.headers.referer || req.headers.referrer || ''
+  });
+  res.json({ success: true });
 });
 
 // Google auth middleware

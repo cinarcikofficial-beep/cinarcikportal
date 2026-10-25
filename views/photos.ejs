@@ -20,6 +20,9 @@
   html.light .photo-card { background: #ffffff !important; border-color: #e2e8f0 !important; }
   html.light .photo-card h2 { color: #0f172a !important; }
   html.light .photo-card p { color: #475569 !important; }
+  html.light .photo-views-chip { background: #f1f5f9 !important; color: #475569 !important; }
+  html.light .photo-share { background: #f1f5f9 !important; color: #334155 !important; }
+  html.light .photo-share:hover { background: #e2e8f0 !important; color: #0f172a !important; }
 </style>
 
 <section class="section">
@@ -41,7 +44,7 @@
         <% photos.forEach(function(p) { %>
           <figure class="photo-card group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
             <div class="aspect-[4/3] overflow-hidden bg-zinc-950">
-              <img src="<%= img(p.image) %>" alt="<%= p.title %>" loading="lazy" decoding="async"
+              <img src="<%= img(p.image) %>" alt="<%= p.title %>" loading="lazy" decoding="async" data-photo-id="<%= p.id %>"
                 class="ann-zoom w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             </div>
             <figcaption class="p-3">
@@ -49,8 +52,30 @@
               <% if (p.description) { %>
                 <p class="text-zinc-400 text-xs mt-1 line-clamp-3"><%= p.description %></p>
               <% } %>
+              <div class="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+                <span class="inline-flex items-center">
+                  <button type="button" class="fav-btn" data-fav data-fav-type="photos" data-fav-id="<%= p.id %>"
+                    data-fav-url="/sizlerden-gelen" data-fav-title="<%= p.title %>" data-fav-img="<%= img(p.image) %>" aria-pressed="false"></button>
+                </span>
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="photo-views-chip inline-flex items-center gap-1 text-zinc-400 text-[11px] px-2 py-1 rounded-lg bg-zinc-800/60" title="<%= t('views') %>">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 28 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <span class="photo-views" data-photo-id="<%= p.id %>"><%= Number(p.views_count) || 0 %></span>
+                  </span>
+                  <a href="https://wa.me/?text=<%= encodeURIComponent((p.title || '') + ' — https://marmaraninincisi.com' + (typeof lp !== 'undefined' && lp ? lp : '') + '/sizlerden-gelen') %>"
+                    target="_blank" rel="noopener noreferrer"
+                    class="inline-flex items-center justify-center w-7 h-7 bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white rounded-lg transition-colors"
+                    title="<%= t('shareWhatsapp') %>">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2C6.477 2 2 6.477 2 12.001c0 1.77.464 3.426 1.276 4.864L2 22l5.29-1.243A9.943 9.943 0 0 0 12.001 22C17.525 22 22 17.525 22 12.001 22 6.477 17.525 2 12.001 2zm5.925 14.19a1.617 1.617 0 0 1-.86 1.15c-.63.333-1.518.47-2.452-.086-1.51-.886-2.418-1.6-3.528-2.71-1.11-1.11-1.824-2.018-2.71-3.528-.556-.934-.42-1.822-.086-2.452.26-.493.66-.762 1.15-.86.188-.037.439-.01.63.06.193.071.421.217.53.384.115.174.48 1.16.553 1.335.073.175.122.302.078.48a2.72 2.72 0 0 1-.2.486c-.084.148-.212.366-.19.546.027.206.168.51.565.98.397.47.63.676.86.84.146.103.321.062.565-.057.244-.12.482-.308.672-.28.167.024.354.186.508.354.154.168.448.447.565.565.117.117.4.52.488.565.087.045.213.053.32.026z"/></svg>
+                  </a>
+                  <button type="button" class="photo-share inline-flex items-center justify-center w-7 h-7 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-lg transition-colors cursor-pointer"
+                    data-ps-title="<%= p.title %>" title="<%= t('shareNative') %>">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.42" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                  </button>
+                </span>
+              </div>
               <% if (p.author_name) { %>
-                <p class="text-zinc-500 text-[11px] mt-2"><%= t('photosBy') %> <%= p.author_name %></p>
+                <p class="text-zinc-500 text-[11px] mt-1.5"><%= t('photosBy') %> <%= p.author_name %></p>
               <% } %>
             </figcaption>
           </figure>
@@ -316,6 +341,37 @@
         showAlert(msg, false);
         refreshCaptcha();
       });
+  });
+
+  // Lightbox açılışında fotoğraf görüntülenme sayacı (sayfa başına görsel başına 1 kez)
+  var seenViews = {};
+  document.addEventListener('click', function (e) {
+    var im = e.target && e.target.closest ? e.target.closest('.photo-card img[data-photo-id]') : null;
+    if (!im) return;
+    var id = im.getAttribute('data-photo-id');
+    if (!id || seenViews[id]) return;
+    seenViews[id] = true;
+    fetch('/api/foto-gor/' + id, { method: 'POST', headers: { 'Accept': 'application/json' } }).catch(function () {});
+    var chip = document.querySelector('.photo-views[data-photo-id="' + id + '"]');
+    if (chip) chip.textContent = (parseInt(chip.textContent, 10) || 0) + 1;
+  });
+
+  // Kart paylaş: navigator.share (telefon), desteklenmiyorsa panoya kopyala
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('.photo-share') : null;
+    if (!b) return;
+    e.preventDefault();
+    var title = b.getAttribute('data-ps-title') || document.title;
+    var url = location.origin + location.pathname;
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        if (window.adminToast) window.adminToast('<%= t("linkCopied") %>', 'success');
+      }).catch(function () {});
+    } else if (window.adminToast) {
+      window.adminToast(url, 'info');
+    }
   });
 })();
 </script>

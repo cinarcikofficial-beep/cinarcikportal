@@ -224,7 +224,7 @@
 
   <script>
   (function() {
-    var S = <%- JSON.stringify({ minChars: t('searchMinChars'), noResults: t('searchNoResults'), loading: t('loading'), connError: t('connError'), favSaved: t('favSaved'), favRemove: t('favRemove'), favList: t('favList'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
+    var S = <%- JSON.stringify({ minChars: t('searchMinChars'), noResults: t('searchNoResults'), loading: t('loading'), connError: t('connError'), favSaved: t('favSaved'), favRemove: t('favRemove'), favList: t('favList'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide'), photos: t('photosTitle') }) %>;
     var LP = '<%= typeof lp !== 'undefined' ? lp : '' %>';
     var modal = document.getElementById('search-modal');
     var input = document.getElementById('search-input');
@@ -233,7 +233,7 @@
     var openBtn = document.getElementById('search-open');
     if (!modal || !input || !resultsEl || !statusEl || !openBtn) return;
 
-    var TYPE_LABEL = { news: S.news, places: S.places, announcements: S.announcements, sightseeing: S.sightseeing, guide: S.guide };
+    var TYPE_LABEL = { news: S.news, places: S.places, announcements: S.announcements, sightseeing: S.sightseeing, guide: S.guide, photos: S.photos };
     var items = [], active = -1, seq = 0, timer = null;
     var cache = new Map();
 
@@ -348,7 +348,7 @@
       var favs = (window.Favs && typeof window.Favs.list === 'function') ? window.Favs.list() : [];
       if (!favs.length) { items = []; resultsEl.innerHTML = ''; setStatus(S.minChars); return; }
       var list = favs.slice().reverse().slice(0, 8).map(function(f) {
-        return { type: f.t, id: f.id, emoji: ({ news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢' })[f.t] || '★', title: f.title, meta: '', url: f.u };
+        return { type: f.t, id: f.id, emoji: ({ news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢', photos: '📷' })[f.t] || '★', title: f.title, meta: '', url: f.u };
       });
       render(list, '', true);
       var lbl = resultsEl.parentElement.querySelector('.search-fav-hint');

@@ -15,8 +15,8 @@
 (function() {
   if (!window.Favs) return;
   var LP = '<%= typeof lp !== 'undefined' ? lp : '' %>';
-  var S = <%- JSON.stringify({ remove: t('favRemove'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide') }) %>;
-  var EMOJI = { news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢' };
+  var S = <%- JSON.stringify({ remove: t('favRemove'), news: t('news'), places: t('places'), announcements: t('announcements'), sightseeing: t('sightseeing'), guide: t('guide'), photos: t('photosTitle') }) %>;
+  var EMOJI = { news: '📰', places: '📍', announcements: '📢', sightseeing: '🧳', guide: '🏢', photos: '📷' };
   var grid = document.getElementById('fav-grid');
   var empty = document.getElementById('fav-empty');
   if (!grid || !empty) return;
