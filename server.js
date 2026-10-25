@@ -488,6 +488,7 @@ app.get('/', async (req, res) => {
   `);
   const companies = all("SELECT * FROM companies WHERE status = 'active' ORDER BY is_featured DESC, sort_order ASC, created_at DESC LIMIT 3");
   const sightseeing = all("SELECT * FROM sightseeing WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 3");
+  const photos = all("SELECT id, title, description, image, author_name, created_at FROM photo_submissions WHERE status = 'active' ORDER BY created_at DESC LIMIT 3");
   // "Bu hafta Çınarcık" modulu: yaklasan tarihli etkinlikler + deniz/hava verisi
   const weekEvents = all(`SELECT * FROM announcements WHERE status='active' AND category='etkinlik'
       AND event_date IS NOT NULL AND event_date <> '' AND event_date >= ?
@@ -514,7 +515,7 @@ app.get('/', async (req, res) => {
     txArray(regularNews, ['title', 'summary'], lang)
   ]);
   res.render('home', {
-    announcements, places, companies, pharmacies, sightseeing, ferryGroups: buildFerryGroups(ferryRows),
+    announcements, places, companies, pharmacies, sightseeing, photos, ferryGroups: buildFerryGroups(ferryRows),
     transport: getCityTransport(),
     headlines, regularNews, weekEvents, sea,
     // LCP: hero 1. slayt + manşet ilk görseli <head>'de preload edilir (layout.ejs)
