@@ -552,13 +552,20 @@ app.get('/haber/:slug', async (req, res) => {
   const article = get("SELECT * FROM news WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!article || !article.id) return res.redirect('/haberler');
   run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [article.id]);
-  await txFields(article, ['title', 'summary', 'content', 'category', 'badge_text'], req.lang);
+  // İlgili haberler: aynı kategori önce, sonra en yeni (aktif + süresi geçmemiş)
+  // (txFields'ten ÖNCE — article.category hala ham DB değeri olur, eşleşme garantili)
+  const related = all("SELECT * FROM news WHERE status='active' AND id != ? AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY (CASE WHEN category = ? THEN 0 ELSE 1 END), created_at DESC LIMIT 3", [article.id, article.category]);
+  await Promise.all([
+    txFields(article, ['title', 'summary', 'content', 'category', 'badge_text'], req.lang),
+    txArray(related, ['title', 'summary'], req.lang)
+  ]);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const absUrl = siteUrl + lp + '/haber/' + (article.slug || article.id);
   const commentCaptchaImage = svgDataUri(issueCaptcha(req));
   res.render('news-detail', {
     article, req,
+    related,
     commentCaptchaImage,
     pageTitle: article.title,
     metaDescription: article.summary || i18n.t(req.lang, 'metaDescShort'),
@@ -1106,6 +1113,8 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
       }
       run(`UPDATE sightseeing SET title=?, slug=?, summary=?, description=?, category=?, location=?, map_link=?, image=?, gallery_images=?, sort_order=?, status=? WHERE id=?`,
         [titleVal, slug].concat(values.slice(1), [edit_id]));
+      deleteReplacedMedia([existing.image], [values[6]].concat(gallery));
+      deleteReplacedMedia(galleryJsonUrls(existing.gallery_images), gallery);
       pingIndexNow('/gezilecek-yer/' + (slug || edit_id));
     } else {
       const slug = ensureUniqueSlug(slugify(titleVal), null, 'sightseeing');
@@ -1646,6 +1655,8 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE news SET title=?, slug=?, badge_text=?, summary=?, content=?, main_image_url=?, gallery_images=?, is_headline=?, headline_order=?, status=?, expires_at=?, category=?, updated_at=datetime('now') WHERE id=?`,
       [title, slug, badge_text || '', summary || '', content, main_image_url, JSON.stringify(galleryArr), isHeadline, order, statusVal, expiresValue, category || 'Gündem', edit_id]);
+    deleteReplacedMedia([existing.main_image_url], [main_image_url].concat(galleryArr));
+    deleteReplacedMedia(galleryJsonUrls(existing.gallery_images), galleryArr);
     pingIndexNow('/haber/' + slug);
   } else {
     const slug = ensureUniqueSlug(slugify(title), null);
@@ -1747,6 +1758,14 @@ function deleteUploadedMedia(input) {
         .catch(function(e) { console.warn('[r2] silinemedi (' + name + '):', e.message); });
     }
   });
+}
+
+// Düzenlemede değişen/değiştirilen medyayı siler: eski listede olup "keep" Listesinde
+// araçmayan öğeleri deleteUploadedMedia ile sıralar (aynı URL kalmışsa dokunulmaz).
+function deleteReplacedMedia(oldItems, keepItems) {
+  const keep = new Set((Array.isArray(keepItems) ? keepItems : [keepItems]).filter(Boolean).map(String));
+  const old = (Array.isArray(oldItems) ? oldItems : [oldItems]).filter(Boolean).map(String);
+  deleteUploadedMedia(old.filter(function(u) { return !keep.has(u); }));
 }
 
 // Formdaki sürükle-bırak sıralaması `gallery_order` alanına JSON olarak yazılır:
@@ -1951,6 +1970,7 @@ app.post('/admin/duyuru-ekle', isAuthenticated, function(req, res, next) {
       slug = ensureUniqueSlug(slugify(safeTitle), parseInt(edit_id), 'announcements');
     }
     run('UPDATE announcements SET title=?, slug=?, content=?, category=?, image=?, event_date=? WHERE id=?', [safeTitle, slug, safeContent, safeCategory, image, event_date, edit_id]);
+    deleteReplacedMedia(existing && existing.image, image);
     pingIndexNow('/duyuru/' + slug);
     pingIndexNow('/etkinlikler');
   } else {
@@ -2213,6 +2233,8 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE places SET name=?, slug=?, category=?, cuisine_type=?, establishment_type=?, meal_type=?, address=?, phone=?, working_hours=?, map_link=?, features=?, main_image_url=?, gallery_images=?, description=?, is_featured=?, status=?, display_until=?, sort_order=?, google_reviews_url=? WHERE id=?`,
         [name, slug, category, cuisine_type || '', JSON.stringify(estTypeArr), JSON.stringify(mealTypeArr), address || '', phone || '', working_hours || '', map_link || '', JSON.stringify(features), main_image_url, JSON.stringify(galleryArr), description || '', isFeatured, statusVal, display_until || null, parseInt(sort_order) || 0, google_reviews_url || '', edit_id]);
+    deleteReplacedMedia([existing.main_image_url], [main_image_url].concat(galleryArr));
+    deleteReplacedMedia(galleryJsonUrls(existing.gallery_images), galleryArr);
     pingIndexNow('/mekan/' + slug);
     flash(res, '/admin?tab=places', 'Güncellendi: ' + name);
   } else {
@@ -2509,6 +2531,8 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
     }
     run(`UPDATE companies SET name=?, slug=?, category=?, sector=?, address=?, phone=?, website=?, email=?, working_hours=?, map_link=?, map_embed=?, google_reviews_url=?, description=?, logo_url=?, gallery_images=?, features=?, is_featured=?, status=?, sort_order=? WHERE id=?`,
       [name, slug, category || 'Genel', sector || '', address || '', phone || '', website || '', email || '', working_hours || '', map_link || '', mapEmbedVal, google_reviews_url || '', description || '', logo_url, JSON.stringify(galleryArr), JSON.stringify(features), isFeatured, statusVal, parseInt(sort_order) || 0, edit_id]);
+    deleteReplacedMedia([existing.logo_url], [logo_url].concat(galleryArr));
+    deleteReplacedMedia(galleryJsonUrls(existing.gallery_images), galleryArr);
     pingIndexNow('/rehber/' + (slug || edit_id));
     flash(res, '/admin/firmalar', 'Güncellendi: ' + name);
   } else {
