@@ -49,6 +49,7 @@ const IDENTITY_COLS = {
   sightseeing: ['title'],
   comments: ['user_email', 'user_name', 'content'],
   contact_messages: ['email', 'subject', 'message'],
+  photo_submissions: ['title', 'author_email'],
   users: ['username'],
   pharmacies: ['name', 'phone'],
   ferry_schedules: ['origin', 'destination'],
@@ -845,6 +846,32 @@ function createTables() {
       run("UPDATE announcements SET slug = ? WHERE id = ?", [ensureUniqueSlug(slugify(r.title), r.id, 'announcements'), r.id]);
     });
   } catch (e) { console.error('announcements slug backfill:', e.message); }
+  // Kullanıcı fotoğraf paylaşımları ("Sizlerden Gelen"): girişsiz gönderim,
+  // admin onayından sonra yayın. Fotoğraf R2'de, DB'de yolu tutulur.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS photo_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      image TEXT DEFAULT '',
+      author_name TEXT DEFAULT '',
+      author_email TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      views_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  const photoCols = db.exec("PRAGMA table_info(photo_submissions)");
+  if (photoCols[0]) {
+    const cols = photoCols[0].values.map(r => r[1]);
+    if (!cols.includes('description')) db.run("ALTER TABLE photo_submissions ADD COLUMN description TEXT DEFAULT ''");
+    if (!cols.includes('image')) db.run("ALTER TABLE photo_submissions ADD COLUMN image TEXT DEFAULT ''");
+    if (!cols.includes('author_name')) db.run("ALTER TABLE photo_submissions ADD COLUMN author_name TEXT DEFAULT ''");
+    if (!cols.includes('author_email')) db.run("ALTER TABLE photo_submissions ADD COLUMN author_email TEXT DEFAULT ''");
+    if (!cols.includes('status')) db.run("ALTER TABLE photo_submissions ADD COLUMN status TEXT DEFAULT 'pending'");
+    if (!cols.includes('views_count')) db.run("ALTER TABLE photo_submissions ADD COLUMN views_count INTEGER DEFAULT 0");
+    if (!cols.includes('created_at')) db.run("ALTER TABLE photo_submissions ADD COLUMN created_at DATETIME DEFAULT NULL");
+  }
   db.run(`
     CREATE TABLE IF NOT EXISTS pharmacies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

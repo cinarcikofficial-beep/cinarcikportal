@@ -1,0 +1,108 @@
+<% layout('partials/layout') %>
+<% locals.pageTitle = 'Fotoğraf Gönderileri' %>
+<%
+  const pending = items.filter(i => i.status === 'pending');
+  const published = items.filter(i => i.status !== 'pending');
+%>
+
+<div class="min-h-screen bg-zinc-950 text-zinc-100">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Başlık -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-black text-white">📷 Fotoğraf Gönderileri</h1>
+        <p class="text-zinc-500 text-sm mt-1">"Sizlerden Gelen" sayfasına gelen kullanıcı fotoğraflarını yönetin</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/sizlerden-gelen" target="_blank" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">Sayfayı Gör ↗</a>
+        <a href="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Onay Bekleyenler -->
+    <div class="mb-10">
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+        Onay Bekleyen Fotoğraflar (<%= pending.length %>)
+      </h2>
+
+      <% if (pending.length === 0) { %>
+        <div class="bg-zinc-900/60 rounded-xl p-8 text-center border border-zinc-800">
+          <p class="text-zinc-500">Onay bekleyen fotoğraf yok</p>
+        </div>
+      <% } else { %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <% pending.forEach(function(p) { %>
+            <div class="bg-zinc-900/80 rounded-xl border border-yellow-500/30 shadow-lg overflow-hidden">
+              <div class="aspect-[4/3] bg-zinc-950 overflow-hidden">
+                <img src="<%= p.image %>" alt="<%= p.title %>" class="w-full h-full object-cover">
+              </div>
+              <div class="p-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <p class="text-white font-bold text-sm"><%= p.title %></p>
+                  <span class="bg-yellow-500/20 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded shrink-0">BEKLİYOR</span>
+                </div>
+                <% if (p.description) { %>
+                  <p class="text-zinc-400 text-xs mb-2"><%= p.description %></p>
+                <% } %>
+                <div class="flex items-center gap-4 text-xs text-zinc-500 mb-3">
+                  <span>👤 <%= p.author_name || '—' %></span>
+                  <span>✉️ <%= p.author_email || '—' %></span>
+                  <span>🕐 <%= new Date(p.created_at).toLocaleString('tr-TR') %></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <form action="/admin/fotograflar/onayla/<%= p.id %>" method="POST" class="inline">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✓ Onayla ve Yayınla</button>
+                  </form>
+                  <form action="/admin/fotograflar/reddet/<%= p.id %>" method="POST" class="inline" data-confirm="Fotoğraf reddedilsin mi? Silinecek.">
+                    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Reddet</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Yayınlanan / Gizlenen -->
+    <div class="mb-10">
+      <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+        Yayınlanan ve Gizlenen Fotoğraflar (<%= published.length %>)
+      </h2>
+
+      <% if (published.length === 0) { %>
+        <div class="bg-zinc-900/60 rounded-xl p-8 text-center border border-zinc-800">
+          <p class="text-zinc-500">Henüz yayınlanmış fotoğraf yok</p>
+        </div>
+      <% } else { %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <% published.forEach(function(p) { %>
+            <div class="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden">
+              <div class="aspect-[4/3] bg-zinc-950 overflow-hidden">
+                <img src="<%= p.image %>" alt="<%= p.title %>" class="w-full h-full object-cover">
+              </div>
+              <div class="p-3">
+                <div class="flex items-center gap-2 mb-1">
+                  <p class="text-white font-bold text-sm line-clamp-1"><%= p.title %></p>
+                  <span class="<%= p.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700/50 text-zinc-400' %> text-[10px] font-bold px-2 py-0.5 rounded shrink-0"><%= p.status === 'active' ? 'YAYINDA' : 'GİZLİ' %></span>
+                </div>
+                <p class="text-zinc-500 text-xs mb-2">👤 <%= p.author_name || '—' %></p>
+                <div class="flex items-center gap-2">
+                  <form action="/admin/fotograflar/toggle/<%= p.id %>" method="POST" class="inline">
+                    <button type="submit" class="<%= p.status === 'active' ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500' %> text-white px-3 py-1.5 rounded-lg text-xs font-bold transition" title="<%= p.status === 'active' ? 'Yayından Kaldır' : 'Yayınla' %>"><%= p.status === 'active' ? '⛔' : '▶️' %></button>
+                  </form>
+                  <form action="/admin/fotograflar/sil/<%= p.id %>" method="POST" class="inline" data-confirm="Fotoğraf silinsin mi? Kalıcı olarak silinecek.">
+                    <button type="submit" class="bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">✕ Sil</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>

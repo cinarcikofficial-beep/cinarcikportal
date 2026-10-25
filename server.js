@@ -379,6 +379,7 @@ app.get('/sitemap.xml', (req, res) => {
   // Yeni eklenen sayfalar (ilk indeks tarihi)
   ['/etkinlikler', '/deniz', '/gizlilik'].forEach(p => addEntry(p, '2026-10-17'));
   ['/ulasim'].forEach(p => addEntry(p, '2026-10-20'));
+  ['/sizlerden-gelen'].forEach(p => addEntry(p, '2026-10-25'));
 
   // Haberler (son 500)
   try {
@@ -1067,7 +1068,10 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
     { name: 'image', maxCount: 1 },
     { name: 'gallery_files', maxCount: 12 }
   ]))(req, res, (err) => {
-    if (err) return next(err);
+    if (err) {
+      const edit = req.body && req.body.edit_id ? require('./db').get('SELECT * FROM sightseeing WHERE id = ?', [req.body.edit_id]) : null;
+      return res.render('admin/sightseeing-form', { edit: edit && edit.id ? edit : null, error: err.message || 'Görsel yüklenemedi.' });
+    }
     const { run, get, parseGallery, slugify, ensureUniqueSlug } = require('./db');
     const { title, summary, description, category, location, map_link, sort_order, status, edit_id, existing_gallery, remove_image } = req.body;
     if (!title || !String(title).trim()) {
@@ -1477,6 +1481,8 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   const totalComments = get('SELECT COUNT(*) as cnt FROM comments');
   const unreadMessages = get("SELECT COUNT(*) as cnt FROM contact_messages WHERE status = 'new'");
   const sightseeingCount = get('SELECT COUNT(*) as cnt FROM sightseeing');
+  const pendingPhotos = get("SELECT COUNT(*) as cnt FROM photo_submissions WHERE status = 'pending'");
+  const totalPhotos = get('SELECT COUNT(*) as cnt FROM photo_submissions');
   res.render('admin/dashboard', {
     announcements, places, news,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
@@ -1488,7 +1494,9 @@ app.get('/admin', isAuthenticated, async (req, res) => {
     pendingCommentsCount: (pendingComments && pendingComments.cnt) ? pendingComments.cnt : 0,
     totalCommentsCount: (totalComments && totalComments.cnt) ? totalComments.cnt : 0,
     unreadMessagesCount: (unreadMessages && unreadMessages.cnt) ? unreadMessages.cnt : 0,
-    sightseeingCount: (sightseeingCount && sightseeingCount.cnt) ? sightseeingCount.cnt : 0
+    sightseeingCount: (sightseeingCount && sightseeingCount.cnt) ? sightseeingCount.cnt : 0,
+    pendingPhotosCount: (pendingPhotos && pendingPhotos.cnt) ? pendingPhotos.cnt : 0,
+    totalPhotosCount: (totalPhotos && totalPhotos.cnt) ? totalPhotos.cnt : 0
   });
 });
 
@@ -1695,7 +1703,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/') && file.mimetype !== 'image/svg+xml') return cb(null, true);
-    cb(null, false);
+    cb(new Error('Sadece JPG, PNG, WebP veya GIF görsel yükleyebilirsiniz.'));
   }
 });
 
@@ -1842,7 +1850,7 @@ function finishUploads(req, res, done) {
 // Yüklenen fotoğrafları R2'ye gitmeden önce küçültür: max 1600px + WebP q70.
 // Orijinal (telefon) fotoğraflar 2-8 MB olabiliyordu — LCP ve bandwidth için en
 // büyük kazanç bu. Hata olursa dosya olduğu gibi yüklenir (akış bozulmaz).
-async function optimizeUploadedImages(req) {
+function collectUploadedFiles(req) {
   const files = [];
   if (req.file) files.push(req.file);
   if (req.files) {
@@ -1852,6 +1860,49 @@ async function optimizeUploadedImages(req) {
       if (Array.isArray(v)) files.push.apply(files, v);
     });
   }
+  return files.filter(f => f && f.path);
+}
+
+// Tarayici mimetype'sine guvenmek yetersiz: uzantisi/icerik tipi image
+// gorunen ama aslında o olmayan dosyalari ilk baytlarina (magic byte) bakarak
+// ayiklar. Sahte dosya diskten silinir, istek goralsiz devam eder.
+const IMAGE_SIGNATURES = [
+  b => b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF,                                    // JPEG
+  b => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47,                   // PNG
+  b => b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP',   // WEBP
+  b => { const g = b.toString('latin1', 0, 6); return g === 'GIF87a' || g === 'GIF89a'; }  // GIF
+];
+function looksLikeImage(file) {
+  let head;
+  try {
+    const fd = require('fs').openSync(file.path, 'r');
+    head = Buffer.alloc(12);
+    require('fs').readSync(fd, head, 0, 12, 0);
+    require('fs').closeSync(fd);
+  } catch (e) { return false; }
+  return IMAGE_SIGNATURES.some(fn => fn(head));
+}
+function dropForgedImages(req) {
+  const bad = collectUploadedFiles(req).filter(f => !looksLikeImage(f));
+  if (!bad.length) return;
+  const badSet = new Set(bad);
+  bad.forEach(function(f) {
+    try { require('fs').unlinkSync(f.path); } catch (e) {}
+    console.warn('[img] sahte goruntu reddedildi:', f.originalname || f.filename);
+  });
+  if (req.file && badSet.has(req.file)) req.file = null;
+  if (Array.isArray(req.files)) {
+    req.files = req.files.filter(f => !badSet.has(f));
+  } else if (req.files) {
+    Object.keys(req.files).forEach(function(k) {
+      const v = req.files[k];
+      if (Array.isArray(v)) req.files[k] = v.filter(f => !badSet.has(f));
+    });
+  }
+}
+
+async function optimizeUploadedImages(req) {
+  const files = collectUploadedFiles(req);
   const fsp = require('fs');
   const sharp = require('sharp');
   await Promise.all(files.map(async function(file) {
@@ -1880,6 +1931,7 @@ function withUpload(mw) {
   return function(req, res, next) {
     mw(req, res, function(err) {
       if (err) return next(err);
+      dropForgedImages(req);
       optimizeUploadedImages(req).then(function() {
         finishUploads(req, res, next);
       }).catch(function(e) {
@@ -2022,6 +2074,59 @@ app.post('/admin/duyurular/toggle/:id', isAuthenticated, (req, res) => {
     next === 'active' ? 'success' : 'info');
 });
 
+// ---- "Sizlerden Gelen" fotoğraf gönderileri: admin yönetimi ----
+app.get('/admin/fotograflar', isAuthenticated, (req, res) => {
+  const { all } = require('./db');
+  const items = all("SELECT * FROM photo_submissions ORDER BY (status = 'pending') DESC, created_at DESC");
+  res.render('admin/photos', { items });
+});
+
+app.post('/admin/fotograflar/onayla/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM photo_submissions WHERE id = ?', [req.params.id]);
+  if (!item || !item.id) return flash(res, '/admin/fotograflar', 'Fotoğraf bulunamadı', 'error');
+  run("UPDATE photo_submissions SET status = 'active' WHERE id = ?", [req.params.id]);
+  pingIndexNow('/sizlerden-gelen');
+  if (item.author_email) {
+    sendPortalMail({
+      to: item.author_email,
+      subject: '✓ Fotoğrafınız yayına alındı — Marmara\'nın İncisi',
+      text: 'Paylaştığınız fotoğraf onaylandı ve "Sizlerden Gelen" sayfamızda yayınlandı.\n\nBaşlık: ' + (item.title || '') + '\nhttps://marmaraninincisi.com/sizlerden-gelen',
+      logTag: 'foto-onay'
+    }).catch(e => console.error('[foto-onay] bildirim maili gönderilemedi:', e.message));
+  }
+  flash(res, '/admin/fotograflar', 'Yayına alındı: ' + (item.title || '#' + req.params.id) + (item.author_email ? '; yazara bildirim maili gönderildi' : ''));
+});
+
+app.post('/admin/fotograflar/reddet/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT title, image FROM photo_submissions WHERE id = ?', [req.params.id]);
+  if (item && item.image) deleteUploadedMedia(item.image);
+  run('DELETE FROM photo_submissions WHERE id = ?', [req.params.id]);
+  flash(res, '/admin/fotograflar', 'Reddedildi ve silindi: ' + ((item && item.title) || '#' + req.params.id), 'info');
+});
+
+app.post('/admin/fotograflar/toggle/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT * FROM photo_submissions WHERE id = ?', [req.params.id]);
+  let next = 'active';
+  if (item && item.id) {
+    next = item.status === 'active' ? 'passive' : 'active';
+    run('UPDATE photo_submissions SET status = ? WHERE id = ?', [next, item.id]);
+  }
+  flash(res, '/admin/fotograflar',
+    ((item && item.title) || '#' + req.params.id) + (next === 'active' ? ' yayına alındı' : ' yayından kaldırıldı (gizlendi)'),
+    next === 'active' ? 'success' : 'info');
+});
+
+app.post('/admin/fotograflar/sil/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT title, image FROM photo_submissions WHERE id = ?', [req.params.id]);
+  if (item && item.image) deleteUploadedMedia(item.image);
+  run('DELETE FROM photo_submissions WHERE id = ?', [req.params.id]);
+  flash(res, '/admin/fotograflar', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
+});
+
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
 app.post('/admin/duyurular/goruntulenme-sifirla', isAuthenticated, (req, res) => {
   const { run, get } = require('./db');
@@ -2072,9 +2177,16 @@ app.post('/ilan-ver', function(req, res, next) {
   withUpload(upload.single('image'))(req, res, function(err) {
     const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
     if (err) {
-      if (isJson) return res.status(400).json({ success: false, error: 'Görsel yüklenemedi: ' + (err.message || 'Geçersiz dosya.') });
+      let msg = 'Görsel yüklenemedi.';
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') msg = 'Dosya çok büyük (maksimum 10 MB).';
+        else if (err.code === 'LIMIT_UNEXPECTED_FILE') msg = 'Beklenmeyen dosya alanı.';
+      } else if (err && err.message) {
+        msg = err.message;
+      }
+      if (isJson) return res.status(400).json({ success: false, error: msg });
       const user = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
-      return res.render('ilan-ver', { user, error: 'Görsel yüklenemedi.', form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
+      return res.render('ilan-ver', { user, error: msg, form: req.body || {}, captchaImage: svgDataUri(issueCaptcha(req)) });
     }
     next();
   });
@@ -2150,6 +2262,92 @@ app.post('/ilan-ver', function(req, res, next) {
     });
   }
   flash(res, '/duyurular?gonderildi=1', 'İlanınız alındı; onaylandıktan sonra yayınlanacak');
+});
+
+// ---- "Sizlerden Gelen": kullanıcı fotoğraf paylaşımları (girişsiz, admin onaylı) ----
+app.get('/sizlerden-gelen', (req, res) => {
+  const { all } = require('./db');
+  const photos = all("SELECT * FROM photo_submissions WHERE status = 'active' ORDER BY created_at DESC LIMIT 200");
+  const user = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+  res.render('photos', {
+    photos,
+    user,
+    sent: req.query.gonderildi === '1',
+    error: null,
+    form: { user_name: user ? user.name : '', user_email: user ? user.email : '' },
+    captchaImage: svgDataUri(issueCaptcha(req))
+  });
+});
+
+app.post('/sizlerden-gelen', function(req, res, next) {
+  withUpload(upload.single('image'))(req, res, function(err) {
+    const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
+    if (err) {
+      let msg = 'Fotoğraf yüklenemedi.';
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') msg = 'Dosya çok büyük (maksimum 10 MB).';
+        else if (err.code === 'LIMIT_UNEXPECTED_FILE') msg = 'Beklenmeyen dosya alanı.';
+      } else if (err && err.message) {
+        msg = err.message;
+      }
+      if (isJson) return res.status(400).json({ success: false, error: msg });
+      const user = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+      return res.render('photos', {
+        photos: require('./db').all("SELECT * FROM photo_submissions WHERE status = 'active' ORDER BY created_at DESC LIMIT 200"),
+        user, error: msg, sent: false,
+        form: req.body || {},
+        captchaImage: svgDataUri(issueCaptcha(req))
+      });
+    }
+    next();
+  });
+}, (req, res) => {
+  const { run, all } = require('./db');
+  const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
+  const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
+
+  const userName = String(req.body.user_name || req.body.name || (gUser ? gUser.name : '')).trim();
+  const userEmail = String(req.body.user_email || req.body.email || (gUser ? gUser.email : '')).trim();
+  const title = String(req.body.title || '').trim();
+  const description = String(req.body.description || '').trim();
+  const captcha = String(req.body.captcha || '').trim().toUpperCase();
+
+  function fail(errMsg) {
+    if (isJson) return res.status(400).json({ success: false, error: errMsg });
+    return res.render('photos', {
+      photos: all("SELECT * FROM photo_submissions WHERE status = 'active' ORDER BY created_at DESC LIMIT 200"),
+      user: gUser, error: errMsg, sent: false,
+      form: req.body || {},
+      captchaImage: svgDataUri(issueCaptcha(req))
+    });
+  }
+
+  if (!userName || userName.length < 2) return fail('Lütfen adınızı ve soyadınızı belirtin.');
+  if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) return fail('Lütfen geçerli bir e-posta adresi girin.');
+  if (title.length < 3 || title.length > 120) return fail('Başlık 3 ile 120 karakter arasında olmalıdır.');
+  if (description.length > 2000) return fail('Açıklama en fazla 2000 karakter olabilir.');
+  if (!req.file) return fail('Lütfen paylaşmak istediğiniz fotoğrafı seçin.');
+  if (!captchaOk(req, captcha)) return fail('Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.');
+
+  run("INSERT INTO photo_submissions (title, description, image, author_name, author_email, status) VALUES (?,?,?,?,?,'pending')",
+    [title.slice(0, 120), description.slice(0, 2000), pubUrl(req.file), userName.slice(0, 80), userEmail.slice(0, 120)]);
+
+  req.session.captchaCodes = [];
+
+  sendPortalMail({
+    to: process.env.ADMIN_2FA_EMAIL || 'kerimkaplan@yahoo.com',
+    subject: '📷 Yeni fotoğraf paylaşımı: ' + title.slice(0, 60),
+    text: 'Başlık: ' + title +
+      '\nGönderen: ' + userName + ' <' + userEmail + '>' +
+      (description ? '\nAçıklama: ' + description : '') +
+      '\nFotoğraf: /sizlerden-gelen (admin panelden onaylayabilirsiniz)',
+    replyTo: userEmail || '',
+    logTag: 'foto-paylasim'
+  }).catch(e => console.error('[foto-paylasim] bildirim maili gönderilemedi:', e.message));
+
+  const receivedMsg = i18n.t(req.lang, 'photosReceived');
+  if (isJson) return res.json({ success: true, message: receivedMsg });
+  flash(res, '/sizlerden-gelen?gonderildi=1', 'Fotoğrafınız alındı; onaylandıktan sonra yayınlanacaktır');
 });
 
 app.get('/admin/hakkinda', isAuthenticated, (req, res) => {

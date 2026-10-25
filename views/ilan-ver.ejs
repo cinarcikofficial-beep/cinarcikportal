@@ -100,8 +100,9 @@
 
         <div>
           <label for="image" class="block text-sm font-medium text-zinc-300 mb-2"><%= t('photoLabel') %> (<%= t('listingOptional') %>)</label>
-          <input type="file" id="image" name="image" accept="image/*"
+          <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/gif"
             class="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:text-zinc-300 file:text-xs hover:file:bg-zinc-700 file:cursor-pointer">
+          <p class="text-xs text-zinc-500 mt-1"><%= t('photoHint') %></p>
         </div>
 
         <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
