@@ -146,7 +146,7 @@
             <span><%= lang.toUpperCase() %></span>
           </button>
           <div id="lang-menu" class="hidden absolute right-0 top-full mt-1 w-40 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[60] py-1 overflow-hidden">
-            <% [['tr','tr','Türkçe'],['en','gb','English'],['ru','ru','Русский'],['ar','sa','العربية'],['de','de','Deutsch']].forEach(function(item){ %>
+            <% [['tr','tr','Türkçe'],['en','gb','English'],['de','de','Deutsch'],['ru','ru','Русский'],['ar','sa','العربية']].forEach(function(item){ %>
               <% var l = item[0]; var langHref = (l === 'tr' ? '' : '/' + l) + (path === '/' ? '/' : path); %>
               <a href="<%= langHref %>" class="flex items-center gap-2 px-3 py-2 text-sm <%= lang === l ? 'text-emerald-400 bg-zinc-700/50' : 'text-zinc-200 hover:bg-zinc-700' %> transition-colors">
                 <img src="https://flagcdn.com/w40/<%= item[1] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
