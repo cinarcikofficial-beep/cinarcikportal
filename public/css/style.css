@@ -1136,6 +1136,46 @@ html.light .ann-img-frame { background: #f1f5f9; }
 @media (max-width: 767.98px) {
   .section-header { flex-direction: column; align-items: flex-start; justify-content: flex-start; }
 }
+
+/* ---- Ana sayfa anketi ---- */
+.poll-opt-checked {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
+}
+.poll-result-mine .poll-result-label { color: #34d399; font-weight: 700; }
+.poll-result-mine .poll-result-pct { color: #6ee7b7; }
+.poll-bar {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.poll-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #6366f1 60%, #8b5cf6);
+  transition: width 0.5s ease;
+}
+.poll-result-mine .poll-bar-fill { background: linear-gradient(90deg, #10b981, #34d399); }
+html.light .poll-card { background: #ffffff !important; border-color: #cbd5e1 !important; }
+html.light .poll-question { color: #0f172a !important; }
+html.light .poll-opt {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+html.light .poll-opt:hover { border-color: rgba(5, 150, 105, 0.55) !important; }
+html.light .poll-opt-checked {
+  background: rgba(5, 150, 105, 0.08) !important;
+  border-color: rgba(5, 150, 105, 0.65) !important;
+}
+html.light .poll-opt-label { color: #1e293b !important; }
+html.light .poll-bar { background: #e2e8f0; }
+html.light .poll-result-mine .poll-result-label { color: #047857; }
+html.light .poll-result-pct { color: #0f172a; }
+html.light .poll-result-count { color: #64748b; }
 .see-all {
   display: inline-flex;
   align-items: center;

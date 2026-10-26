@@ -95,6 +95,20 @@
         <p class="text-xs text-zinc-500 mt-0.5">Kullanıcı paylaşımlarını onaylayın · Toplam <%= typeof totalPhotosCount !== 'undefined' ? totalPhotosCount : 0 %></p>
       </a>
 
+      <a href="/admin/anketler" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-sky-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
+        <span class="absolute inset-x-0 top-0 h-1 bg-sky-500"></span>
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-2xl">📊</div>
+          <span class="text-[11px] font-bold text-sky-400 border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 rounded-lg">Yönet →</span>
+        </div>
+        <p class="text-4xl font-black text-white leading-none mb-2">
+          <%= typeof pollTotalVotes !== 'undefined' ? pollTotalVotes : 0 %>
+          <span class="text-sm font-semibold text-zinc-500 ml-1">oy</span>
+        </p>
+        <p class="text-sm font-bold text-zinc-100"><%= typeof pollCount !== 'undefined' && pollCount === 0 ? 'Henüz anket yok' : 'Ana Sayfa Anketi' %></p>
+        <p class="text-xs text-zinc-500 mt-0.5"><%= typeof pollActiveQuestion !== 'undefined' && pollActiveQuestion ? pollActiveQuestion : 'Soru oluşturup yayına alın' %></p>
+      </a>
+
       <a href="/admin/iletisim" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-cyan-500/60 hover:-translate-y-0.5 transition-all shadow-lg">
         <span class="absolute inset-x-0 top-0 h-1 bg-cyan-500"></span>
         <div class="flex items-start justify-between mb-4">

@@ -468,7 +468,7 @@ app.get('/rss.xml', (req, res) => {
 });
 
 app.get('/', async (req, res) => {
-  const { all } = require('./db');
+  const { all, get } = require('./db');
   const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 4");
   // Ana sayfa manşeti: /haberler ile birebir aynı kaynak ve sıralama,
   // böylece admin'de yapılan her değişiklik ana sayfada da aynen görünür.
@@ -489,6 +489,11 @@ app.get('/', async (req, res) => {
   const companies = all("SELECT * FROM companies WHERE status = 'active' ORDER BY is_featured DESC, sort_order ASC, created_at DESC LIMIT 3");
   const sightseeing = all("SELECT * FROM sightseeing WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC LIMIT 3");
   const photos = all("SELECT id, title, description, image, author_name, created_at FROM photo_submissions WHERE status = 'active' ORDER BY created_at DESC LIMIT 3");
+  // Anasayfa anketi: aktif anket + secenekleri (oy sayisi public'te HIC gosterilmez, yalniz oy vermine sonra
+  // POST /api/poll/oy donusu icerisinde doner)
+  const pollRow = get("SELECT id, question FROM polls WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+  const pollOptions = (pollRow && pollRow.id) ? all('SELECT id, label FROM poll_options WHERE poll_id = ? ORDER BY position ASC, id ASC', [pollRow.id]) : [];
+  const pollData = (pollRow && pollRow.id && (pollOptions || []).length >= 2) ? { id: pollRow.id, question: pollRow.question, options: pollOptions } : null;
   // "Bu hafta Çınarcık" modulu: yaklasan tarihli etkinlikler + deniz/hava verisi
   const weekEvents = all(`SELECT * FROM announcements WHERE status='active' AND category='etkinlik'
       AND event_date IS NOT NULL AND event_date <> '' AND event_date >= ?
@@ -517,7 +522,7 @@ app.get('/', async (req, res) => {
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, photos, ferryGroups: buildFerryGroups(ferryRows),
     transport: getCityTransport(),
-    headlines, regularNews, weekEvents, sea,
+    headlines, regularNews, weekEvents, sea, pollData,
     // LCP: hero 1. slayt + manşet ilk görseli <head>'de preload edilir (layout.ejs)
     preloadImages: ['/images/cinar/1.webp'].concat(
       headlines[0] && headlines[0].main_image_url && String(headlines[0].main_image_url).indexOf('/uploads/') === 0
@@ -1485,6 +1490,9 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   const sightseeingCount = get('SELECT COUNT(*) as cnt FROM sightseeing');
   const pendingPhotos = get("SELECT COUNT(*) as cnt FROM photo_submissions WHERE status = 'pending'");
   const totalPhotos = get('SELECT COUNT(*) as cnt FROM photo_submissions');
+  const pollActive = get("SELECT p.id, p.question, COALESCE((SELECT COUNT(*) FROM poll_votes v WHERE v.poll_id = p.id), 0) AS votes FROM polls p WHERE p.status = 'active' ORDER BY p.created_at DESC LIMIT 1");
+  const pollTotalVotesAll = get('SELECT COUNT(*) as cnt FROM poll_votes');
+  const pollCountAll = get('SELECT COUNT(*) as cnt FROM polls');
   res.render('admin/dashboard', {
     announcements, places, news,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
@@ -1498,7 +1506,10 @@ app.get('/admin', isAuthenticated, async (req, res) => {
     unreadMessagesCount: (unreadMessages && unreadMessages.cnt) ? unreadMessages.cnt : 0,
     sightseeingCount: (sightseeingCount && sightseeingCount.cnt) ? sightseeingCount.cnt : 0,
     pendingPhotosCount: (pendingPhotos && pendingPhotos.cnt) ? pendingPhotos.cnt : 0,
-    totalPhotosCount: (totalPhotos && totalPhotos.cnt) ? totalPhotos.cnt : 0
+    totalPhotosCount: (totalPhotos && totalPhotos.cnt) ? totalPhotos.cnt : 0,
+    pollActiveQuestion: (pollActive && pollActive.id) ? String(pollActive.question || '') : '',
+    pollTotalVotes: (pollTotalVotesAll && pollTotalVotesAll.cnt) ? pollTotalVotesAll.cnt : 0,
+    pollCount: (pollCountAll && pollCountAll.cnt) ? pollCountAll.cnt : 0
   });
 });
 
@@ -2156,6 +2167,79 @@ app.post('/admin/fotograflar/:id/goruntulenme-sifirla', isAuthenticated, (req, r
     if (ref.host === req.get('host')) back = ref.pathname + ref.search;
   } catch (e) {}
   flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
+});
+
+// ---- Ana sayfa anketi (admin) ----
+// Liste: soru + secenekler + oy adetleri. Yeni anket PASIF eklenir, tek anket
+// 'active' olabilir (yayina alma degil digerlerini passive yapar).
+app.get('/admin/anketler', isAuthenticated, (req, res) => {
+  const { all } = require('./db');
+  const polls = all('SELECT * FROM polls ORDER BY (status = \'active\') DESC, created_at DESC');
+  const counts = all('SELECT poll_id, COUNT(*) AS cnt FROM poll_votes GROUP BY poll_id');
+  const byPoll = {};
+  (counts || []).forEach(c => { byPoll[c.poll_id] = Number(c.cnt) || 0; });
+  polls.forEach(p => { p.votes = byPoll[p.id] || 0; });
+  const optRows = all('SELECT o.id, o.poll_id, o.label, COUNT(v.id) AS cnt FROM poll_options o LEFT JOIN poll_votes v ON v.option_id = o.id GROUP BY o.id ORDER BY o.poll_id ASC, o.position ASC, o.id ASC') || [];
+  polls.forEach(p => { p.options = optRows.filter(o => o.poll_id === p.id); });
+  res.render('admin/polls', { polls, errorQ: req.query.err === 'q', errorOpt: req.query.err === 'opt' });
+});
+
+app.post('/admin/anketler/ekle', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const question = String(req.body.question || '').trim().replace(/\s+/g, ' ');
+  const labels = (Array.isArray(req.body.labels) ? req.body.labels : [req.body.labels])
+    .map(l => String(l || '').trim().replace(/\s+/g, ' ')).filter(Boolean);
+  if (question.length < 3 || question.length > 300) {
+    return flash(res, '/admin/anketler?err=q', 'Soru 3-300 karakter olmalı', 'error');
+  }
+  if (labels.length < 2) {
+    return flash(res, '/admin/anketler?err=opt', 'En az 2 seçenek gerekli', 'error');
+  }
+  if (labels.length > 8) {
+    return flash(res, '/admin/anketler?err=opt', 'En fazla 8 seçenek', 'error');
+  }
+  if (labels.some(l => l.length > 120)) {
+    return flash(res, '/admin/anketler?err=opt', 'Seçenek başına en fazla 120 karakter', 'error');
+  }
+  run('INSERT INTO polls (question, status, created_at) VALUES (?, \'passive\', datetime(\'now\'))', [question]);
+  const poll = get('SELECT id FROM polls ORDER BY id DESC LIMIT 1');
+  labels.forEach((l, i) => {
+    run('INSERT INTO poll_options (poll_id, label, position) VALUES (?, ?, ?)', [poll.id, l, i]);
+  });
+  console.log(`[admin] Yeni anket eklendi (#${poll.id}): "${question}" (${labels.length} seçenek) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/anketler', `Anket kaydedildi (#${poll.id}) — yayına almak için ▶ kullanın`, 'info');
+});
+
+app.post('/admin/anketler/toggle/:id', isAuthenticated, (req, res) => {
+  const { run, get } = require('./db');
+  const item = get('SELECT id, question, status FROM polls WHERE id = ?', [req.params.id]);
+  if (!item || !item.id) return flash(res, '/admin/anketler', 'Anket bulunamadı', 'error');
+  if (item.status === 'active') {
+    run('UPDATE polls SET status = \'passive\' WHERE id = ?', [item.id]);
+    flash(res, '/admin/anketler', 'Anket yayından kaldırıldı', 'info');
+  } else {
+    // tek aktif anket: tum aktifleri passive yapar, bu aktif olur
+    run('UPDATE polls SET status = \'passive\' WHERE status = \'active\'');
+    run('UPDATE polls SET status = \'active\' WHERE id = ?', [item.id]);
+    console.log(`[admin] Anket yayına alındı (#${item.id}): "${item.question}" - ${req.session.adminUser || 'admin'}`);
+    flash(res, '/admin/anketler', `Anket yayında: "${item.question}"`);
+  }
+});
+
+app.post('/admin/anketler/oy-sifirla/:id', isAuthenticated, (req, res) => {
+  const { run } = require('./db');
+  run('DELETE FROM poll_votes WHERE poll_id = ?', [req.params.id]);
+  console.log(`[admin] Anket oyları sıfırlandı (#${req.params.id}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/anketler', `Anket #${req.params.id} oyları sıfırlandı`, 'info');
+});
+
+app.post('/admin/anketler/sil/:id', isAuthenticated, (req, res) => {
+  const { run } = require('./db');
+  run('DELETE FROM poll_votes WHERE poll_id = ?', [req.params.id]);
+  run('DELETE FROM poll_options WHERE poll_id = ?', [req.params.id]);
+  run('DELETE FROM polls WHERE id = ?', [req.params.id]);
+  console.log(`[admin] Anket tamamen silindi (#${req.params.id}) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/anketler', `Anket #${req.params.id} silindi`, 'info');
 });
 
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)
@@ -3034,6 +3118,84 @@ app.post('/api/foto-gor/:id', (req, res) => {
     referrer: req.headers.referer || req.headers.referrer || ''
   });
   res.json({ success: true });
+});
+
+// ---- Ana sayfa anketi ----
+// Oy verme POST'larında basit CSRF koruması (admin '/admin' korumasının public kopyası)
+function pollOriginOk(req) {
+  const source = req.headers.origin || req.headers.referer;
+  if (!source) return true;
+  try { return new URL(source).host === req.headers.host; } catch (e) { return false; }
+}
+// voter_key: httpOnly poll_uid cookie'si (1 yıl). Yoksa üretip Response'a basar.
+function pollVoterKey(req, res) {
+  let key = getCookie(req, 'poll_uid');
+  if (!key || key.length < 10) {
+    key = crypto.randomBytes(16).toString('hex');
+    res.cookie('poll_uid', key, { httpOnly: true, sameSite: 'lax', maxAge: 365 * 24 * 60 * 60 * 1000 });
+  }
+  return key;
+}
+// Anket sonuçları: seçenekler + adet + yüzde (sesiz secenekler 0 sayar)
+function pollResults(pollId) {
+  const { all } = require('./db');
+  const opts = all('SELECT id, label, position FROM poll_options WHERE poll_id = ? ORDER BY position ASC, id ASC', [pollId]);
+  const counts = all('SELECT option_id, COUNT(*) AS cnt FROM poll_votes WHERE poll_id = ? GROUP BY option_id', [pollId]);
+  const byOpt = {};
+  let total = 0;
+  (counts || []).forEach(c => { byOpt[c.option_id] = Number(c.cnt) || 0; total += Number(c.cnt) || 0; });
+  const options = (opts || []).map(o => {
+    const cnt = byOpt[o.id] || 0;
+    return { id: o.id, label: o.label, count: cnt, pct: total > 0 ? Math.round(cnt * 100 / total) : 0 };
+  });
+  return { pollId, total, options };
+}
+
+// Ana sayfada aktif anket verisi (sonuçlar gizli: yalnızca soru + seçenekler)
+app.get('/api/poll-aktif', (req, res) => {
+  const { get, all } = require('./db');
+  const poll = get("SELECT id, question FROM polls WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+  if (!poll.id) return res.json({ success: true, poll: null });
+  const opts = all('SELECT id, label FROM poll_options WHERE poll_id = ? ORDER BY position ASC, id ASC', [poll.id]);
+  res.json({ success: true, poll: { id: poll.id, question: poll.question, options: opts || [] } });
+});
+
+// Oy kullanma: tek seçim, kullanıcı başına 1 oy (poll_uid cookie + UNIQUE(poll_id, voter_key))
+app.post('/api/poll/oy', (req, res) => {
+  const { get, run } = require('./db');
+  if (!pollOriginOk(req)) return res.status(403).json({ success: false, error: 'Geçersiz istek kaynağı' });
+  const poll = get("SELECT id, question FROM polls WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+  if (!poll.id) return res.status(404).json({ success: false, error: 'Aktif anket yok' });
+  const optionId = parseInt(String(req.body && req.body.optionId || '').replace(/\D/g, ''));
+  const opt = get('SELECT id FROM poll_options WHERE id = ? AND poll_id = ?', [optionId, poll.id]);
+  if (!opt.id) return res.status(400).json({ success: false, error: 'Geçerli bir seçenek seçin' });
+  const voterKey = pollVoterKey(req, res);
+  const existing = get('SELECT id, option_id FROM poll_votes WHERE poll_id = ? AND voter_key = ?', [poll.id, voterKey]);
+  if (existing.id) {
+    return res.json({ success: true, already: true, ...pollResults(poll.id), myOptionId: existing.option_id });
+  }
+  try {
+    run("INSERT INTO poll_votes (poll_id, option_id, voter_key, created_at) VALUES (?, ?, ?, datetime('now'))", [poll.id, optionId, voterKey]);
+  } catch (e) {
+    if (String(e.message).indexOf('UNIQUE') >= 0) {
+      const again = get('SELECT id, option_id FROM poll_votes WHERE poll_id = ? AND voter_key = ?', [poll.id, voterKey]);
+      return res.json({ success: true, already: true, ...pollResults(poll.id), myOptionId: (again && again.option_id) || optionId });
+    }
+    return res.status(500).json({ success: false, error: 'Oy kaydedilemedi' });
+  }
+  logPageView({ path: '/api/poll/oy', method: 'POST', status: 200, ip: req.ip, user_agent: req.headers['user-agent'] || '', referrer: req.headers.referer || '' });
+  res.json({ success: true, already: false, ...pollResults(poll.id), myOptionId: optionId });
+});
+
+// Sonuçlar: kişi daha önce oy verdiyse sonucu geri getirir (yeniden oylama yok)
+app.get('/api/poll-sonuc', (req, res) => {
+  const { get } = require('./db');
+  const poll = get("SELECT id FROM polls WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+  if (!poll.id) return res.json({ success: true, poll: null });
+  const voterKey = getCookie(req, 'poll_uid');
+  const mine = voterKey ? get('SELECT id, option_id FROM poll_votes WHERE poll_id = ? AND voter_key = ?', [poll.id, voterKey]) : null;
+  if (!mine || !mine.id) return res.json({ success: true, voted: false, poll: { id: poll.id } });
+  res.json({ success: true, voted: true, ...pollResults(poll.id), myOptionId: mine.option_id });
 });
 
 // Google auth middleware

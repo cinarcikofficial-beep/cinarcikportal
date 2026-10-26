@@ -50,6 +50,9 @@ const IDENTITY_COLS = {
   comments: ['user_email', 'user_name', 'content'],
   contact_messages: ['email', 'subject', 'message'],
   photo_submissions: ['title', 'author_email'],
+  polls: ['question'],
+  poll_options: ['poll_id', 'label'],
+  poll_votes: ['poll_id', 'option_id', 'voter_key'],
   users: ['username'],
   pharmacies: ['name', 'phone'],
   ferry_schedules: ['origin', 'destination'],
@@ -872,6 +875,45 @@ function createTables() {
     if (!cols.includes('views_count')) db.run("ALTER TABLE photo_submissions ADD COLUMN views_count INTEGER DEFAULT 0");
     if (!cols.includes('created_at')) db.run("ALTER TABLE photo_submissions ADD COLUMN created_at DATETIME DEFAULT NULL");
   }
+  // Ana sayfa anketi: tek soru + çoklu seçenek + oylar (kullanıcı/poll başına 1 oy; UNIQUE(poll_id, voter_key)).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS polls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question TEXT NOT NULL,
+      status TEXT DEFAULT 'passive',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  const pollCols = db.exec("PRAGMA table_info(polls)");
+  if (pollCols[0]) {
+    const cols = pollCols[0].values.map(r => r[1]);
+    if (!cols.includes('status')) db.run("ALTER TABLE polls ADD COLUMN status TEXT DEFAULT 'passive'");
+    if (!cols.includes('created_at')) db.run("ALTER TABLE polls ADD COLUMN created_at DATETIME DEFAULT NULL");
+  }
+  db.run(`
+    CREATE TABLE IF NOT EXISTS poll_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      poll_id INTEGER NOT NULL DEFAULT 0,
+      label TEXT NOT NULL,
+      position INTEGER DEFAULT 0
+    )
+  `);
+  const pollOptCols = db.exec("PRAGMA table_info(poll_options)");
+  if (pollOptCols[0]) {
+    const cols = pollOptCols[0].values.map(r => r[1]);
+    if (!cols.includes('position')) db.run("ALTER TABLE poll_options ADD COLUMN position INTEGER DEFAULT 0");
+  }
+  db.run(`
+    CREATE TABLE IF NOT EXISTS poll_votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      poll_id INTEGER NOT NULL DEFAULT 0,
+      option_id INTEGER NOT NULL DEFAULT 0,
+      voter_key TEXT NOT NULL DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.run('CREATE UNIQUE INDEX IF NOT EXISTS poll_votes_poll_voter ON poll_votes (poll_id, voter_key)');
+  db.run('CREATE INDEX IF NOT EXISTS poll_options_poll_idx ON poll_options (poll_id, position)');
   db.run(`
     CREATE TABLE IF NOT EXISTS pharmacies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
