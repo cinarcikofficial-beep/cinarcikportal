@@ -192,7 +192,7 @@ html.light [style*="background:rgba(255,255,255,0.05)"] { background: #f1f5f9 !i
 
 /* ---- Light mode: navigasyon / hover / buton düzeltmeleri ---- */
 /* Mobil hamburger menü — gece zemini sabit kodlanmış, gündüz açık olmalı */
-@media (max-width: 1023.98px) {
+@media (max-width: 1279.98px) {
   html.light .main-nav.open {
     background: rgba(255, 255, 255, 0.98);
     border-bottom-color: #e2e8f0;
@@ -1442,7 +1442,7 @@ html.light .rich-desc a { color: #059669; }
 .rich-desc img { max-width: 100%; height: auto; border-radius: 0.75rem; margin: 0.5rem 0; }
 
 /* ---- Mobil Menü (hamburger) ---- */
-@media (max-width: 1023.98px) {
+@media (max-width: 1279.98px) {
   .main-nav.open {
     display: flex !important;
     flex-direction: column;
