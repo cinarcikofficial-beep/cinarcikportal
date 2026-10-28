@@ -13,3 +13,5 @@ t_out.log
 t_err.log
 test.log
 data/
+
+.vscode/
