@@ -550,8 +550,10 @@ app.get('/haberler', async (req, res) => {
     txArray(headlines, ['title', 'summary'], req.lang),
     txArray(regularNews, ['title', 'summary'], req.lang)
   ]);
-  const mostRead = headlines.concat(regularNews).sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0)).slice(0, 5);
-  res.render('news', { headlines, regularNews, mostRead });
+  const ranked = headlines.concat(regularNews).sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0));
+  const mostRead = ranked.slice(0, 5);
+  const otherNews = ranked.slice(5, 12);
+  res.render('news', { headlines, regularNews, mostRead, otherNews });
 });
 
 app.get('/haber/:slug', async (req, res) => {
@@ -2240,6 +2242,48 @@ app.post('/admin/anketler/sil/:id', isAuthenticated, (req, res) => {
   run('DELETE FROM polls WHERE id = ?', [req.params.id]);
   console.log(`[admin] Anket tamamen silindi (#${req.params.id}) - ${req.session.adminUser || 'admin'}`);
   flash(res, '/admin/anketler', `Anket #${req.params.id} silindi`, 'info');
+});
+
+app.get('/admin/anketler/duzenle/:id', isAuthenticated, (req, res) => {
+  const { get, all } = require('./db');
+  const poll = get('SELECT id, question, status, created_at FROM polls WHERE id = ?', [req.params.id]);
+  if (!poll || !poll.id) return flash(res, '/admin/anketler', 'Anket bulunamadi', 'error');
+  const options = all('SELECT id, label, position FROM poll_options WHERE poll_id = ? ORDER BY position ASC, id ASC', [poll.id]);
+  res.render('admin/poll-edit', { poll, options, errorQ: req.query.err === 'q', errorOpt: req.query.err === 'opt' });
+});
+
+app.post('/admin/anketler/guncelle/:id', isAuthenticated, (req, res) => {
+  const { run, get, all } = require('./db');
+  const poll = get('SELECT id, question FROM polls WHERE id = ?', [req.params.id]);
+  if (!poll || !poll.id) return flash(res, '/admin/anketler', 'Anket bulunamadi', 'error');
+  const question = String(req.body.question || '').trim();
+  const labels = (Array.isArray(req.body.labels) ? req.body.labels : [req.body.labels])
+    .map(l => String(l || '').trim()).filter(l => l.length > 0);
+  if (question.length < 3 || question.length > 300) return flash(res, `/admin/anketler/duzenle/${poll.id}?err=q`, 'Soru 3-300 karakter olmali', 'error');
+  if (labels.length < 2) return flash(res, `/admin/anketler/duzenle/${poll.id}?err=opt`, 'En az 2 secenek gerekli', 'error');
+  if (labels.length > 8) return flash(res, `/admin/anketler/duzenle/${poll.id}?err=opt`, 'En fazla 8 secenek', 'error');
+  if (labels.some(l => l.length > 120)) return flash(res, `/admin/anketler/duzenle/${poll.id}?err=opt`, 'Secenek basina en fazla 120 karakter', 'error');
+  const existing = all('SELECT id, label FROM poll_options WHERE poll_id = ? ORDER BY position ASC, id ASC', [poll.id]) || [];
+  // mevcut secenekler sira korunur -> oylar (option_id bazli) bozulmaz
+  for (let i = 0; i < Math.min(labels.length, existing.length); i++) {
+    if (labels[i] !== existing[i].label) run('UPDATE poll_options SET label = ? WHERE id = ?', [labels[i], existing[i].id]);
+  }
+  if (labels.length > existing.length) {
+    const maxPos = get('SELECT COALESCE(MAX(position), -1) AS m FROM poll_options WHERE poll_id = ?', [poll.id]);
+    let pos = (maxPos && maxPos.m != null ? Number(maxPos.m) : -1) + 1;
+    for (let i = existing.length; i < labels.length; i++) {
+      run('INSERT INTO poll_options (poll_id, label, position) VALUES (?, ?, ?)', [poll.id, labels[i], pos++]);
+    }
+  } else if (labels.length < existing.length) {
+    const removed = existing.slice(labels.length);
+    removed.forEach(o => {
+      run('DELETE FROM poll_votes WHERE option_id = ?', [o.id]);
+      run('DELETE FROM poll_options WHERE id = ?', [o.id]);
+    });
+  }
+  if (question !== poll.question) run('UPDATE polls SET question = ? WHERE id = ?', [question, poll.id]);
+  console.log(`[admin] Anket guncellendi (#${poll.id}): "${question}" (${labels.length} secenek) - ${req.session.adminUser || 'admin'}`);
+  flash(res, '/admin/anketler', `Anket #${poll.id} guncellendi`);
 });
 
 // Duyuru/ilan görüntülenme sıfırlama (toplu + satır bazlı)

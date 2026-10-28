@@ -73,6 +73,7 @@
           <p class="text-xs text-zinc-500"><%= new Date(p.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></p>
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
+          <a href="/admin/anketler/duzenle/<%= p.id %>" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded-lg text-xs font-bold transition" title="Düzenle">✏️</a>
           <% if (p.status === 'active') { %>
           <form method="POST" action="/admin/anketler/toggle/<%= p.id %>" data-confirm="Anket yayından kaldırılsın mı?">
             <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded-lg text-xs font-bold transition" title="Yayından kaldır">⛔</button>
