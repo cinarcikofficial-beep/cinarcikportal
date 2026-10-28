@@ -51,7 +51,7 @@
           <% const featured = headlines[0]; %>
           <% if (featured) { %>
             <% const img = featured.main_image_url || '/img/fallback.webp'; %>
-            <div id="manset-slider-container" class="relative w-full h-[400px] md:h-[480px] overflow-hidden rounded-2xl">
+            <div id="manset-slider-container" class="relative w-full h-[400px] md:h-[512px] overflow-hidden rounded-2xl">
               <img id="manset-img" src="<%= img %>" alt="<%= featured.title %>" class="w-full h-full object-cover object-top transition-all duration-500">
               <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent z-10"></div>
               <div id="manset-text" class="absolute bottom-0 left-0 p-6 sm:p-8 lg:p-10 text-white z-20 max-w-2xl space-y-3">
@@ -83,13 +83,13 @@
         </div>
       </div>
 
-      <!-- B) Sağ Bölüm (4 Kolon - Yan Kartlar) -->
+      <!-- B) Sağ Bölüm (4 Kolon - Yan Kartlar; 3 kart = sliderin sabit yüksekligi) -->
       <div class="lg:col-span-4 space-y-4">
-        <% regularNews.slice(0, 4).forEach(n => { %>
+        <% regularNews.slice(0, 3).forEach(n => { %>
           <a href="/haber/<%= n.slug || n.id %>" class="block group">
             <div class="relative rounded-xl overflow-hidden shadow-lg bg-zinc-800">
               <% const img = n.main_image_url || '/img/fallback.webp'; %>
-              <img src="<%= img %>" alt="<%= n.title %>" loading="lazy" decoding="async" class="w-full h-48 object-cover object-center rounded-xl group-hover:scale-105 transition-transform duration-300">
+              <img src="<%= img %>" alt="<%= n.title %>" loading="lazy" decoding="async" class="w-full h-40 object-cover object-center rounded-xl group-hover:scale-105 transition-transform duration-300">
               <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
               <div class="absolute bottom-0 left-0 p-3 text-white news-thumb-overlay">
                 <span class="inline-block bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded mb-1">
@@ -105,20 +105,31 @@
             </div>
           </a>
         <% }) %>
+      </div>
+    </div>
 
-        <!-- ✍️ YAZAR ARANIYOR -->
-        <a href="/iletisim" class="block group">
-          <div class="bg-zinc-900 border border-zinc-800/80 rounded-xl p-4 hover:border-emerald-500/50 transition-colors">
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-white font-bold text-sm flex items-center gap-2">
-                <span class="w-1.5 h-4 bg-emerald-500 rounded-full inline-block"></span>
-                ✍️ Yazar Aranıyor
-              </h3>
-              <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full animate-pulse">Açık</span>
-            </div>
-            <p class="text-zinc-500 text-xs mb-3 leading-relaxed">Çınarcık'ı anlatacak kalemleri arıyoruz. Sen de ekibe katıl!</p>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="relative rounded-lg overflow-hidden aspect-[3/4] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
+    <!-- ✍️ YAZAR ARANIYOR (tam genişlik yatay bant) -->
+    <a href="/iletisim" class="block group mb-8">
+      <div class="relative overflow-hidden bg-gradient-to-r from-zinc-900 via-emerald-950/50 to-zinc-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 hover:border-emerald-400/70 hover:shadow-[0_0_35px_rgba(16,185,129,0.2)] transition-all flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div class="pointer-events-none absolute inset-0" style="background: radial-gradient(500px 130px at 18% 0%, rgba(16,185,129,0.14), transparent 70%)"></div>
+        <div class="pointer-events-none absolute top-0 bottom-0 w-24 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse" style="left: 30%"></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-1.5 h-4 bg-emerald-500 rounded-full inline-block"></span>
+            <h3 class="text-white font-bold text-sm flex items-center gap-2">✍️ Yazar Aranıyor</h3>
+            <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full animate-pulse">Açık</span>
+          </div>
+          <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed">Çınarcık'ı anlatacak kalemleri arıyoruz. Sen de ekibe katıl!</p>
+        </div>
+        <div class="hidden md:flex flex-col gap-1.5 shrink-0">
+          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">🖊️ İsmin yazılarınla yayında</span>
+          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">⏱️ Kendi temponda, haftada bir</span>
+          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">🤝 Deneyim şart değil</span>
+        </div>
+        <div class="flex items-center gap-3 shrink-0 sm:ml-2">
+          <span class="inline-flex items-center gap-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg group-hover:shadow-emerald-500/40 transition-all">Ekipte Yaz 🖋️</span>
+          <div class="flex items-center gap-2">
+              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
                 <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
                   <circle cx="50" cy="32" r="16" fill="#27272a"/>
                   <path d="M50 50c-18 0-30 12-33 30l-3 40h14l3-28c1-8 8-14 19-14s18 6 19 14l3 28h14l-3-40c-3-18-15-30-33-30z" fill="#27272a"/>
@@ -129,7 +140,7 @@
                 </svg>
                 <span class="absolute bottom-1.5 left-0 right-0 text-center text-[10px] font-semibold text-zinc-600">Aday #1</span>
               </div>
-              <div class="relative rounded-lg overflow-hidden aspect-[3/4] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
+              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
                 <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
                   <path d="M32 34c0-14 8-24 18-24s18 10 18 24c0 6-1 11-3 15l4 8c6 2 10 6 10 12v5H21v-5c0-6 4-10 10-12l4-8c-2-4-3-9-3-15z" fill="#27272a"/>
                   <circle cx="50" cy="34" r="13" fill="#fff"/>
@@ -141,7 +152,7 @@
                 </svg>
                 <span class="absolute bottom-1.5 left-0 right-0 text-center text-[10px] font-semibold text-zinc-600">Aday #2</span>
               </div>
-              <div class="relative rounded-lg overflow-hidden aspect-[3/4] bg-emerald-50 flex items-end justify-center group-hover:bg-emerald-100 transition-colors">
+              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-emerald-50 flex items-end justify-center group-hover:bg-emerald-100 transition-colors">
                 <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
                   <circle cx="50" cy="32" r="16" fill="#6ee7b7" opacity="0.5"/>
                   <path d="M50 50c-18 0-30 12-33 30l-3 40h14l3-28c1-8 8-14 19-14s18 6 19 14l3 28h14l-3-40c-3-18-15-30-33-30z" fill="#6ee7b7" opacity="0.5"/>
@@ -152,9 +163,8 @@
               </div>
             </div>
           </div>
-        </a>
-      </div>
-    </div>
+        </div>
+      </a>
 
     <!-- 3. KATEGORİ FİLTRE BAR -->
     <div class="mb-8 overflow-x-auto">
@@ -228,33 +238,62 @@
       </div>
 
       <!-- B) Sağ Kolon (4 Kolon - Sidebar) -->
-      <div id="news-sidebar" class="lg:col-span-4 space-y-8">
+      <div id="news-sidebar" class="lg:col-span-4 space-y-8 flex flex-col">
 
         <!-- 1. 🔥 En Çok Okunanlar -->
         <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
           <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <span class="text-red-500">🔥</span> <%= t('mostRead') %>
           </h3>
-          <div class="space-y-3">
+          <div class="space-y-4">
             <% mostRead.forEach((n, i) => { %>
-              <div class="flex items-start gap-3 group">
-                <span class="flex-shrink-0 w-8 h-8 rounded-lg bg-red-600/10 text-red-600 font-black text-sm flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all">
-                  <%= i + 1 %>
-                </span>
-                <div class="flex-1">
-                  <a href="/haber/<%= n.slug || n.id %>" class="text-zinc-200 hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm">
-                    <%= n.title %>
-                  </a>
+              <a href="/haber/<%= n.slug || n.id %>" class="flex items-start gap-3 group">
+                <div class="relative flex-shrink-0 w-28 h-20 rounded-lg overflow-hidden bg-zinc-800">
+                  <img src="<%= n.main_image_url || '/img/fallback.webp' %>" alt="<%= n.title %>" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                  <span class="absolute top-1 left-1 w-5 h-5 rounded-md bg-red-600 text-white text-[11px] font-black flex items-center justify-center"><%= i + 1 %></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-zinc-200 group-hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm"><%= n.title %></div>
                   <div class="flex items-center gap-2 text-xs text-zinc-500 mt-1">
                     <span>👁️ <%= n.views_count || 0 %></span>
                     <span>•</span>
                     <span><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short' }) %></span>
                   </div>
                 </div>
-              </div>
+              </a>
             <% }) %>
           </div>
         </div>
+
+        <% if (otherNews.length) { %>
+        <!-- 2. 📰 Diğer Haberler -->
+        <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 shadow-lg flex-1 flex flex-col">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-emerald-400">📰</span> <%= t('catOtherNews') %>
+          </h3>
+          <div class="space-y-4">
+            <% otherNews.forEach((n, i) => { %>
+              <a href="/haber/<%= n.slug || n.id %>" class="flex items-start gap-3 group">
+                <div class="relative flex-shrink-0 w-32 h-24 rounded-lg overflow-hidden bg-zinc-800">
+                  <img src="<%= n.main_image_url || '/img/fallback.webp' %>" alt="<%= n.title %>" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                  <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-zinc-950/80 text-zinc-100 text-[11px] font-black"><%= i + 6 %></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-zinc-200 group-hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm"><%= n.title %></div>
+                  <div class="flex items-center gap-2 text-xs text-zinc-500 mt-1">
+                    <span>👁️ <%= n.views_count || 0 %></span>
+                    <span>•</span>
+                    <span><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short' }) %></span>
+                  </div>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+          <div class="mt-auto pt-4 text-center border-t border-zinc-800/60">
+            <a href="/haberler" class="text-xs font-medium text-emerald-400/90 hover:text-emerald-300 transition-colors"><%= t('allNews') %></a>
+          </div>
+        </div>
+        <% } %>
 
       </div>
     </div>
