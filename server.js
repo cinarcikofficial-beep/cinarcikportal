@@ -21,6 +21,31 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false 
 // express.static da compression'ın geçtiği res yazmasından faydalanır.
 const compression = require('compression');
 app.use(compression());
+
+// ---- SEO: tek canonical host + tek URL formu (GSC "Duplicate/Alternate canonical" fix) ----
+// Google'in taramalarinda 3 kopya URL uzayi vardi:
+//  1) www.marmaraninincisi.com -> 200 (redirect'siz, canonical'i apex'e yonlik)
+//     => "Alternate page with proper canonical tag" uyarisi
+//  2) /haberler/ (sondaki slash) -> 200 ve canonical'i KENDISI (slash'li)
+//     => "Duplicate without user-selected canonical" uyarisi
+//  3) Bunlarin www versiyonlari => "Duplicate, Google chose different canonical"
+// Cozum: www host 301 -> apex; GET'te sondaki / 301 -> slashesiz. Lokal/hostsuz
+// istemler (localhost, IP, server59...) dokunulmaz.
+const CANON_HOST = (process.env.SITE_URL || 'https://marmaraninincisi.com')
+  .replace(/^https?:\/\//, '').replace(/\/$/, '');
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').toLowerCase();
+  if (host === 'www.' + CANON_HOST) {
+    return res.redirect(301, 'https://' + CANON_HOST + req.originalUrl);
+  }
+  const qi = req.originalUrl.indexOf('?');
+  const p = qi === -1 ? req.originalUrl : req.originalUrl.slice(0, qi);
+  const q = qi === -1 ? '' : req.originalUrl.slice(qi);
+  if (req.method === 'GET' && p.length > 1 && /\/+$/.test(p)) {
+    return res.redirect(301, p.replace(/\/+$/, '') + q);
+  }
+  next();
+});
 const PORT = process.env.PORT || 3000;
 
 // Admin aksiyonları sonrası köşe bildirimi (Windows tarzı toast): hedefe
