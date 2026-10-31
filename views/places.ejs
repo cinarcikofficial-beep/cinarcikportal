@@ -100,14 +100,14 @@
       </div>
     <% } else { %>
       <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem" id="places-list">
-        <% places.forEach((place) => { 
+        <% places.forEach((place, idx) => { 
           const features = typeof place.features === 'string' ? JSON.parse(place.features || '[]') : (place.features || []);
           const gallery = typeof place.gallery_images === 'string' ? JSON.parse(place.gallery_images || '[]') : (place.gallery_images || []);
           const img = place.main_image_url || (gallery[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=75');
           const estTypeArr = typeof place.establishment_type === 'string' ? JSON.parse(place.establishment_type || '[]') : (place.establishment_type || []);
           const mealTypeArr = typeof place.meal_type === 'string' ? JSON.parse(place.meal_type || '[]') : (place.meal_type || []);
         %>
-          <div class="place-card"
+          <div class="place-card" <%- idx >= 6 ? 'style="display:none;"' : '' %>
             data-category="<%= place.category || place.type || '' %>"
             data-establishment-type="<%= estTypeArr.join(',') %>"
             data-meal-type="<%= mealTypeArr.join(',') %>"
@@ -271,6 +271,34 @@
           </div>
         <% }) %>
       </div>
+
+      <%
+        const safeLang = typeof lang !== 'undefined' ? lang : 'tr';
+        const loadMorePlacesTxt = (typeof t === 'function' && t('loadMorePlaces') && t('loadMorePlaces') !== 'loadMorePlaces')
+          ? t('loadMorePlaces')
+          : ({ tr: 'Daha Fazla Mekan Göster', en: 'Load More Places', ru: 'Показать больше заведений', ar: 'عرض المزيد من الأماكن', de: 'Mehr Orte anzeigen' })[safeLang] || 'Daha Fazla Mekan Göster';
+        const allPlacesLoadedTxt = (typeof t === 'function' && t('allPlacesLoaded') && t('allPlacesLoaded') !== 'allPlacesLoaded')
+          ? t('allPlacesLoaded')
+          : ({ tr: 'Tüm mekanlar görüntülendi', en: 'All places displayed', ru: 'Все заведения показаны', ar: 'تم عرض جميع الأماكن', de: 'Alle Orte angezeigt' })[safeLang] || 'Tüm mekanlar görüntülendi';
+      %>
+      <div class="flex flex-col items-center justify-center mt-6 mb-8 gap-3" id="loadMorePlacesContainer">
+        <button type="button" id="loadMorePlacesBtn"
+          style="<%= places.length > 6 ? '' : 'display:none;' %>"
+          class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5)] border border-emerald-400/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 cursor-pointer select-none">
+          <span class="flex items-center justify-center w-6 h-6 rounded-full bg-black/20 text-white text-xs transition-transform duration-300 group-hover:translate-y-0.5">
+            ↓
+          </span>
+          <span class="tracking-wide"><%= loadMorePlacesTxt %></span>
+          <span class="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm group-hover:bg-white group-hover:text-emerald-700 transition-colors">
+            +3
+          </span>
+        </button>
+
+        <div id="allPlacesLoadedNotice" style="<%= places.length <= 6 ? 'display:inline-flex;' : 'display:none;' %>" class="items-center gap-2 px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-400">
+          <span class="text-emerald-400 font-bold">✓</span>
+          <span><%= allPlacesLoadedTxt %></span>
+        </div>
+      </div>
     <% } %>
   </main>
 
@@ -430,13 +458,19 @@
       });
     }
 
-    function filterPlaces() {
+    var visiblePlacesLimit = 6;
+    var loadMorePlacesBtn = document.getElementById('loadMorePlacesBtn');
+    var allPlacesLoadedNotice = document.getElementById('allPlacesLoadedNotice');
+
+    function filterPlaces(resetLimit) {
+      if (resetLimit !== false) visiblePlacesLimit = 6;
       var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
       var activeCategory = document.querySelector('.category-pills button.cat-active');
       var activeCategoryValue = activeCategory ? activeCategory.dataset.category : 'all';
       var selectedEstTypes = Array.from(estTypeFilters).filter(function(f) { return f.checked; }).map(function(f) { return f.value; });
       var selectedFeatures = Array.from(featureFilters).filter(function(f) { return f.checked; }).map(function(f) { return f.value; });
 
+      var matching = [];
       placeCards.forEach(function(card) {
         var title = card.querySelector('h3').textContent.toLowerCase();
         var category = card.dataset.category || '';
@@ -448,18 +482,39 @@
         var matchesEstType = selectedEstTypes.length === 0 || selectedEstTypes.some(function(et) { return establishmentType.includes(et); });
         var matchesFeatures = selectedFeatures.length === 0 || selectedFeatures.some(function(f) { return features.includes(f); });
 
-        card.style.display = (matchesSearch && matchesCategory && matchesEstType && matchesFeatures) ? '' : 'none';
+        if (matchesSearch && matchesCategory && matchesEstType && matchesFeatures) {
+          matching.push(card);
+        }
+      });
+
+      placeCards.forEach(function(card) {
+        var idx = matching.indexOf(card);
+        card.style.display = (idx !== -1 && idx < visiblePlacesLimit) ? '' : 'none';
+      });
+
+      if (loadMorePlacesBtn) {
+        loadMorePlacesBtn.style.display = (matching.length > visiblePlacesLimit) ? '' : 'none';
+      }
+      if (allPlacesLoadedNotice) {
+        allPlacesLoadedNotice.style.display = (matching.length > 0 && matching.length <= visiblePlacesLimit) ? 'inline-flex' : 'none';
+      }
+    }
+
+    if (loadMorePlacesBtn) {
+      loadMorePlacesBtn.addEventListener('click', function() {
+        visiblePlacesLimit += 3;
+        filterPlaces(false);
       });
     }
 
-    if (searchInput) searchInput.addEventListener('input', filterPlaces);
+    if (searchInput) searchInput.addEventListener('input', function() { filterPlaces(true); });
 
     if (categoryBtns) categoryBtns.forEach(function(btn) {
       btn.addEventListener('click', function() {
         categoryBtns.forEach(function(b) { b.classList.remove('cat-active'); });
         btn.classList.add('cat-active');
         syncSidebarFromTopBar();
-        filterPlaces();
+        filterPlaces(true);
       });
     });
 
@@ -479,12 +534,12 @@
           }
         }
         syncTopBarFromSidebar();
-        filterPlaces();
+        filterPlaces(true);
       });
     });
 
-    if (estTypeFilters) estTypeFilters.forEach(function(f) { f.addEventListener('change', filterPlaces); });
-    if (featureFilters) featureFilters.forEach(function(f) { f.addEventListener('change', filterPlaces); });
+    if (estTypeFilters) estTypeFilters.forEach(function(f) { f.addEventListener('change', function() { filterPlaces(true); }); });
+    if (featureFilters) featureFilters.forEach(function(f) { f.addEventListener('change', function() { filterPlaces(true); }); });
 
     syncSidebarFromTopBar();
   })();

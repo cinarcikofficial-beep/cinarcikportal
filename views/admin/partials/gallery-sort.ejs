@@ -7,14 +7,23 @@
   var dropzone = document.getElementById('galleryDropzone');
   var counter = document.getElementById('gallery-counter');
   var orderField = document.getElementById('gallery_order');
-  var form = document.getElementById('admin-form');
+  var form = (input && input.form) || document.getElementById('admin-form');
   var selectedCountEl = document.getElementById('selected-preview-count');
   var max = parseInt(wrap.getAttribute('data-max') || '0', 10) || 0;
   var tpl = wrap.getAttribute('data-counter-format') || '(Toplam: %d)';
   var dt = new DataTransfer();
 
+  // Dosya seçici olarak kullanılan geçici gizli picker input
+  // Gerçek form inputunun (.files) sıfırlanmasını veya tarayıcı tarafından yutulmasını önler
+  var picker = document.createElement('input');
+  picker.type = 'file';
+  picker.multiple = true;
+  picker.accept = 'image/*';
+  picker.style.display = 'none';
+  wrap.appendChild(picker);
+
   function existingCount() {
-    return list.querySelectorAll('[data-kind="existing"]').length;
+    return list ? list.querySelectorAll('[data-kind="existing"]').length : 0;
   }
 
   function updateCounter() {
@@ -38,7 +47,11 @@
     el.setAttribute('draggable', 'true');
     var im = document.createElement('img');
     im.className = 'w-20 h-20 rounded-lg object-cover border border-zinc-700';
-    im.src = URL.createObjectURL(dt.files[idx]);
+    try {
+      im.src = URL.createObjectURL(dt.files[idx]);
+    } catch (_) {
+      im.src = '';
+    }
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'remove-preview absolute -top-2 -right-2 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity';
@@ -49,9 +62,9 @@
     return el;
   }
 
-  // DOM'daki yeni görsel sırasını DataTransfer'e yansıtır (kalıcı kural:
-  // yeni öğelerin DOM sırası == dt sırası).
+  // DOM'daki yeni görsel sırasını DataTransfer'e ve form inputuna yansıtır
   function resyncNew() {
+    if (!list) return;
     var nodes = Array.prototype.slice.call(list.querySelectorAll('[data-kind="new"]'));
     var ndt = new DataTransfer();
     nodes.forEach(function (el) {
@@ -60,7 +73,13 @@
     });
     dt = ndt;
     nodes.forEach(function (el, k) { el.setAttribute('data-idx', k); });
-    if (input) input.files = dt.files;
+    if (input) {
+      try {
+        input.files = dt.files;
+      } catch (err) {
+        console.warn('input.files atanamadi:', err);
+      }
+    }
   }
 
   function addFiles(files) {
@@ -80,21 +99,24 @@
     }
     accepted.forEach(function (f) {
       dt.items.add(f);
-      list.appendChild(makeNewNode(dt.files.length - 1));
+      if (list) list.appendChild(makeNewNode(dt.files.length - 1));
     });
-    if (input) input.files = dt.files;
+    if (input) {
+      try {
+        input.files = dt.files;
+      } catch (err) {
+        console.warn('input.files atanamadi:', err);
+      }
+    }
+    serializeOrder();
     updateCounter();
   }
 
-  if (input) {
-    input.addEventListener('change', function (e) {
-      addFiles(e.target.files);
-      e.target.value = '';
-    });
-  }
-
+  // Dropzone tıklanınca temiz picker açılır
   if (dropzone) {
-    dropzone.addEventListener('click', function () { if (input) input.click(); });
+    dropzone.addEventListener('click', function () {
+      picker.click();
+    });
     ['dragover', 'dragenter'].forEach(function (ev) {
       dropzone.addEventListener(ev, function (e) {
         e.preventDefault();
@@ -109,71 +131,95 @@
         dropzone.classList.remove('border-emerald-400', 'bg-zinc-900');
       });
     });
-    // Sürüklenen bir galeri öğesi dropzone'a bırakılırsa dosya sayılmaz.
     dropzone.addEventListener('drop', function (e) {
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        addFiles(e.dataTransfer.files);
+      }
     });
   }
 
-  list.addEventListener('click', function (e) {
-    var ex = e.target.closest('.gallery-remove');
-    if (ex) {
-      var item = ex.closest('[data-kind="existing"]');
-      if (item) item.remove();
-      updateCounter();
-      return;
+  // Picker değiştiğinde dosyaları aktar ve picker'ı sıfırla (aynı dosya tekrar seçilebilsin)
+  picker.addEventListener('change', function (e) {
+    if (e.target.files && e.target.files.length) {
+      addFiles(e.target.files);
     }
-    var rm = e.target.closest('.remove-preview');
-    if (rm) {
-      var node = rm.closest('[data-kind="new"]');
-      if (!node) return;
-      var im = node.querySelector('img');
-      if (im && im.src.indexOf('blob:') === 0) URL.revokeObjectURL(im.src);
-      node.remove();
-      resyncNew();
-      updateCounter();
-    }
+    picker.value = '';
   });
 
-  var dragged = null;
-  list.addEventListener('dragstart', function (e) {
-    var item = e.target.closest('[data-kind]');
-    if (!item) return;
-    dragged = item;
-    item.classList.add('opacity-50');
-    try {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', '');
-    } catch (_) {}
-  });
-  list.addEventListener('dragend', function () {
-    if (!dragged) return;
-    dragged.classList.remove('opacity-50');
-    dragged = null;
-    resyncNew();
-  });
-  list.addEventListener('dragover', function (e) {
-    if (!dragged) return;
-    e.preventDefault();
-    var over = e.target.closest('[data-kind]');
-    if (!over || over === dragged) return;
-    var rect = over.getBoundingClientRect();
-    var horizontal = Math.abs(e.clientY - (rect.top + rect.height / 2)) < rect.height / 2;
-    var before = horizontal
-      ? e.clientX < rect.left + rect.width / 2
-      : e.clientY < rect.top + rect.height / 2;
-    if (before) {
-      if (over.previousSibling !== dragged) list.insertBefore(dragged, over);
-    } else {
-      if (over.nextSibling !== dragged) list.insertBefore(dragged, over.nextSibling);
-    }
-  });
-  list.addEventListener('drop', function (e) {
-    if (dragged) e.preventDefault();
-  });
+  // Eğer doğrudan input tetiklenirse (fallback)
+  if (input) {
+    input.addEventListener('change', function (e) {
+      if (e.target.files && e.target.files.length) {
+        addFiles(e.target.files);
+      }
+      // DİKKAT: input.value ASLA sıfırlanmamalı, form gönderiminde bu dosya listesi gidecek!
+    });
+  }
+
+  if (list) {
+    list.addEventListener('click', function (e) {
+      var ex = e.target.closest('.gallery-remove');
+      if (ex) {
+        var item = ex.closest('[data-kind="existing"]');
+        if (item) item.remove();
+        serializeOrder();
+        updateCounter();
+        return;
+      }
+      var rm = e.target.closest('.remove-preview');
+      if (rm) {
+        var node = rm.closest('[data-kind="new"]');
+        if (!node) return;
+        var im = node.querySelector('img');
+        if (im && im.src.indexOf('blob:') === 0) URL.revokeObjectURL(im.src);
+        node.remove();
+        resyncNew();
+        serializeOrder();
+        updateCounter();
+      }
+    });
+
+    var dragged = null;
+    list.addEventListener('dragstart', function (e) {
+      var item = e.target.closest('[data-kind]');
+      if (!item) return;
+      dragged = item;
+      item.classList.add('opacity-50');
+      try {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+      } catch (_) {}
+    });
+    list.addEventListener('dragend', function () {
+      if (!dragged) return;
+      dragged.classList.remove('opacity-50');
+      dragged = null;
+      resyncNew();
+      serializeOrder();
+    });
+    list.addEventListener('dragover', function (e) {
+      if (!dragged) return;
+      e.preventDefault();
+      var over = e.target.closest('[data-kind]');
+      if (!over || over === dragged) return;
+      var rect = over.getBoundingClientRect();
+      var horizontal = Math.abs(e.clientY - (rect.top + rect.height / 2)) < rect.height / 2;
+      var before = horizontal
+        ? e.clientX < rect.left + rect.width / 2
+        : e.clientY < rect.top + rect.height / 2;
+      if (before) {
+        if (over.previousSibling !== dragged) list.insertBefore(dragged, over);
+      } else {
+        if (over.nextSibling !== dragged) list.insertBefore(dragged, over.nextSibling);
+      }
+    });
+    list.addEventListener('drop', function (e) {
+      if (dragged) e.preventDefault();
+    });
+  }
 
   function serializeOrder() {
-    if (!orderField) return;
+    if (!orderField || !list) return;
     var order = [];
     Array.prototype.forEach.call(list.querySelectorAll('[data-kind]'), function (el) {
       if (el.getAttribute('data-kind') === 'existing') {
@@ -191,10 +237,11 @@
     form.addEventListener('submit', function () {
       resyncNew();
       serializeOrder();
-      if (input) input.files = dt.files;
     });
   }
 
+  // Başlangıçta mevcut sırayı serialize et ve sayacı güncelle
+  serializeOrder();
   updateCounter();
 })();
 </script>

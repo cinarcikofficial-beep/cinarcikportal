@@ -5,26 +5,198 @@
   var dayNames = String(t('dayNames')).split(',').map(function(s){ return s.trim(); });
   var jsDay = new Date().getDay(); // 0 = Pazar
   var todayNum = jsDay === 0 ? 7 : jsDay; // gunler: 1 = Pazartesi .. 7 = Pazar
-  var updatedAt = '';
-  if (transport && transport.updatedAt) {
-    var raw = String(transport.updatedAt);
+  function fmtUpdatedAt(obj) {
+    if (!obj || !obj.updatedAt) return '';
+    var raw = String(obj.updatedAt);
     var iso = raw.indexOf('T') === -1
       ? raw.replace(' ', 'T') + 'Z'
       : (raw.indexOf('Z') === -1 && !/[+-]\d\d:\d\d$/.test(raw) ? raw + 'Z' : raw);
     var up = new Date(iso);
-    if (!isNaN(up.getTime())) {
-      var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
-      updatedAt = p2(up.getDate()) + '.' + p2(up.getMonth() + 1) + '.' + up.getFullYear() + ' ' + p2(up.getHours()) + ':' + p2(up.getMinutes());
-    }
+    if (isNaN(up.getTime())) return '';
+    var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+    return p2(up.getDate()) + '.' + p2(up.getMonth() + 1) + '.' + up.getFullYear() + ' ' + p2(up.getHours()) + ':' + p2(up.getMinutes());
+  }
+  var updatedAt = fmtUpdatedAt(transport);
+  var idoUpdatedAt = fmtUpdatedAt(typeof idoTransport !== 'undefined' ? idoTransport : null);
+  var hasIdo = typeof idoTransport !== 'undefined' && idoTransport && Array.isArray(idoTransport.hatlar) && idoTransport.hatlar.length > 0;
+  var ferryPriceList = [];
+  if (typeof ferryGroups !== 'undefined' && ferryGroups) {
+    ferryGroups.forEach(function (gg) {
+      gg.items.forEach(function (it) {
+        (it.prices || []).forEach(function (pp) {
+          if (ferryPriceList.indexOf(pp) === -1) ferryPriceList.push(pp);
+        });
+      });
+    });
   }
 %>
 
-<div class="page-banner">
-  <h1>🚌 <%= t('ulasimTitle') %></h1>
-  <p><%= t('ulasimSub') %></p>
-</div>
+<section class="section pt-6 sm:pt-8">
+  <div class="section-header">
+    <h2>🚌 <%= t('ulasimTitle') %></h2>
+  </div>
 
-<section class="section">
+  <!-- 🚨 Canlı Sıradaki Seferler Geri Sayım Bandı -->
+  <%- include('partials/next-departures') %>
+
+  <!-- 1️⃣ ⛴️ Turyol Sefer Saatleri -->
+  <div id="turyol-ulasim-saatler" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg mb-6 scroll-mt-24">
+    <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+        <span>⛴️</span> <%= t('turyolSchedule') %>
+      </h2>
+      <span class="text-xs text-zinc-500"><%= t('ferryRoute') %></span>
+    </div>
+    <div class="p-4 space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <% if (typeof ferryGroups !== 'undefined' && ferryGroups.length > 0) { %>
+        <% ferryGroups.forEach(function(g) { %>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-sky-500/40">
+          <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
+            <span class="text-sky-400">🚢</span> <%= g.title %>
+          </h3>
+          <p class="text-[10px] uppercase tracking-wide text-sky-500/70 font-semibold mb-3"><%= g.badge %></p>
+          <div class="<%= g.items.length > 1 ? 'space-y-3' : '' %>">
+            <% g.items.forEach(function(item) { %>
+            <div>
+              <% if (g.showLabel) { %>
+              <p class="text-[11px] text-zinc-400 font-semibold mb-1.5"><%= item.label %></p>
+              <% } %>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <% item.columns.forEach(function(col) { %>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5 font-semibold"><%= col.label %></p>
+                  <div class="space-y-1">
+                    <% if (col.times.length > 0) { %>
+                      <% col.times.forEach(function(tm) { %>
+                        <span class="block bg-zinc-900 border border-zinc-800 rounded-lg py-1.5 px-2 text-sm text-sky-400 font-bold"><%= tm %></span>
+                      <% }) %>
+                    <% } else { %>
+                      <span class="block text-xs text-zinc-600 py-1.5">—</span>
+                    <% } %>
+                  </div>
+                </div>
+                <% }) %>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+        <% }) %>
+      <% } else { %>
+        <p class="text-zinc-500 text-sm text-center py-6"><%= t('noFerry') %></p>
+      <% } %>
+      </div>
+
+      <% if (ferryPriceList.length) { %>
+      <button type="button" id="ulasim-ferry-fee-btn" aria-expanded="false" aria-controls="ulasim-ferry-fee-panel"
+        class="w-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-sky-500/40 rounded-xl px-4 py-3 text-sm font-bold text-sky-400 transition-all flex items-center justify-between gap-2">
+        <span>💰 <%= t('ferryFeesBtn') %></span>
+        <span class="ferry-fee-caret text-zinc-500 transition-transform duration-200">▾</span>
+      </button>
+      <div id="ulasim-ferry-fee-panel" class="hidden space-y-3">
+        <% (typeof ferryGroups !== 'undefined' ? ferryGroups : []).forEach(function (gg) { %>
+        <%
+          var gp = [];
+          gg.items.forEach(function (it) {
+            (it.prices || []).forEach(function (pp) { if (gp.indexOf(pp) === -1) gp.push(pp); });
+          });
+        %>
+        <% if (gp.length) { %>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+          <h3 class="text-white font-bold text-sm mb-2 flex items-center gap-2">
+            <span class="text-sky-400">🚢</span> <%= gg.title %>
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            <% gp.forEach(function (pp) { %>
+            <span class="inline-block bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-sky-400 font-bold"><%= pp %></span>
+            <% }) %>
+          </div>
+        </div>
+        <% } %>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+    <div class="px-4 pb-4 text-[11px] text-zinc-500">
+      <%= t('dataSource') %>:
+      <a href="https://www.turyol.com/Home/Tarifeler" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Turyol Sefer Saatleri</a>
+      <%= t('autoUpdated') %>
+    </div>
+  </div>
+
+  <!-- 2️⃣ ⛴️ İDO Feribot Seferleri (Haftalık & Günlük) -->
+  <% if (hasIdo) { %>
+  <div id="ido-ulasim-saatler" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg mb-6 scroll-mt-24"
+       data-days="<%- dayNames.map(function(s){ return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }).join('|') %>"
+       data-no-svc="<%- t('ulasimNoService').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>">
+    <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2">
+        <span>⛴️</span> <%= t('idoSchedule') %>
+      </h2>
+      <span class="text-xs text-zinc-500"><%= t('idoRoute') %></span>
+    </div>
+    <div class="p-4">
+      <div id="ido-day-tabs" class="day-tabs mb-5" role="tablist" aria-label="<%= t('idoSchedule') %>">
+        <% for (var d = 1; d <= 7; d++) { %>
+        <button type="button" role="tab" class="day-tab<%= d === todayNum ? ' active' : '' %>" data-day="<%= d %>" aria-selected="<%= d === todayNum ? 'true' : 'false' %>">
+          <%= dayShorts[d - 1] %><small class="<%= d === todayNum ? '' : 'hidden' %>"><%= t('ulasimToday') %></small>
+        </button>
+        <% } %>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <% (idoTransport.hatlar || []).forEach(function(hat) { %>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-emerald-500/30">
+          <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
+            <span class="text-emerald-400">⛴️</span> <%= hat.ad %>
+          </h3>
+          <% if (hat.aciklama) { %>
+          <p class="text-[10px] uppercase tracking-wide text-emerald-500/70 font-semibold mb-3"><%= hat.aciklama %></p>
+          <% } else { %>
+          <div class="mb-1"></div>
+          <% } %>
+          <div class="space-y-4">
+            <% (hat.kalkislar || []).forEach(function(k) { %>
+            <%
+              var anyToday = (k.seferler || []).some(function(s) {
+                return (s.gunler || []).indexOf(todayNum) !== -1;
+              });
+            %>
+            <div class="kalkis-block">
+              <h4 class="text-zinc-300 text-[13px] font-bold mb-2">
+                <%= k.yer %> <span class="text-zinc-500 font-semibold text-xs">— <%= t('ulasimDeparture') %></span>
+              </h4>
+              <div class="time-chips flex flex-wrap gap-2">
+                <% (k.seferler || []).forEach(function(s) { %>
+                <%
+                  var gunler = (s.gunler || []);
+                  var visible = gunler.indexOf(todayNum) !== -1;
+                %>
+                <span class="time-chip<%= visible ? '' : ' hidden' %>" data-gunler="<%= gunler.join(',') %>" data-saat="<%= s.saat %>">
+                  <b><%= s.saat %></b>
+                  <span class="chip-note chip-next-label"><%= t('ulasimNext') %></span>
+                  <% if (s.not) { %><span class="chip-note chip-real-note"><%= s.not %></span><% } %>
+                </span>
+                <% }) %>
+              </div>
+              <p class="no-service mt-2<%= anyToday ? ' hidden' : '' %>"><%= t('ulasimNoService').replace('[[day]]', dayNames[todayNum - 1]) %></p>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <div class="px-4 pb-4 text-[11px] text-zinc-500">
+      <%= t('dataSource') %>:
+      <a href="https://www.ido.com.tr/sefer-saatleri" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">İDO (İstanbul Deniz Otobüsleri) — Sefer Saatleri</a>
+      <%= t('autoUpdated') %><% if (idoUpdatedAt) { %> · <%= t('lastUpdate') %>: <%= idoUpdatedAt %><% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- 3️⃣ 🚌 Şehir İçi Otobüs Seferleri -->
   <% if (!transport) { %>
   <div class="empty-state">
     <div class="empty-icon">🚌</div>
@@ -38,7 +210,7 @@
        data-no-svc="<%- t('ulasimNoService').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>">
     <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-lg font-bold text-white flex items-center gap-2">
-        <span>🕐</span> <%= t('ulasimTimes') %>
+        <span>🚌</span> <%= t('busSchedule') %>
       </h2>
       <span class="text-xs text-zinc-500"><%= t('ulasimSub') %></span>
     </div>
@@ -51,52 +223,54 @@
         <% } %>
       </div>
 
-      <% (transport.hatlar || []).forEach(function(hat) { %>
-      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-4 last:mb-0 transition-colors hover:border-emerald-500/30">
-        <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
-          <span class="text-emerald-400">🚌</span> <%= hat.ad %>
-        </h3>
-        <% if (hat.aciklama) { %>
-        <p class="text-[10px] uppercase tracking-wide text-emerald-500/70 font-semibold mb-3"><%= hat.aciklama %></p>
-        <% } else { %>
-        <div class="mb-1"></div>
-        <% } %>
-        <div class="space-y-4">
-          <% (hat.kalkislar || []).forEach(function(k) { %>
-          <%
-            var anyToday = (k.seferler || []).some(function(s) {
-              return (s.gunler || []).indexOf(todayNum) !== -1;
-            });
-          %>
-          <div class="kalkis-block">
-            <h4 class="text-zinc-300 text-[13px] font-bold mb-2">
-              <%= k.yer %> <span class="text-zinc-500 font-semibold text-xs">— <%= t('ulasimDeparture') %></span>
-            </h4>
-            <div class="time-chips flex flex-wrap gap-2">
-              <% (k.seferler || []).forEach(function(s) { %>
-              <%
-                var gunler = (s.gunler || []);
-                var visible = gunler.indexOf(todayNum) !== -1;
-              %>
-              <span class="time-chip<%= visible ? '' : ' hidden' %>" data-gunler="<%= gunler.join(',') %>" data-saat="<%= s.saat %>">
-                <b><%= s.saat %></b>
-                <span class="chip-note chip-next-label"><%= t('ulasimNext') %></span>
-                <% if (s.not) { %><span class="chip-note chip-real-note"><%= s.not %></span><% } %>
-              </span>
-              <% }) %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <% (transport.hatlar || []).forEach(function(hat) { %>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-emerald-500/30">
+          <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
+            <span class="text-emerald-400">🚌</span> <%= hat.ad %>
+          </h3>
+          <% if (hat.aciklama) { %>
+          <p class="text-[10px] uppercase tracking-wide text-emerald-500/70 font-semibold mb-3"><%= hat.aciklama %></p>
+          <% } else { %>
+          <div class="mb-1"></div>
+          <% } %>
+          <div class="space-y-4">
+            <% (hat.kalkislar || []).forEach(function(k) { %>
+            <%
+              var anyToday = (k.seferler || []).some(function(s) {
+                return (s.gunler || []).indexOf(todayNum) !== -1;
+              });
+            %>
+            <div class="kalkis-block">
+              <h4 class="text-zinc-300 text-[13px] font-bold mb-2">
+                <%= k.yer %> <span class="text-zinc-500 font-semibold text-xs">— <%= t('ulasimDeparture') %></span>
+              </h4>
+              <div class="time-chips flex flex-wrap gap-2">
+                <% (k.seferler || []).forEach(function(s) { %>
+                <%
+                  var gunler = (s.gunler || []);
+                  var visible = gunler.indexOf(todayNum) !== -1;
+                %>
+                <span class="time-chip<%= visible ? '' : ' hidden' %>" data-gunler="<%= gunler.join(',') %>" data-saat="<%= s.saat %>">
+                  <b><%= s.saat %></b>
+                  <span class="chip-note chip-next-label"><%= t('ulasimNext') %></span>
+                  <% if (s.not) { %><span class="chip-note chip-real-note"><%= s.not %></span><% } %>
+                </span>
+                <% }) %>
+              </div>
+              <p class="no-service mt-2<%= anyToday ? ' hidden' : '' %>"><%= t('ulasimNoService').replace('[[day]]', dayNames[todayNum - 1]) %></p>
             </div>
-            <p class="no-service mt-2<%= anyToday ? ' hidden' : '' %>"><%= t('ulasimNoService').replace('[[day]]', dayNames[todayNum - 1]) %></p>
+            <% }) %>
           </div>
-          <% }) %>
         </div>
+        <% }) %>
       </div>
-      <% }) %>
     </div>
   </div>
 
   <% if (transport.ucretler && transport.ucretler.length) { %>
   <div class="section-header mb-4"><h2>💰 <%= t('ulasimFees') %></h2></div>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
     <% transport.ucretler.forEach(function(u) { %>
     <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
       <h3 class="text-white font-bold mb-3"><%= u.baslik %></h3>
@@ -116,77 +290,93 @@
   </div>
   <% } %>
 
-  <div class="flex flex-wrap items-center gap-3 mb-4">
-    <a href="<%= lp %>/deniz" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🌊 <%= t('seaTitle') %></a>
-    <a href="<%= lp %>/" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🏠 <%= t('home') %></a>
-  </div>
-  <p class="text-xs text-zinc-500">
+  <p class="text-xs text-zinc-500 mb-4">
     <%= t('dataSource') %>:
     <a href="https://cinarcik.bel.tr/cinarcik/ulasim" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Çınarcık Belediyesi — Ulaşım</a>
     <%= t('autoUpdated') %><% if (updatedAt) { %> · <%= t('lastUpdate') %>: <%= updatedAt %><% } %>
   </p>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <a href="<%= lp %>/" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm px-5 py-2.5 rounded-xl transition-all">🏠 <%= t('home') %></a>
+  </div>
   <% } %>
 </section>
 
 <script>
 (function () {
-  var root = document.getElementById('ulasim-saatler');
-  if (!root) return;
-  var DAYS = (root.getAttribute('data-days') || '').split('|');
-  var NO_SVC = root.getAttribute('data-no-svc') || '';
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('#day-tabs .day-tab'));
-  var blocks = Array.prototype.slice.call(root.querySelectorAll('.kalkis-block'));
+  var feeBtn = document.getElementById('ulasim-ferry-fee-btn');
+  var feePanel = document.getElementById('ulasim-ferry-fee-panel');
+  if (feeBtn && feePanel) {
+    feeBtn.addEventListener('click', function () {
+      var hidden = feePanel.classList.toggle('hidden');
+      feeBtn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+      var caret = feeBtn.querySelector('.ferry-fee-caret');
+      if (caret) caret.style.transform = hidden ? '' : 'rotate(180deg)';
+    });
+  }
 
-  function applyDay(day) {
-    var jsDay = new Date().getDay();
-    var todayNum = jsDay === 0 ? 7 : jsDay;
-    var isToday = day === todayNum;
-    var now = new Date();
-    var nowMin = now.getHours() * 60 + now.getMinutes();
+  function initDaySchedule(rootId, tabsId) {
+    var root = document.getElementById(rootId);
+    if (!root) return;
+    var DAYS = (root.getAttribute('data-days') || '').split('|');
+    var NO_SVC = root.getAttribute('data-no-svc') || '';
+    var strip = document.getElementById(tabsId);
+    var tabs = strip ? Array.prototype.slice.call(strip.querySelectorAll('.day-tab')) : [];
+    var blocks = Array.prototype.slice.call(root.querySelectorAll('.kalkis-block'));
+
+    function applyDay(day) {
+      var jsDay = new Date().getDay();
+      var todayNum = jsDay === 0 ? 7 : jsDay;
+      var isToday = day === todayNum;
+      var now = new Date();
+      var nowMin = now.getHours() * 60 + now.getMinutes();
+
+      tabs.forEach(function (b) {
+        var on = Number(b.getAttribute('data-day')) === day;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        var small = b.querySelector('small');
+        if (small) small.classList.toggle('hidden', !on);
+      });
+
+      blocks.forEach(function (block) {
+        var any = false;
+        var nextMarked = false;
+        var chips = Array.prototype.slice.call(block.querySelectorAll('.time-chip'));
+        chips.forEach(function (chip) {
+          var gunler = (chip.getAttribute('data-gunler') || '').split(',');
+          var vis = gunler.indexOf(String(day)) !== -1;
+          chip.classList.toggle('hidden', !vis);
+          chip.classList.remove('is-past', 'is-next');
+          if (!vis) return;
+          any = true;
+          var past = false;
+          var saat = chip.getAttribute('data-saat') || '';
+          if (isToday && saat.length >= 5) {
+            past = Number(saat.slice(0, 2)) * 60 + Number(saat.slice(3, 5)) < nowMin;
+          }
+          if (past) chip.classList.add('is-past');
+          else if (!nextMarked) { chip.classList.add('is-next'); nextMarked = true; }
+        });
+        var msg = block.querySelector('.no-service');
+        if (msg) {
+          msg.textContent = NO_SVC.replace('[[day]]', DAYS[day - 1] || '');
+          msg.classList.toggle('hidden', any);
+        }
+      });
+    }
 
     tabs.forEach(function (b) {
-      var on = Number(b.getAttribute('data-day')) === day;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-      var small = b.querySelector('small');
-      if (small) small.classList.toggle('hidden', !on);
+      b.addEventListener('click', function () { applyDay(Number(b.getAttribute('data-day'))); });
     });
-
-    blocks.forEach(function (block) {
-      var any = false;
-      var nextMarked = false;
-      var chips = Array.prototype.slice.call(block.querySelectorAll('.time-chip'));
-      chips.forEach(function (chip) {
-        var gunler = (chip.getAttribute('data-gunler') || '').split(',');
-        var vis = gunler.indexOf(String(day)) !== -1;
-        chip.classList.toggle('hidden', !vis);
-        chip.classList.remove('is-past', 'is-next');
-        if (!vis) return;
-        any = true;
-        var past = false;
-        var saat = chip.getAttribute('data-saat') || '';
-        if (isToday && saat.length >= 5) {
-          past = Number(saat.slice(0, 2)) * 60 + Number(saat.slice(3, 5)) < nowMin;
-        }
-        if (past) chip.classList.add('is-past');
-        else if (!nextMarked) { chip.classList.add('is-next'); nextMarked = true; }
-      });
-      var msg = block.querySelector('.no-service');
-      if (msg) {
-        msg.textContent = NO_SVC.replace('[[day]]', DAYS[day - 1] || '');
-        msg.classList.toggle('hidden', any);
-      }
-    });
+    applyDay((function () { var d = new Date().getDay(); return d === 0 ? 7 : d; })());
+    var activeTab = strip && strip.querySelector('.day-tab.active');
+    if (strip && activeTab && strip.scrollWidth > strip.clientWidth) {
+      strip.scrollLeft = activeTab.offsetLeft - (strip.clientWidth - activeTab.offsetWidth) / 2;
+    }
   }
 
-  tabs.forEach(function (b) {
-    b.addEventListener('click', function () { applyDay(Number(b.getAttribute('data-day'))); });
-  });
-  applyDay((function () { var d = new Date().getDay(); return d === 0 ? 7 : d; })());
-  var strip = document.getElementById('day-tabs');
-  var activeTab = strip && strip.querySelector('.day-tab.active');
-  if (strip && activeTab && strip.scrollWidth > strip.clientWidth) {
-    strip.scrollLeft = activeTab.offsetLeft - (strip.clientWidth - activeTab.offsetWidth) / 2;
-  }
+  initDaySchedule('ido-ulasim-saatler', 'ido-day-tabs');
+  initDaySchedule('ulasim-saatler', 'day-tabs');
 })();
 </script>

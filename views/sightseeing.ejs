@@ -61,9 +61,9 @@
   </div>
   <% } else { %>
   <div id="sight-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <% items.forEach(s => { %>
+    <% items.forEach((s, idx) => { %>
     <div role="link" tabindex="0" data-href="/gezilecek-yer/<%= s.slug || s.id %>" onclick="window.location.href=this.dataset.href" onkeydown="if(event.key==='Enter'){window.location.href=this.dataset.href}"
-      class="sight-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer" data-cat="<%= s.category %>">
+      <%- idx >= 6 ? 'style="display:none;"' : '' %> class="sight-card group block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer" data-cat="<%= s.category %>">
       <div class="relative h-48 overflow-hidden bg-zinc-800">
         <% if (s.image) { %>
         <img src="<%= s.image %>" alt="<%= s.title %>" loading="lazy"
@@ -90,22 +90,76 @@
     </div>
     <% }) %>
   </div>
+
+  <%
+    const safeLang = typeof lang !== 'undefined' ? lang : 'tr';
+    const loadMoreSightsTxt = (typeof t === 'function' && t('loadMoreSights') && t('loadMoreSights') !== 'loadMoreSights')
+      ? t('loadMoreSights')
+      : ({ tr: 'Daha Fazla Yer Göster', en: 'Load More Places', ru: 'Показать больше мест', ar: 'عرض المزيد من المعالم', de: 'Mehr Sehenswürdigkeiten anzeigen' })[safeLang] || 'Daha Fazla Yer Göster';
+    const allSightsLoadedTxt = (typeof t === 'function' && t('allSightsLoaded') && t('allSightsLoaded') !== 'allSightsLoaded')
+      ? t('allSightsLoaded')
+      : ({ tr: 'Tüm gezilecek yerler görüntülendi', en: 'All places to visit displayed', ru: 'Все достопримечательности показаны', ar: 'تم عرض جميع المعالم السياحية', de: 'Alle Sehenswürdigkeiten angezeigt' })[safeLang] || 'Tüm gezilecek yerler görüntülendi';
+  %>
+  <div class="flex flex-col items-center justify-center mt-10 mb-6 gap-3" id="loadMoreSightsContainer">
+    <button type="button" id="loadMoreSightsBtn"
+      style="<%= items.length > 6 ? '' : 'display:none;' %>"
+      class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5)] border border-emerald-400/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 cursor-pointer select-none">
+      <span class="flex items-center justify-center w-6 h-6 rounded-full bg-black/20 text-white text-xs transition-transform duration-300 group-hover:translate-y-0.5">
+        ↓
+      </span>
+      <span class="tracking-wide"><%= loadMoreSightsTxt %></span>
+      <span class="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm group-hover:bg-white group-hover:text-emerald-700 transition-colors">
+        +3
+      </span>
+    </button>
+
+    <div id="allSightsLoadedNotice" style="<%= items.length <= 6 ? 'display:inline-flex;' : 'display:none;' %>" class="items-center gap-2 px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-400">
+      <span class="text-emerald-400 font-bold">✓</span>
+      <span><%= allSightsLoadedTxt %></span>
+    </div>
+  </div>
   <% } %>
 </div>
 
 <script>
   (function () {
     var pills = document.querySelectorAll('.cat-pill');
-    var cards = document.querySelectorAll('.sight-card');
+    var cards = Array.from(document.querySelectorAll('.sight-card'));
+    var loadMoreBtn = document.getElementById('loadMoreSightsBtn');
+    var allLoadedNotice = document.getElementById('allSightsLoadedNotice');
+    var visibleLimit = 6;
+    var activeCat = 'all';
+
+    function applyFilter() {
+      var matching = cards.filter(function (c) {
+        return (activeCat === 'all') || (c.getAttribute('data-cat') === activeCat);
+      });
+      cards.forEach(function (c) {
+        var idx = matching.indexOf(c);
+        c.style.display = (idx !== -1 && idx < visibleLimit) ? '' : 'none';
+      });
+      if (loadMoreBtn) {
+        loadMoreBtn.style.display = (matching.length > visibleLimit) ? '' : 'none';
+      }
+      if (allLoadedNotice) {
+        allLoadedNotice.style.display = (matching.length > 0 && matching.length <= visibleLimit) ? 'inline-flex' : 'none';
+      }
+    }
+
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', function () {
+        visibleLimit += 3;
+        applyFilter();
+      });
+    }
+
     pills.forEach(function (p) {
       p.addEventListener('click', function () {
         pills.forEach(function (x) { x.classList.remove('active'); });
         p.classList.add('active');
-        var cat = p.getAttribute('data-cat');
-        cards.forEach(function (c) {
-          var show = (cat === 'all') || (c.getAttribute('data-cat') === cat);
-          c.style.display = show ? '' : 'none';
-        });
+        activeCat = p.getAttribute('data-cat') || 'all';
+        visibleLimit = 6;
+        applyFilter();
       });
     });
   })();

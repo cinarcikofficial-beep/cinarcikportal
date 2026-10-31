@@ -67,6 +67,7 @@
       <label for="content" class="block text-sm font-medium text-gray-300 mb-2">İçerik <span class="text-rose-400">*</span></label>
       <div id="news-editor" class="ql-wrapbox bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden"></div>
       <textarea id="content" name="content" hidden><%= edit ? (edit.content || '') : '' %></textarea>
+      <p class="text-xs text-zinc-500 mt-1.5">💡 <strong class="text-zinc-400">Link eklemek için:</strong> Kelimeyi (örn. <em>tıklayın</em>) fareyle seçip araç çubuğundaki <strong class="text-emerald-400">🔗 (Link)</strong> ikonuna basın; <code class="text-emerald-300 bg-zinc-800 px-1.5 py-0.5 rounded">/ulasim</code>, <code class="text-emerald-300 bg-zinc-800 px-1.5 py-0.5 rounded">/iletisim</code> veya sayfa adresini yazıp <strong class="text-emerald-400">Kaydet</strong>'e tıklayın (aynı sekmede yönlenir).</p>
     </div>
 
     <div>
@@ -114,6 +115,9 @@
 
       <div class="mt-2 flex justify-between items-center">
         <span id="gallery-counter" class="text-xs text-zinc-500">(Toplam Yüklü Görsel: <%= gal.length %>)</span>
+        <div id="selected-preview-count" class="text-xs text-emerald-400 hidden">
+          <span class="selected-count">0</span> yeni görsel seçildi
+        </div>
       </div>
       <p class="text-xs text-zinc-600 mt-1">İpucu: görselleri sürükleyip bırakarak sıralayabilirsiniz, kaydettiğinizde bu sıra sitede görünür.</p>
     </div>

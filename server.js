@@ -60,8 +60,60 @@ app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '7d', index: false }));
-app.use('/images', express.static(path.join(__dirname, 'images'), { maxAge: '30d' }));
+// Statik varlıklar için optimize HTTP Cache-Control (30 gün değişmeyen medya / 7 gün CSS-JS)
+function setStaticCacheHeaders(res, filePath) {
+  // PWA: service worker ve manifest her zaman taze kontrol edilmeli (güncellemeler hemen yayılsın)
+  if (/[\\/](sw\.js|manifest\.webmanifest|offline\.html)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache');
+    if (/\.webmanifest$/i.test(filePath)) res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    return;
+  }
+  if (/\.(webp|png|jpe?g|gif|svg|ico|woff2?|ttf|eot)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+  } else if (/\.(css|js)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+}
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '7d',
+  index: false,
+  setHeaders: setStaticCacheHeaders
+}));
+app.use('/images', express.static(path.join(__dirname, 'images'), {
+  maxAge: '30d',
+  setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=2592000, immutable')
+}));
+
+// ---- Rate Limiting (Bot, Spam & DoS Koruması) ----
+const { rateLimit } = require('express-rate-limit');
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Kısa sürede çok fazla mesaj gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+const commentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, error: 'Kısa sürede çok fazla yorum gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+const likeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { success: false, error: 'Çok hızlı işlem yapıyorsunuz.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, error: 'Arama sınırı aşıldı, lütfen biraz bekleyin.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -204,7 +256,7 @@ setInterval(() => {
 
 const i18n = require('./i18n');
 app.use((req, res, next) => {
-  const m = req.url.match(/^\/(en|ru|ar|de)(?=\/|$|\?)/);
+  const m = req.url.match(/^\/(en|ru|ar|de|fr|nl)(?=\/|$|\?)/);
   req.lang = m ? m[1] : 'tr';
   if (m) {
     // Query string'i koru: '/en?x=1' → '/?x=1'. Yalnızca path kesiilirse
@@ -224,6 +276,7 @@ app.use((req, res, next) => {
   res.locals.robotsMeta = req.path.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow';
   res.locals.t = (key) => i18n.t(req.lang, key);
   res.locals.langs = i18n.LANGS;
+  res.locals.recaptchaSiteKey = typeof getActiveRecaptchaSiteKey === 'function' ? getActiveRecaptchaSiteKey() : '';
   // CSS url() içinde boşluk ve Türkçe karakter geçersizdir; görsel hiç yüklenmez.
   res.locals.img = (src) => {
     if (!src) return '';
@@ -236,9 +289,23 @@ app.use((req, res, next) => {
 // Statik dosyalar express.static'te kısa yoldan döner; buraya yalnızca sayfa
 // GET'leri ulaşır. /admin trafiği bilinçli olarak hariç tutulur (kendi
 // girişlerimiz istatistikleri bozmasın).
+// Bot/izleyici istekleri sayaçları şişirmesin: Googlebot gibi tarayıcılar,
+// UptimeRobot gibi izleme servisleri, komut satırı istemcileri ve sosyal
+// önizleme robotları sayılmaz.
+const BOT_UA_RE = /bot|crawl|spider|slurp|uptime|pingdom|statuscake|kuma|monitor|headless|lighthouse|curl|wget|python|go-http-client|axios|node-fetch|postman|insomnia|powershell|burp|nikto|sqlmap|nmap|masscan|zgrab|censys|shodan|cf-network|okhttp|dalvik|apache-httpclient|java\/|libwww|lwp-trivial|scrapy|playwright|puppeteer|phantomjs|selenium|webdriver|facebookexternalhit|whatsapp|telegrambot|embedly|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|applebot|yandexbot|baiduspider|duckduckbot|feedfetcher|linkedin|twitterbot|slack|discordbot|pinterest|bingpreview|googleother|adsbot|mediapartners/i;
+const NON_PAGE_PATH_RE = /^\/(admin|api|uploads|img|css|js|fonts|favicon|robots\.txt|sitemap\.xml|rss\.xml|captcha\.svg)|(\.(?:png|jpe?g|webp|gif|svg|ico|css|js|map|woff2?|ttf|eot|xml|txt|json|mp4|webm|pdf))$/i;
+function isBotRequest(req) {
+  const ua = req.headers['user-agent'] || '';
+  if (!ua || ua.length < 12) return true; // UA'siz veya çok kısa istekler pratikte hep bot/script
+  return BOT_UA_RE.test(ua);
+}
+function isTrackablePagePath(p) {
+  if (!p || typeof p !== 'string') return false;
+  return !NON_PAGE_PATH_RE.test(p);
+}
 const { logPageView } = require('./db');
 app.use((req, res, next) => {
-  if (req.method !== 'GET' || req.path.startsWith('/admin')) return next();
+  if (req.method !== 'GET' || !isTrackablePagePath(req.path) || isBotRequest(req)) return next();
   res.on('finish', () => {
     if (res.statusCode >= 400) return;
     logPageView({
@@ -387,7 +454,7 @@ function buildFerryGroups(rows) {
 app.get('/sitemap.xml', (req, res) => {
   const { all } = require('./db');
   const base = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
-  const langs = ['', '/en', '/ru', '/ar', '/de'];
+  const langs = ['', '/en', '/ru', '/ar', '/de', '/fr', '/nl'];
   const entries = [];
 
   const addEntry = (path, lastmod) => {
@@ -399,7 +466,7 @@ app.get('/sitemap.xml', (req, res) => {
   const STATIC_LASTMOD = '2026-10-14';
 
   // Statik sayfalar
-  ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda', '/ilan-ver']
+  ['/', '/haberler', '/duyurular', '/mekanlar', '/gezilecek-yerler', '/rehber', '/iletisim', '/cinarcik-hakkinda', '/ilan-ver', '/uygulama']
     .forEach(p => addEntry(p, STATIC_LASTMOD));
   // Yeni eklenen sayfalar (ilk indeks tarihi)
   ['/etkinlikler', '/deniz', '/gizlilik'].forEach(p => addEntry(p, '2026-10-17'));
@@ -499,10 +566,9 @@ app.get('/', async (req, res) => {
   // böylece admin'de yapılan her değişiklik ana sayfada da aynen görünür.
   const newsWhere = `status='active'
       AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now'))`;
-  const headlines = all(`SELECT * FROM news WHERE ${newsWhere} AND (is_headline=1 OR is_headline IS NULL)
-      ORDER BY headline_order ASC, created_at DESC LIMIT 10`);
-  const regularNews = all(`SELECT * FROM news WHERE ${newsWhere}
-      ORDER BY sort_order ASC, created_at DESC LIMIT 20`);
+  const headlines = all(`SELECT * FROM news WHERE ${newsWhere}
+      ORDER BY created_at DESC, id DESC LIMIT 5`);
+  const regularNews = headlines;
   const places = all(`
     SELECT p.*, ROUND(AVG(r.rating), 1) AS avg_rating, COUNT(r.id) AS review_count
     FROM places p
@@ -524,7 +590,15 @@ app.get('/', async (req, res) => {
       AND event_date IS NOT NULL AND event_date <> '' AND event_date >= ?
       ORDER BY event_date ASC LIMIT 4`, [fmtDateLocal(new Date())]);
   const sea = await getSeaData({ allowStale: true, waitMs: 1500 });
-  const pharmacies = all("SELECT * FROM pharmacies WHERE status = 'active' ORDER BY name ASC");
+  // Aynı eczane farklı id'lerle birden fazla satırdaysa tek kart basılır
+  // (telefonu dolu olan satır tercih edilir).
+  const seenPharm = new Map();
+  for (const p of all("SELECT * FROM pharmacies WHERE status = 'active' ORDER BY name ASC")) {
+    const key = String(p.name || '').toLowerCase() + '|' + String(p.address || '').trim().toLowerCase();
+    const prev = seenPharm.get(key);
+    if (!prev || (!String(prev.phone || '').trim() && String(p.phone || '').trim())) seenPharm.set(key, p);
+  }
+  const pharmacies = Array.from(seenPharm.values()).sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr'));
   const ferryRows = all('SELECT * FROM ferry_schedules ORDER BY id ASC').map(r => {
     let columns = [];
     try { columns = JSON.parse(r.data_json || '[]'); } catch (e) { columns = []; }
@@ -547,12 +621,15 @@ app.get('/', async (req, res) => {
   res.render('home', {
     announcements, places, companies, pharmacies, sightseeing, photos, ferryGroups: buildFerryGroups(ferryRows),
     transport: getCityTransport(),
+    idoTransport: getIdoTransport(),
+    powerOutages: getPowerOutages(),
+    suOutages: getSuOutages(),
     headlines, regularNews, weekEvents, sea, pollData,
     // LCP: hero 1. slayt + manşet ilk görseli <head>'de preload edilir (layout.ejs)
     preloadImages: ['/images/cinar/1.webp'].concat(
       headlines[0] && headlines[0].main_image_url && String(headlines[0].main_image_url).indexOf('/uploads/') === 0
         ? [res.locals.img(headlines[0].main_image_url)] : []),
-    pageTitle: 'Çınarcık Haber, Mekan ve Gezi Rehberi | ' + i18n.t(req.lang, 'heroTagline'),
+    pageTitle: 'Çınarcık Haberleri, Mekan & Gezi Rehberi',
     metaDescription: i18n.t(req.lang, 'metaDesc'),
     pageSchema: {
       "@context": "https://schema.org",
@@ -578,14 +655,38 @@ app.get('/haberler', async (req, res) => {
   const ranked = headlines.concat(regularNews).sort((a, b) => (Number(b.views_count) || 0) - (Number(a.views_count) || 0));
   const mostRead = ranked.slice(0, 5);
   const otherNews = ranked.slice(5, 12);
-  res.render('news', { headlines, regularNews, mostRead, otherNews });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('news', {
+    headlines, regularNews, mostRead, otherNews,
+    pageTitle: i18n.t(req.lang, 'currentNews') + ' & Çınarcık Haberleri',
+    metaDescription: 'Çınarcık son dakika haberleri, yerel gündem, asayiş, spor ve güncel gelişmeler — Marmara\'nın İncisi.',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "name": "Çınarcık Haberleri",
+          "description": "Çınarcık son dakika haberleri, yerel gündem ve güncel gelişmeler.",
+          "url": siteUrl + lp + '/haberler'
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'news') }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/haber/:slug', async (req, res) => {
   const { get, all, run } = require('./db');
   const article = get("SELECT * FROM news WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!article || !article.id) return res.redirect('/haberler');
-  run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [article.id]);
+  if (!isBotRequest(req)) run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [article.id]);
   // İlgili haberler: aynı kategori önce, sonra en yeni (aktif + süresi geçmemiş)
   // (txFields'ten ÖNCE — article.category hala ham DB değeri olur, eşleşme garantili)
   const related = all("SELECT * FROM news WHERE status='active' AND id != ? AND (expires_at IS NULL OR expires_at='' OR datetime(replace(expires_at, 'T', ' ')) > datetime('now')) ORDER BY (CASE WHEN category = ? THEN 0 ELSE 1 END), created_at DESC LIMIT 3", [article.id, article.category]);
@@ -658,7 +759,7 @@ app.get('/api/news/:slug', (req, res) => {
   const { get, run } = require('./db');
   const item = get("SELECT * FROM news WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!item || !item.id) return res.status(404).json({ success: false, error: 'Haber bulunamadı' });
-  run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [item.id]);
+  if (!isBotRequest(req)) run("UPDATE news SET views_count = views_count + 1 WHERE id = ?", [item.id]);
   res.json({ success: true, news: item });
 });
 
@@ -666,7 +767,32 @@ app.get('/duyurular', async (req, res) => {
   const { all } = require('./db');
   const announcements = all("SELECT * FROM announcements WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC");
   await txArray(announcements, ['title', 'content'], req.lang);
-  res.render('announcements', { announcements, submitted: req.query.gonderildi === '1' });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('announcements', {
+    announcements,
+    submitted: req.query.gonderildi === '1',
+    pageTitle: i18n.t(req.lang, 'annList') + ' & İlanlar',
+    metaDescription: 'Çınarcık duyuru, etkinlik ve seri ilanları: satılık/kiralık ev, iş ve eleman ilanları — Marmara\'nın İncisi.',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "name": "Çınarcık Duyuru ve İlanlar",
+          "description": "Çınarcık duyuru, etkinlik ve seri ilanlar.",
+          "url": siteUrl + lp + '/duyurular'
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'annList') }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 // ---------- Deniz durumu (Open-Meteo Marine + forecast, 20 dk cache) ----------
@@ -822,10 +948,47 @@ app.get('/deniz', async (req, res) => {
 
 // Çınarcık içi ulaşım — belediye sayfasından otomatik çekilen sefer saatleri
 app.get('/ulasim', (req, res) => {
+  const { all } = require('./db');
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  const ferryRows = all('SELECT * FROM ferry_schedules ORDER BY id ASC').map(r => {
+    let columns = [];
+    try { columns = JSON.parse(r.data_json || '[]'); } catch (e) { columns = []; }
+    let prices = [];
+    try { prices = JSON.parse(r.prices_json || '[]'); } catch (e) { prices = []; }
+    return { origin: r.origin || 'Çınarcık İskele', destination: r.destination, columns, prices, updated_at: r.updated_at };
+  });
   res.render('ulasim', {
+    ferryGroups: buildFerryGroups(ferryRows),
+    idoTransport: getIdoTransport(),
     transport: getCityTransport(),
-    pageTitle: i18n.t(req.lang, 'ulasimTitle'),
-    metaDescription: i18n.t(req.lang, 'ulasimMetaDesc')
+    pageTitle: i18n.t(req.lang, 'ulasimTitle') + ' & Turyol / İDO / Otobüs Sefer Saatleri',
+    metaDescription: i18n.t(req.lang, 'ulasimMetaDesc'),
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "name": "Çınarcık İçi Ulaşım ve Otobüs Saatleri",
+          "description": "Çınarcık içi minibüs, belediye otobüsü ve Turyol/İDO sefer saatleri.",
+          "url": siteUrl + lp + '/ulasim'
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'ulasimTitle') }
+          ]
+        }
+      ]
+    }
+  });
+});
+
+app.get('/uygulama', (req, res) => {
+  res.render('uygulama', {
+    pageTitle: 'Uygulamayı İndir — Marmaraİncisi',
+    metaDescription: 'Marmaraİncisi uygulamasını ücretsiz indirin: Çınarcık seferleri, nöbetçi eczane, kesintiler ve haberler telefonunuzun ana ekranında.'
   });
 });
 
@@ -854,7 +1017,7 @@ app.get('/duyuru/:id', async (req, res) => {
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const canon = announcement.slug || String(announcement.id);
   if (key !== canon) return res.redirect(301, lp + '/duyuru/' + canon);
-  run("UPDATE announcements SET views_count = views_count + 1 WHERE id = ?", [announcement.id]);
+  if (!isBotRequest(req)) run("UPDATE announcements SET views_count = views_count + 1 WHERE id = ?", [announcement.id]);
   await txFields(announcement, ['title', 'content'], req.lang);
   const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
   const shortText = stripHtml(announcement.content).slice(0, 160);
@@ -917,7 +1080,31 @@ app.get('/mekanlar', async (req, res) => {
       p.meal_type = parseJSON(p.meal_type);
     });
     await txArray(places, ['description', 'cuisine_type'], req.lang);
-    res.render('places', { places, selectedType: type });
+    const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+    const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+    res.render('places', {
+      places, selectedType: type,
+      pageTitle: i18n.t(req.lang, 'places') + ' & Restoran Rehberi',
+      metaDescription: 'Çınarcık kafe, restoran, balık lokantaları, kahvaltı yerleri ve plaj kulüpleri rehberi — Marmara\'nın İncisi.',
+      pageSchema: {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "CollectionPage",
+            "name": "Çınarcık Mekanları ve Restoran Rehberi",
+            "description": "Çınarcık restoran, kafe, bar ve eğlence mekanları rehberi.",
+            "url": siteUrl + lp + '/mekanlar'
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+              { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'places') }
+            ]
+          }
+        ]
+      }
+    });
   } catch (error) {
     console.error('Mekanlar hatası:', error);
     res.status(500).send('Sunucu hatası oluştu.');
@@ -936,7 +1123,7 @@ app.get('/mekan/:id', async (req, res) => {
     const lp = req.lang === 'tr' ? '' : '/' + req.lang;
     const canon = place.slug || String(place.id);
     if (key !== canon) return res.redirect(301, lp + '/mekan/' + canon);
-    run("UPDATE places SET views_count = views_count + 1 WHERE id = ?", [place.id]);
+    if (!isBotRequest(req)) run("UPDATE places SET views_count = views_count + 1 WHERE id = ?", [place.id]);
     const parseJSON = (data) => {
       if (!data) return [];
       if (typeof data === 'object') return data;
@@ -1027,7 +1214,31 @@ app.get('/gezilecek-yerler', async (req, res) => {
   const items = all("SELECT * FROM sightseeing WHERE status = 'active' ORDER BY sort_order ASC, created_at DESC");
   await txArray(items, ['title', 'summary', 'description'], req.lang);
   const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
-  res.render('sightseeing', { items, categories, pageTitle: 'Gezilecek Yerler' });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('sightseeing', {
+    items, categories,
+    pageTitle: i18n.t(req.lang, 'sightseeing') + ' & Doğa Rotaları Rehberi',
+    metaDescription: 'Çınarcık gezilecek yerler: Hasanbaba, Erikli ve Çifte Şelaleler, Teşvikiye, Delmece Yaylası, plajlar ve piknik alanları — Marmara\'nın İncisi.',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "name": "Çınarcık Gezilecek Yerler Rehberi",
+          "description": "Çınarcık yaylaları, şelaleleri, plajları ve tarihi/turistik yerleri rehberi.",
+          "url": siteUrl + lp + '/gezilecek-yerler'
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'sightseeing') }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/gezilecek-yer/:id', async (req, res) => {
@@ -1038,7 +1249,7 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
   const lp = req.lang === 'tr' ? '' : '/' + req.lang;
   const canon = item.slug || String(item.id);
   if (key !== canon) return res.redirect(301, lp + '/gezilecek-yer/' + canon);
-  run("UPDATE sightseeing SET views_count = views_count + 1 WHERE id = ?", [item.id]);
+  if (!isBotRequest(req)) run("UPDATE sightseeing SET views_count = views_count + 1 WHERE id = ?", [item.id]);
   item.gallery = parseGallery(item.gallery_images);
   const others = all("SELECT id, slug, title, summary, image, category, location FROM sightseeing WHERE id != ? AND status = 'active' ORDER BY sort_order ASC, created_at DESC", [item.id]);
   await Promise.all([
@@ -1083,11 +1294,7 @@ app.get('/gezilecek-yer/:id', async (req, res) => {
 });
 
 app.get('/admin/gezilecek-yerler', isAuthenticated, (req, res) => {
-  const { all, parseGallery } = require('./db');
-  const daily = dailyViewsToday();
-  const items = withViewsToday(all('SELECT * FROM sightseeing ORDER BY sort_order ASC, created_at DESC'), daily.sightseeing);
-  items.forEach(i => { i.gallery = parseGallery(i.gallery_images); });
-    res.render('admin/sightseeing', { items, todayViews: sumViewsToday(items) });
+  res.redirect('/admin?tab=sightseeing');
 });
 
 app.get('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res) => {
@@ -1120,10 +1327,10 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
         if (Array.isArray(parsed)) gallery = parsed;
       } catch (e) { gallery = []; }
     }
-    if (req.files && req.files.gallery_files) {
-      const newUrls = req.files.gallery_files.map(f => pubUrl(f));
-      gallery = applyGalleryOrder(req, gallery, newUrls);
-    }
+    const newUrls = (req.files && req.files.gallery_files && Array.isArray(req.files.gallery_files))
+      ? req.files.gallery_files.map(f => pubUrl(f))
+      : [];
+    gallery = applyGalleryOrder(req, gallery, newUrls);
 
     const statusVal = status === 'passive' ? 'passive' : 'active';
     const order = parseInt(sort_order) || 999;
@@ -1159,7 +1366,7 @@ app.post('/admin/gezilecek-yer-ekle', isAuthenticated, (req, res, next) => {
         [titleVal, slug].concat(values.slice(1)));
       pingIndexNow('/gezilecek-yer/' + slug);
     }
-    flash(res, '/admin/gezilecek-yerler', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + titleVal);
+    flash(res, '/admin?tab=sightseeing', (edit_id ? 'Güncellendi: ' : 'Eklendi: ') + titleVal);
   });
 });
 
@@ -1168,7 +1375,7 @@ app.post('/admin/gezilecek-yer-sil/:id', isAuthenticated, (req, res) => {
   const item = get('SELECT title, image, gallery_images FROM sightseeing WHERE id = ?', [req.params.id]);
   if (item) deleteUploadedMedia([item.image].concat(galleryJsonUrls(item.gallery_images)));
   run('DELETE FROM sightseeing WHERE id = ?', [req.params.id]);
-  flash(res, '/admin/gezilecek-yerler', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
+  flash(res, '/admin?tab=sightseeing', 'Silindi: ' + ((item && item.title) || '#' + req.params.id));
 });
 
 app.post('/admin/gezilecek-yer-toggle/:id', isAuthenticated, (req, res) => {
@@ -1176,7 +1383,7 @@ app.post('/admin/gezilecek-yer-toggle/:id', isAuthenticated, (req, res) => {
   const row = get('SELECT title, status FROM sightseeing WHERE id = ?', [req.params.id]);
   const nextStatus = row && row.status === 'active' ? 'passive' : 'active';
   run('UPDATE sightseeing SET status = ? WHERE id = ?', [nextStatus, req.params.id]);
-  flash(res, '/admin/gezilecek-yerler',
+  flash(res, '/admin?tab=sightseeing',
     (row && row.title || '#' + req.params.id) + (nextStatus === 'active' ? ' yayına alındı' : ' pasife alındı'),
     nextStatus === 'active' ? 'success' : 'info');
 });
@@ -1188,7 +1395,7 @@ app.post('/admin/gezilecek-yerler/goruntulenme-sifirla', isAuthenticated, (req, 
   run("UPDATE sightseeing SET views_count = 0, views_reset_at = datetime('now')");
   const daily = clearDailyViews('sightseeing', null);
   console.log(`[admin] Gezilecek yer görüntülenmeleri sıfırlandı (toplam ${total}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
-  flash(res, '/admin/gezilecek-yerler', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
+  flash(res, '/admin?tab=sightseeing', 'Görüntülenme sayaçları sıfırlandı (toplam ' + total + ', bugün ' + daily + ')', 'info');
 });
 
 app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (req, res) => {
@@ -1200,17 +1407,44 @@ app.post('/admin/gezilecek-yerler/:id/goruntulenme-sifirla', isAuthenticated, (r
     const daily = clearDailyViews('sightseeing', [item.slug, item.id]);
     console.log(`[admin] Gezilecek yer görüntülenmesi sıfırlandı: "${item.title}" (${prev}, bugün ${daily}) - ${req.session.adminUser || 'admin'}`);
   }
-  let back = '/admin/gezilecek-yerler';
-  try {
-    const ref = new URL(req.get('Referer') || '', 'http://localhost');
-    if (ref.host === req.get('host')) back = ref.pathname + ref.search;
-  } catch (e) {}
-  flash(res, back, 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
+  flash(res, '/admin?tab=sightseeing', 'Görüntülenme sıfırlandı: ' + ((item && item.title) || '#' + req.params.id), 'info');
 });
 
 // ---- İletişim (Bize Ulaşın) ----
-const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || '';
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '';
+const RECAPTCHA_SITE_KEY = (process.env.RECAPTCHA_SITE_KEY || '').trim();
+const RECAPTCHA_SECRET_KEY = (process.env.RECAPTCHA_SECRET_KEY || '').trim();
+let googleRecaptchaKeyValid = false;
+
+function getActiveRecaptchaSiteKey() {
+  return googleRecaptchaKeyValid ? RECAPTCHA_SITE_KEY : '';
+}
+
+// Sunucu açılışında Google reCAPTCHA site anahtarının gerçekten aktif/geçerli olup olmadığını kontrol et.
+// Anahtar Google tarafında silinmişse ("ErrorMain" / "Invalid site key") veya test uyarısı veriyorsa,
+// ziyaretçiye bozuk iframe göstermek yerine yerleşik imzalı "Ben robot değilim" reCAPTCHA bileşeni devreye girer.
+(async function checkGoogleRecaptchaKey() {
+  if (!RECAPTCHA_SITE_KEY || !RECAPTCHA_SECRET_KEY) return;
+  try {
+    const apiRes = await fetch('https://www.google.com/recaptcha/api.js');
+    const apiJs = await apiRes.text();
+    const m = apiJs.match(/releases\/([^\/]+)\//);
+    const v = m ? m[1] : '';
+    const siteOrigin = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '') + ':443';
+    const co = Buffer.from(siteOrigin).toString('base64').replace(/=+$/, '.');
+    const anchorUrl = 'https://www.google.com/recaptcha/api2/anchor?ar=1&k=' + encodeURIComponent(RECAPTCHA_SITE_KEY) + '&co=' + encodeURIComponent(co) + '&hl=tr&v=' + encodeURIComponent(v) + '&size=normal';
+    const anchorRes = await fetch(anchorUrl);
+    const html = await anchorRes.text();
+    if (!html.includes('ErrorMain') && !html.includes('rc-anchor-alert')) {
+      googleRecaptchaKeyValid = true;
+      console.log('[recaptcha] Google reCAPTCHA v2 anahtari dogrulandi ve aktif.');
+    } else {
+      googleRecaptchaKeyValid = false;
+      console.log('[recaptcha] .env RECAPTCHA_SITE_KEY Google tarafinda gecersiz/test modunda; yerlesik "Ben robot degilim" dogrulamasi aktif.');
+    }
+  } catch (e) {
+    googleRecaptchaKeyValid = false;
+  }
+})();
 
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -1265,12 +1499,91 @@ async function verifyRecaptcha(token) {
   }
 }
 
-// reCAPTCHA her zaman v2 checkbox ("Ben robot değilim") olarak kullanılır.
-// Invisible/v3 karmaşası widget'ın hiç render edilmemesine yol açıyordu.
+function rcTokenSecret() {
+  return process.env.SESSION_SECRET || 'cinarcik-portal-secret-key-2024';
+}
+
+function issueSignedRcToken(req) {
+  const ts = Date.now();
+  const nonce = crypto.randomBytes(12).toString('hex');
+  const payload = 'rc1.' + ts + '.' + nonce;
+  const sig = crypto.createHmac('sha256', rcTokenSecret()).update(payload).digest('base64url');
+  if (req && req.session) {
+    const list = Array.isArray(req.session.rcTokens) ? req.session.rcTokens : [];
+    list.push({ nonce, at: ts });
+    req.session.rcTokens = list.slice(-8);
+  }
+  return payload + '.' + sig;
+}
+
+function verifySignedRcToken(req, token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 4 || parts[0] !== 'rc1') return false;
+  const ts = Number(parts[1]);
+  const nonce = parts[2];
+  const sig = parts[3];
+  const now = Date.now();
+  if (!ts || now - ts > 15 * 60 * 1000 || ts > now + 10000) return false;
+  const expected = crypto.createHmac('sha256', rcTokenSecret()).update('rc1.' + parts[1] + '.' + nonce).digest('base64url');
+  if (sig !== expected) return false;
+  if (req && req.session && Array.isArray(req.session.rcTokens)) {
+    const idx = req.session.rcTokens.findIndex(x => x && x.nonce === nonce);
+    if (idx === -1) return false;
+    req.session.rcTokens.splice(idx, 1);
+  }
+  return true;
+}
+
+app.post('/api/recaptcha-challenge', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  if (!ua || isBotRequest(req)) {
+    return res.status(403).json({ success: false, error: 'Doğrulama başarısız' });
+  }
+  const source = req.headers.origin || req.headers.referer || '';
+  if (source) {
+    try {
+      const u = new URL(source);
+      if (u.host !== req.get('host')) {
+        return res.status(403).json({ success: false, error: 'Geçersiz kaynak' });
+      }
+    } catch (e) {
+      return res.status(403).json({ success: false, error: 'Geçersiz kaynak' });
+    }
+  }
+  const token = issueSignedRcToken(req);
+  res.json({ success: true, token });
+});
+
+async function verifyUserCaptcha(req) {
+  const body = req.body || {};
+  let rawToken = body['g-recaptcha-response'] || body.recaptchaToken || '';
+  if (Array.isArray(rawToken)) {
+    rawToken = rawToken.filter(Boolean).pop() || '';
+  }
+  rawToken = String(rawToken || '').trim();
+  const legacyCode = String(body.captcha || '').trim().toUpperCase();
+
+  if (rawToken.startsWith('rc1.')) {
+    if (verifySignedRcToken(req, rawToken)) return { ok: true };
+    return { ok: false, error: 'Robot doğrulaması süresi doldu, lütfen kutucuğu tekrar işaretleyin.' };
+  }
+  if (rawToken && googleRecaptchaKeyValid) {
+    return await verifyRecaptcha(rawToken);
+  }
+  if (legacyCode && captchaOk(req, legacyCode)) {
+    if (req.session) req.session.captchaCodes = [];
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    error: i18n.t(req.lang || 'tr', 'notRobotHint') || 'Lütfen "Ben robot değilim" kutusunu işaretleyin.'
+  };
+}
+
 async function contactView(sent, error, form) {
   return {
     sent, error, form,
-    recaptchaSiteKey: RECAPTCHA_SITE_KEY,
+    recaptchaSiteKey: getActiveRecaptchaSiteKey(),
     recaptchaInvisible: false,
     captchaTs: Date.now()
   };
@@ -1321,7 +1634,7 @@ app.get('/iletisim', async (req, res) => {
   await renderContact(req, res, { sent: req.query.sent === '1' });
 });
 
-app.post('/iletisim', async (req, res) => {
+app.post('/iletisim', contactLimiter, async (req, res) => {
   const { run } = require('./db');
   const gUser = (req.session.isGoogleAuth && req.session.googleUser && req.session.googleUser.email)
     ? req.session.googleUser : null;
@@ -1343,10 +1656,11 @@ app.post('/iletisim', async (req, res) => {
     return renderContact(req, res, { status: 400, error: 'Mesaj en fazla 2000 karakter olabilir.', form: form });
   }
 
-  if (!captchaOk(req, captcha)) {
+  const rcCheck = await verifyUserCaptcha(req);
+  if (!rcCheck.ok) {
     return renderContact(req, res, {
       status: 400,
-      error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.',
+      error: rcCheck.error,
       form: form
     });
   }
@@ -1511,6 +1825,7 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   const news = withViewsToday(all("SELECT * FROM news ORDER BY sort_order ASC, created_at DESC"), daily.news);
   const newsCount = get('SELECT COUNT(*) as cnt FROM news');
   const companies = withViewsToday(all('SELECT * FROM companies ORDER BY sort_order ASC, created_at DESC'), daily.companies);
+  const sightseeing = withViewsToday(all('SELECT * FROM sightseeing ORDER BY sort_order ASC, created_at DESC'), daily.sightseeing);
   const pendingComments = get("SELECT COUNT(*) as cnt FROM comments WHERE status = 'pending'");
   const totalComments = get('SELECT COUNT(*) as cnt FROM comments');
   const unreadMessages = get("SELECT COUNT(*) as cnt FROM contact_messages WHERE status = 'new'");
@@ -1521,12 +1836,13 @@ app.get('/admin', isAuthenticated, async (req, res) => {
   const pollTotalVotesAll = get('SELECT COUNT(*) as cnt FROM poll_votes');
   const pollCountAll = get('SELECT COUNT(*) as cnt FROM polls');
   res.render('admin/dashboard', {
-    announcements, places, news,
+    announcements, places, news, sightseeing,
     newsCount: (newsCount && newsCount.cnt) ? newsCount.cnt : 0,
     newsTodayViews: sumViewsToday(news),
     announcementsTodayViews: sumViewsToday(announcements),
     placesTodayViews: sumViewsToday(places),
     companiesTodayViews: sumViewsToday(companies),
+    sightseeingTodayViews: sumViewsToday(sightseeing),
     companies,
     pendingCommentsCount: (pendingComments && pendingComments.cnt) ? pendingComments.cnt : 0,
     totalCommentsCount: (totalComments && totalComments.cnt) ? totalComments.cnt : 0,
@@ -1570,7 +1886,7 @@ const REORDERABLE = {
   },
   sightseeing: {
     orderBy: 'sort_order ASC, created_at DESC',
-    back: '/admin/gezilecek-yerler'
+    back: '/admin?tab=sightseeing'
   }
 };
 
@@ -1677,9 +1993,10 @@ app.post('/admin/haber-ekle', isAuthenticated, function(req, res, next) {
       galleryArr = existingRaw.slice();
     }
   }
-  if (req.files && req.files.gallery_files && Array.isArray(req.files.gallery_files)) {
-    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_files.map(f => pubUrl(f)));
-  }
+  const newUrls = (req.files && req.files.gallery_files && Array.isArray(req.files.gallery_files))
+    ? req.files.gallery_files.map(f => pubUrl(f))
+    : [];
+  galleryArr = applyGalleryOrder(req, galleryArr, newUrls);
 
   if (!title || !content) {
     const edit = edit_id ? get('SELECT * FROM news WHERE id = ?', [edit_id]) : null;
@@ -2374,7 +2691,7 @@ app.post('/ilan-ver', function(req, res, next) {
     }
     next();
   });
-}, (req, res) => {
+}, async (req, res) => {
   const { run } = require('./db');
   const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
   const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
@@ -2409,8 +2726,9 @@ app.post('/ilan-ver', function(req, res, next) {
   if (content.length < 20 || content.length > 4000) {
     return fail('İçerik 20 ile 4000 karakter arasında olmalıdır.');
   }
-  if (!captchaOk(req, captcha)) {
-    return fail('Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.');
+  const rcCheck = await verifyUserCaptcha(req);
+  if (!rcCheck.ok) {
+    return fail(rcCheck.error);
   }
 
   const image = req.file ? pubUrl(req.file) : '';
@@ -2485,7 +2803,7 @@ app.post('/sizlerden-gelen', function(req, res, next) {
     }
     next();
   });
-}, (req, res) => {
+}, async (req, res) => {
   const { run, all } = require('./db');
   const isJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json')) || req.query.format === 'json';
   const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
@@ -2511,7 +2829,8 @@ app.post('/sizlerden-gelen', function(req, res, next) {
   if (title.length < 3 || title.length > 120) return fail('Başlık 3 ile 120 karakter arasında olmalıdır.');
   if (description.length > 2000) return fail('Açıklama en fazla 2000 karakter olabilir.');
   if (!req.file) return fail('Lütfen paylaşmak istediğiniz fotoğrafı seçin.');
-  if (!captchaOk(req, captcha)) return fail('Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.');
+  const rcCheck = await verifyUserCaptcha(req);
+  if (!rcCheck.ok) return fail(rcCheck.error);
 
   run("INSERT INTO photo_submissions (title, description, image, author_name, author_email, status) VALUES (?,?,?,?,?,'pending')",
     [title.slice(0, 120), description.slice(0, 2000), pubUrl(req.file), userName.slice(0, 80), userEmail.slice(0, 120)]);
@@ -2593,9 +2912,10 @@ app.post('/admin/mekan-ekle', isAuthenticated, function(req, res, next) {
       galleryArr = existingRaw.slice();
     }
   }
-  if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_images.map(f => pubUrl(f)));
-  }
+  const newUrls = (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images))
+    ? req.files.gallery_images.map(f => pubUrl(f))
+    : [];
+  galleryArr = applyGalleryOrder(req, galleryArr, newUrls);
 
   if (!name || !category || !description) {
     const edit = edit_id ? get('SELECT * FROM places WHERE id = ?', [edit_id]) : null;
@@ -2708,14 +3028,38 @@ app.get('/rehber', async (req, res) => {
     c.gallery_images = parseJSON(c.gallery_images);
   });
   await txArray(companies, ['description'], req.lang);
-  res.render('rehber', { companies, selectedType: type });
+  const siteUrl = (process.env.SITE_URL || 'https://marmaraninincisi.com').replace(/\/$/, '');
+  const lp = req.lang === 'tr' ? '' : '/' + req.lang;
+  res.render('rehber', {
+    companies, selectedType: type,
+    pageTitle: i18n.t(req.lang, 'guide') + ' & Firma Esnaf Rehberi',
+    metaDescription: 'Çınarcık esnaf ve firma rehberi: market, usta, taksi, nakliyat, sağlık ve işletme iletişim bilgileri — Marmara\'nın İncisi.',
+    pageSchema: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "name": "Çınarcık Firma Rehberi",
+          "description": "Çınarcık esnaf ve işletmeler rehberi.",
+          "url": siteUrl + lp + '/rehber'
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": i18n.t(req.lang, 'home'), "item": siteUrl + lp + '/' },
+            { "@type": "ListItem", "position": 2, "name": i18n.t(req.lang, 'guide') }
+          ]
+        }
+      ]
+    }
+  });
 });
 
 app.get('/rehber/:slug', async (req, res) => {
   const { get, run } = require('./db');
   const company = get("SELECT * FROM companies WHERE slug = ? OR id = ?", [req.params.slug, isNaN(parseInt(req.params.slug)) ? -1 : req.params.slug]);
   if (!company || !company.id) return res.redirect('/rehber');
-  run("UPDATE companies SET views_count = views_count + 1 WHERE id = ?", [company.id]);
+  if (!isBotRequest(req)) run("UPDATE companies SET views_count = views_count + 1 WHERE id = ?", [company.id]);
   const parseJSON = (data) => {
     if (!data) return [];
     if (typeof data === 'object') return data;
@@ -2805,50 +3149,500 @@ app.get('/admin/raporlar', isAuthenticated, (req, res) => {
   const iso = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
   // "Bugün" ve günlük grafik serisi Türkiye saati (UTC+3) 00:00–24:00 aralığına göre.
   const dayStart = trtDayRange(now.getTime())[0];
+  const yesterdayStart = trtDayRange(now.getTime() - 24 * 3600 * 1000)[0];
   const d7 = iso(new Date(now.getTime() - 7 * 24 * 3600 * 1000));
   const d30 = iso(new Date(now.getTime() - 30 * 24 * 3600 * 1000));
 
-  // Render/AWS iç ağı (10.x, 172.16-31, 192.168, 127., IPv6 yerel) sağlık
-  // kontrollerinden gelir — istatistikleri bozmasın diye sorgulardan hariç tutulur.
+  // İç ağ (10.x, 172.16-31, 192.168, 127., IPv6 yerel) + Bot User-Agent'ları + Arka plan API/dosya istekleri
+  // istatistikleri şişirmesin diye gerçek ziyaretçi sorgularından tamamen hariç tutulur.
   const PUBLIC_IP = `ip NOT LIKE '10.%' AND ip NOT LIKE '127.%' AND ip NOT LIKE '192.168.%'
     AND ip NOT GLOB '172.1[6-9]*' AND ip NOT GLOB '172.2[0-9]*' AND ip NOT GLOB '172.3[0-1]*'
     AND ip != '::1'`;
-  const isPrivateIp = (ip) => {
-    if (!ip || ip === '::1') return true;
-    if (/^(10\.|127\.|192\.168\.)/.test(ip)) return true;
-    const m = ip.match(/^172\.(\d+)\./);
-    if (m && +m[1] >= 16 && +m[1] <= 31) return true;
-    return /^(fc|fd|fe8)/i.test(ip);
+  const HUMAN_UA_SQL = `user_agent IS NOT NULL AND LENGTH(TRIM(user_agent)) >= 12
+    AND LOWER(user_agent) NOT GLOB '*bot*'
+    AND LOWER(user_agent) NOT GLOB '*crawl*'
+    AND LOWER(user_agent) NOT GLOB '*spider*'
+    AND LOWER(user_agent) NOT GLOB '*slurp*'
+    AND LOWER(user_agent) NOT GLOB '*headless*'
+    AND LOWER(user_agent) NOT GLOB '*lighthouse*'
+    AND LOWER(user_agent) NOT GLOB '*powershell*'
+    AND LOWER(user_agent) NOT GLOB '*curl*'
+    AND LOWER(user_agent) NOT GLOB '*wget*'
+    AND LOWER(user_agent) NOT GLOB '*python*'
+    AND LOWER(user_agent) NOT GLOB '*go-http*'
+    AND LOWER(user_agent) NOT GLOB '*axios*'
+    AND LOWER(user_agent) NOT GLOB '*node-fetch*'
+    AND LOWER(user_agent) NOT GLOB '*postman*'
+    AND LOWER(user_agent) NOT GLOB '*uptime*'
+    AND LOWER(user_agent) NOT GLOB '*pingdom*'
+    AND LOWER(user_agent) NOT GLOB '*statuscake*'
+    AND LOWER(user_agent) NOT GLOB '*kuma*'
+    AND LOWER(user_agent) NOT GLOB '*monitor*'
+    AND LOWER(user_agent) NOT GLOB '*whatsapp*'
+    AND LOWER(user_agent) NOT GLOB '*facebookexternalhit*'
+    AND LOWER(user_agent) NOT GLOB '*embedly*'
+    AND LOWER(user_agent) NOT GLOB '*playwright*'
+    AND LOWER(user_agent) NOT GLOB '*puppeteer*'
+    AND LOWER(user_agent) NOT GLOB '*selenium*'`;
+  const PAGE_PATH_SQL = `path NOT LIKE '/api/%'
+    AND path NOT LIKE '/uploads/%'
+    AND path NOT LIKE '/img/%'
+    AND path NOT LIKE '/css/%'
+    AND path NOT LIKE '/js/%'
+    AND path NOT LIKE '/admin%'
+    AND path NOT IN ('/captcha.svg', '/robots.txt', '/sitemap.xml', '/rss.xml', '/favicon.ico')
+    AND LOWER(path) NOT GLOB '*.png'
+    AND LOWER(path) NOT GLOB '*.jpg'
+    AND LOWER(path) NOT GLOB '*.jpeg'
+    AND LOWER(path) NOT GLOB '*.webp'
+    AND LOWER(path) NOT GLOB '*.gif'
+    AND LOWER(path) NOT GLOB '*.svg'
+    AND LOWER(path) NOT GLOB '*.ico'
+    AND LOWER(path) NOT GLOB '*.css'
+    AND LOWER(path) NOT GLOB '*.js'
+    AND LOWER(path) NOT GLOB '*.xml'
+    AND LOWER(path) NOT GLOB '*.txt'`;
+
+  const HUMAN_WHERE = `${PUBLIC_IP} AND ${HUMAN_UA_SQL} AND ${PAGE_PATH_SQL}`;
+
+  // Sözlükler: URL path'lerini anlamlı sayfa başlığına çevirmek için içerik tablolarını çekiyoruz
+  const newsRows = all('SELECT id, title, slug, category, views_count FROM news WHERE status = \'active\' ORDER BY views_count DESC');
+  const annRows = all('SELECT id, title, slug, category, views_count FROM announcements WHERE status = \'active\' ORDER BY views_count DESC');
+  const placeRows = all('SELECT id, name, slug, category, views_count FROM places WHERE status = \'active\' ORDER BY views_count DESC');
+  const sightRows = all('SELECT id, title, slug, category, views_count FROM sightseeing WHERE status = \'active\' ORDER BY views_count DESC');
+  const compRows = all('SELECT id, name, slug, category, views_count FROM companies WHERE status = \'active\' ORDER BY views_count DESC');
+
+  const dailyToday = dailyViewsToday();
+  const topNewsClicked = withViewsToday(newsRows, dailyToday.news).sort((a, b) => (b.views_today - a.views_today) || ((b.views_count || 0) - (a.views_count || 0))).slice(0, 8);
+  const topAnnClicked = withViewsToday(annRows, dailyToday.announcements).sort((a, b) => (b.views_today - a.views_today) || ((b.views_count || 0) - (a.views_count || 0))).slice(0, 8);
+  const topPlacesClicked = withViewsToday(placeRows, dailyToday.places).sort((a, b) => (b.views_today - a.views_today) || ((b.views_count || 0) - (a.views_count || 0))).slice(0, 8);
+  const topSightsClicked = withViewsToday(sightRows, dailyToday.sightseeing).sort((a, b) => (b.views_today - a.views_today) || ((b.views_count || 0) - (a.views_count || 0))).slice(0, 8);
+  const topCompaniesClicked = withViewsToday(compRows, dailyToday.companies).sort((a, b) => (b.views_today - a.views_today) || ((b.views_count || 0) - (a.views_count || 0))).slice(0, 8);
+
+  const newsMap = new Map();
+  newsRows.forEach(r => { if (r.slug) newsMap.set(r.slug, r.title); newsMap.set(String(r.id), r.title); });
+  const annMap = new Map();
+  annRows.forEach(r => { if (r.slug) annMap.set(r.slug, r.title); annMap.set(String(r.id), r.title); });
+  const placeMap = new Map();
+  placeRows.forEach(r => { if (r.slug) placeMap.set(r.slug, r.name); placeMap.set(String(r.id), r.name); });
+  const sightMap = new Map();
+  sightRows.forEach(r => { if (r.slug) sightMap.set(r.slug, r.title); sightMap.set(String(r.id), r.title); });
+  const compMap = new Map();
+  compRows.forEach(r => { if (r.slug) compMap.set(r.slug, r.name); compMap.set(String(r.id), r.name); });
+
+  const STATIC_PAGE_META = {
+    '/': { title: 'Ana Sayfa', section: 'Ana Sayfa', icon: '🏠' },
+    '/haberler': { title: 'Haberler Listesi', section: 'Haberler', icon: '📰' },
+    '/duyurular': { title: 'Duyuru & İlanlar', section: 'Duyurular', icon: '📢' },
+    '/etkinlikler': { title: 'Etkinlikler Takvimi', section: 'Etkinlikler', icon: '🎉' },
+    '/ulasim': { title: 'Ulaşım & Sefer Saatleri', section: 'Ulaşım & Seferler', icon: '🚌' },
+    '/mekanlar': { title: 'Mekanlar Rehberi', section: 'Mekanlar', icon: '📍' },
+    '/gezilecek-yerler': { title: 'Gezilecek Yerler', section: 'Gezilecek Yerler', icon: '🧳' },
+    '/rehber': { title: 'Firma Rehberi', section: 'Firma Rehberi', icon: '🏢' },
+    '/sizlerden-gelen': { title: 'Sizlerden Gelen Fotoğraflar', section: 'Fotoğraflar', icon: '📸' },
+    '/deniz-durumu': { title: 'Deniz & Hava Durumu', section: 'Deniz Durumu', icon: '🌊' },
+    '/iletisim': { title: 'İletişim & Bize Ulaşın', section: 'İletişim', icon: '✉️' },
+    '/hakkinda': { title: 'Çınarcık Hakkında', section: 'Hakkında', icon: 'ℹ️' },
+    '/ilan-ver': { title: 'Ücretsiz İlan / Duyuru Ver', section: 'Duyurular', icon: '➕' },
+    '/kaydettiklerim': { title: 'Kaydettiklerim (Favoriler)', section: 'Favoriler', icon: '★' },
+    '/gizlilik': { title: 'Gizlilik Politikası', section: 'Diğer', icon: '🔒' }
   };
 
-  const stat = (since) => {
-    const r = get(`SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP}`, [since]);
+  function resolvePageMeta(rawPath) {
+    const p = (rawPath || '/').split('?')[0].replace(/\/+$/, '') || '/';
+    if (STATIC_PAGE_META[p]) return Object.assign({ path: p }, STATIC_PAGE_META[p]);
+    let m;
+    if ((m = p.match(/^\/haber\/([^/]+)$/))) {
+      const key = decodeURIComponent(m[1]);
+      const t = newsMap.get(key);
+      return { path: p, title: t ? t : ('Haber: ' + key.replace(/-/g, ' ')), section: 'Haberler', icon: '📰' };
+    }
+    if ((m = p.match(/^\/duyuru\/([^/]+)$/))) {
+      const key = decodeURIComponent(m[1]);
+      const t = annMap.get(key);
+      return { path: p, title: t ? t : ('Duyuru: ' + key.replace(/-/g, ' ')), section: 'Duyurular', icon: '📢' };
+    }
+    if ((m = p.match(/^\/mekan\/([^/]+)$/))) {
+      const key = decodeURIComponent(m[1]);
+      const t = placeMap.get(key);
+      return { path: p, title: t ? t : ('Mekan: ' + key.replace(/-/g, ' ')), section: 'Mekanlar', icon: '📍' };
+    }
+    if ((m = p.match(/^\/gezilecek-yer\/([^/]+)$/))) {
+      const key = decodeURIComponent(m[1]);
+      const t = sightMap.get(key);
+      return { path: p, title: t ? t : ('Gezilecek Yer: ' + key.replace(/-/g, ' ')), section: 'Gezilecek Yerler', icon: '🧳' };
+    }
+    if ((m = p.match(/^\/rehber\/([^/]+)$/))) {
+      const key = decodeURIComponent(m[1]);
+      const t = compMap.get(key);
+      return { path: p, title: t ? t : ('Firma: ' + key.replace(/-/g, ' ')), section: 'Firma Rehberi', icon: '🏢' };
+    }
+    return { path: p, title: p, section: 'Diğer', icon: '📄' };
+  }
+
+  function parseDeviceAndBrowser(ua) {
+    const s = ua || '';
+    let device = 'Masaüstü', deviceIcon = '💻';
+    if (/iPad|Tablet|PlayBook|Silk/i.test(s) || (/Android/i.test(s) && !/Mobile/i.test(s))) {
+      device = 'Tablet'; deviceIcon = '📲';
+    } else if (/iPhone|iPod/i.test(s)) {
+      device = 'iPhone'; deviceIcon = '📱';
+    } else if (/Android/i.test(s)) {
+      device = 'Android'; deviceIcon = '📱';
+    } else if (/Mobile|IEMobile|Opera Mini/i.test(s)) {
+      device = 'Mobil'; deviceIcon = '📱';
+    } else if (/Macintosh|Mac OS X/i.test(s)) {
+      device = 'Mac'; deviceIcon = '💻';
+    } else if (/Windows/i.test(s)) {
+      device = 'Windows'; deviceIcon = '💻';
+    } else if (/Linux/i.test(s)) {
+      device = 'Linux'; deviceIcon = '💻';
+    }
+    let browser = 'Tarayıcı';
+    if (/Edg\//i.test(s)) browser = 'Edge';
+    else if (/OPR\/|Opera/i.test(s)) browser = 'Opera';
+    else if (/SamsungBrowser/i.test(s)) browser = 'Samsung';
+    else if (/Chrome\/|CriOS/i.test(s)) browser = 'Chrome';
+    else if (/Firefox\/|FxiOS/i.test(s)) browser = 'Firefox';
+    else if (/Safari\//i.test(s)) browser = 'Safari';
+    const isMobile = (device === 'iPhone' || device === 'Android' || device === 'Mobil');
+    return { device, browser, deviceIcon, isMobile, label: `${deviceIcon} ${device} · ${browser}` };
+  }
+
+  function classifyReferrer(ref) {
+    if (!ref || !ref.trim()) return { category: 'Direkt Giriş', label: 'Direkt (Adres Çubuğu / Yer İmi)', icon: '🎯' };
+    try {
+      const u = new URL(ref);
+      const h = u.hostname.toLowerCase();
+      if (h.includes('marmaraninincisi.com') || h.includes('localhost') || h.includes('127.0.0.1')) {
+        return { category: 'Site İçi Gezinme', label: 'Site İçi (' + (u.pathname || '/') + ')', icon: '🔄' };
+      }
+      if (/google\.|bing\.|yandex\.|duckduckgo\.|yahoo\./.test(h)) {
+        return { category: 'Arama Motoru (Google vb.)', label: h.replace(/^www\./, ''), icon: '🔍' };
+      }
+      if (/instagram\.|facebook\.|fb\.|t\.co|twitter\.|x\.com|whatsapp\.|youtube\.|tiktok\.|linkedin\./.test(h)) {
+        return { category: 'Sosyal Medya & WhatsApp', label: h.replace(/^www\./, ''), icon: '📲' };
+      }
+      return { category: 'Diğer Siteler', label: h.replace(/^www\./, ''), icon: '🌐' };
+    } catch {
+      return { category: 'Diğer Siteler', label: ref.slice(0, 40), icon: '🌐' };
+    }
+  }
+
+  const statRange = (since, until) => {
+    const r = until
+      ? get(`SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ? AND created_at < ? AND ${HUMAN_WHERE}`, [since, until])
+      : get(`SELECT COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ? AND ${HUMAN_WHERE}`, [since]);
     return { views: (r && r.views) || 0, uniques: (r && r.uniques) || 0 };
   };
-  const totals = get(`SELECT COUNT(*) AS total, COUNT(DISTINCT ip) AS totalUniques FROM page_views WHERE ${PUBLIC_IP}`) || { total: 0, totalUniques: 0 };
 
-  const topPages = all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
-    FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY path ORDER BY views DESC LIMIT 20`, [d30]);
-  const daily = all(`SELECT date(created_at, '+3 hours') AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
-    FROM page_views WHERE created_at >= ? AND ${PUBLIC_IP} GROUP BY day ORDER BY day ASC`, [d30]);
-  const recent = all('SELECT * FROM page_views ORDER BY id DESC LIMIT 100')
-    .map(r => Object.assign(r, { is_internal: isPrivateIp(r.ip) }));
+  const today = statRange(dayStart);
+  const yesterday = statRange(yesterdayStart, dayStart);
+  const week = statRange(d7);
+  const month = statRange(d30);
+  const totals = get(`SELECT COUNT(*) AS total, COUNT(DISTINCT ip) AS totalUniques FROM page_views WHERE ${HUMAN_WHERE}`) || { total: 0, totalUniques: 0 };
+  const rawAllTotals = get('SELECT COUNT(*) AS rawTotal FROM page_views') || { rawTotal: 0 };
+  const filteredBotCount = Math.max(0, (rawAllTotals.rawTotal || 0) - (totals.total || 0));
 
+  today.yesterdayViews = yesterday.views;
+  today.diffPct = yesterday.views > 0 ? Math.round(((today.views - yesterday.views) / yesterday.views) * 100) : null;
+  week.avgDaily = Math.round((week.views || 0) / 7);
+  month.avgDaily = Math.round((month.views || 0) / 30);
+
+  const queryTopPages = (since) => {
+    const rows = since
+      ? all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE created_at >= ? AND ${HUMAN_WHERE} GROUP BY path ORDER BY views DESC LIMIT 20`, [since])
+      : all(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques FROM page_views WHERE ${HUMAN_WHERE} GROUP BY path ORDER BY views DESC LIMIT 20`);
+    const sumViews = rows.reduce((s, r) => s + (r.views || 0), 0) || 1;
+    return rows.map((r, idx) => {
+      const meta = resolvePageMeta(r.path);
+      return {
+        rank: idx + 1,
+        path: r.path,
+        title: meta.title,
+        section: meta.section,
+        icon: meta.icon,
+        views: r.views || 0,
+        uniques: r.uniques || 0,
+        pct: Math.max(2, Math.round(((r.views || 0) / sumViews) * 100))
+      };
+    });
+  };
+
+  const topPagesByPeriod = {
+    today: queryTopPages(dayStart),
+    week: queryTopPages(d7),
+    month: queryTopPages(d30),
+    total: queryTopPages(null)
+  };
+
+  // Son 30 günlük gerçek ziyaretçi kayıtları üzerinden Bölüm Popülerliği, Cihaz, Trafik Kaynağı ve Yoğun Saat analizi
+  const humanRows30d = all(`SELECT path, ip, user_agent, referrer, created_at FROM page_views WHERE created_at >= ? AND ${HUMAN_WHERE} ORDER BY id DESC`, [d30]);
+
+  const sectionCounts = new Map();
+  let mobileCount = 0, desktopCount = 0, tabletCount = 0;
+  const browserCounts = new Map();
+  const refCounts = new Map([
+    ['Direkt Giriş', { label: 'Direkt Giriş (Adres / Yer İmi)', icon: '🎯', count: 0 }],
+    ['Arama Motoru (Google vb.)', { label: 'Google & Arama Motorları', icon: '🔍', count: 0 }],
+    ['Sosyal Medya & WhatsApp', { label: 'Sosyal Medya & WhatsApp', icon: '📲', count: 0 }],
+    ['Site İçi Gezinme', { label: 'Site İçi Tıklamalar (Sayfalar Arası)', icon: '🔄', count: 0 }],
+    ['Diğer Siteler', { label: 'Diğer Referans Siteler', icon: '🌐', count: 0 }]
+  ]);
+  const hourBuckets = new Array(24).fill(0);
+
+  humanRows30d.forEach(r => {
+    const meta = resolvePageMeta(r.path);
+    const secKey = meta.section || 'Diğer';
+    if (!sectionCounts.has(secKey)) {
+      sectionCounts.set(secKey, { section: secKey, icon: meta.icon, views: 0, ips: new Set() });
+    }
+    const secObj = sectionCounts.get(secKey);
+    secObj.views++;
+    if (r.ip) secObj.ips.add(r.ip);
+
+    const dev = parseDeviceAndBrowser(r.user_agent);
+    if (dev.device === 'Tablet') tabletCount++;
+    else if (dev.isMobile) mobileCount++;
+    else desktopCount++;
+    browserCounts.set(dev.browser, (browserCounts.get(dev.browser) || 0) + 1);
+
+    const refInfo = classifyReferrer(r.referrer);
+    const refEntry = refCounts.get(refInfo.category);
+    if (refEntry) refEntry.count++;
+
+    if (r.created_at) {
+      const dt = new Date(r.created_at.replace(' ', 'T') + 'Z');
+      if (!isNaN(dt.getTime())) {
+        const trHour = new Date(dt.getTime() + TRT_OFFSET_MS).getUTCHours();
+        if (trHour >= 0 && trHour < 24) hourBuckets[trHour]++;
+      }
+    }
+  });
+
+  const total30dAnalyzed = humanRows30d.length || 1;
+  const sectionBreakdown = Array.from(sectionCounts.values())
+    .map(s => ({
+      section: s.section,
+      icon: s.icon,
+      views: s.views,
+      uniques: s.ips.size,
+      pct: Math.round((s.views / total30dAnalyzed) * 100)
+    }))
+    .sort((a, b) => b.views - a.views);
+
+  const deviceBreakdown = {
+    mobile: { count: mobileCount, pct: Math.round((mobileCount / total30dAnalyzed) * 100) },
+    desktop: { count: desktopCount, pct: Math.round((desktopCount / total30dAnalyzed) * 100) },
+    tablet: { count: tabletCount, pct: Math.round((tabletCount / total30dAnalyzed) * 100) },
+    topBrowsers: Array.from(browserCounts.entries())
+      .map(([name, count]) => ({ name, count, pct: Math.round((count / total30dAnalyzed) * 100) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+  };
+
+  const trafficSources = Array.from(refCounts.values())
+    .map(x => ({ label: x.label, icon: x.icon, count: x.count, pct: Math.round((x.count / total30dAnalyzed) * 100) }))
+    .sort((a, b) => b.count - a.count);
+
+  let peakHour = 20, peakHourViews = 0;
+  hourBuckets.forEach((cnt, hr) => {
+    if (cnt > peakHourViews) { peakHourViews = cnt; peakHour = hr; }
+  });
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const peakHourLabel = `${pad2(peakHour)}:00 - ${pad2((peakHour + 1) % 24)}:00`;
+
+  // 1) Bugün (Saatlik 00:00 - 23:00 TR)
+  const todayHourlyRows = all(`SELECT strftime('%H', datetime(created_at, '+3 hours')) AS hr, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
+    FROM page_views WHERE created_at >= ? AND ${HUMAN_WHERE} GROUP BY hr ORDER BY hr ASC`, [dayStart]);
+  const todayHourMap = {};
+  todayHourlyRows.forEach(r => { todayHourMap[r.hr] = r; });
+  const todayLabels = [], todayViewsSeries = [], todayUniquesSeries = [];
+  for (let h = 0; h < 24; h++) {
+    const hk = pad2(h);
+    todayLabels.push(hk + ':00');
+    todayViewsSeries.push((todayHourMap[hk] && todayHourMap[hk].views) || 0);
+    todayUniquesSeries.push((todayHourMap[hk] && todayHourMap[hk].uniques) || 0);
+  }
+
+  // 2) Tüm Zamanlar / Son 30 Gün / Son 7 Gün (Günlük TR — Türkçe Tarih Etiketli ve İlk Kayıt Gününden Başlayan)
+  const TR_SHORT_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  const fmtTrDayLabel = (yyyyMmDd) => {
+    if (!yyyyMmDd || yyyyMmDd.length < 10) return yyyyMmDd;
+    const mIdx = parseInt(yyyyMmDd.slice(5, 7), 10) - 1;
+    const dNum = parseInt(yyyyMmDd.slice(8, 10), 10);
+    return dNum + ' ' + (TR_SHORT_MONTHS[mIdx] || yyyyMmDd.slice(5, 7));
+  };
+
+  const allDailyRows = all(`SELECT date(created_at, '+3 hours') AS day, COUNT(*) AS views, COUNT(DISTINCT ip) AS uniques
+    FROM page_views WHERE ${HUMAN_WHERE} GROUP BY day ORDER BY day ASC`);
   const dailyMap = {};
-  daily.forEach(r => { dailyMap[r.day] = r; });
+  allDailyRows.forEach(r => { if (r.day) dailyMap[r.day] = r; });
+
+  const todayStr = new Date(now.getTime() + TRT_OFFSET_MS).toISOString().slice(0, 10);
+  const todayMs = new Date(todayStr + 'T00:00:00Z').getTime();
+  const firstDayStr = allDailyRows.length > 0 ? allDailyRows[0].day : todayStr;
+  const firstMs = new Date(firstDayStr + 'T00:00:00Z').getTime();
+  const daysSinceFirstRecord = Math.max(1, Math.min(365, Math.round((todayMs - firstMs) / (24 * 3600 * 1000)) + 1));
+
+  // Son 30 gün ortalamasını gerçek kayıt tutulan gün sayısına (en fazla 30) bölerek hesapla
+  const activeMonthDays = Math.max(1, Math.min(30, daysSinceFirstRecord));
+  month.avgDaily = Math.round((month.views || 0) / activeMonthDays);
+
+  const weekSpan = Math.min(7, daysSinceFirstRecord);
+  const weekLabels = [], weekViewsSeries = [], weekUniquesSeries = [];
+  for (let i = weekSpan - 1; i >= 0; i--) {
+    const key = new Date(todayMs - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    weekLabels.push(fmtTrDayLabel(key));
+    weekViewsSeries.push((dailyMap[key] && dailyMap[key].views) || 0);
+    weekUniquesSeries.push((dailyMap[key] && dailyMap[key].uniques) || 0);
+  }
+
+  // Son 30 gün grafiği: Kayıtlar 30 günden daha yeni başladıysa (ör. 18 Ekim), boş 0 günlerini göstermeyip ilk kayıt gününden başlar
+  const monthSpan = Math.min(30, daysSinceFirstRecord);
   const labels = [], viewsSeries = [], uniquesSeries = [];
-  for (let i = 29; i >= 0; i--) {
-    const key = new Date(now.getTime() + TRT_OFFSET_MS - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    labels.push(key.slice(5));
+  for (let i = monthSpan - 1; i >= 0; i--) {
+    const key = new Date(todayMs - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    labels.push(fmtTrDayLabel(key));
     viewsSeries.push((dailyMap[key] && dailyMap[key].views) || 0);
     uniquesSeries.push((dailyMap[key] && dailyMap[key].uniques) || 0);
   }
 
+  const totalLabels = [], totalViewsSeries = [], totalUniquesSeries = [];
+  for (let i = daysSinceFirstRecord - 1; i >= 0; i--) {
+    const key = new Date(todayMs - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    totalLabels.push(fmtTrDayLabel(key));
+    totalViewsSeries.push((dailyMap[key] && dailyMap[key].views) || 0);
+    totalUniquesSeries.push((dailyMap[key] && dailyMap[key].uniques) || 0);
+  }
+
+  const chartDataByPeriod = {
+    today: {
+      title: 'Bugünkü Saatlik Gerçek Ziyaretçi Grafiği (00:00 - 23:00)',
+      subtitle: 'Bugün saat bazında gerçekleşen sayfa görüntülenme ve tekil ziyaretçi (IP) dağılımı',
+      labels: todayLabels,
+      views: todayViewsSeries,
+      uniques: todayUniquesSeries
+    },
+    week: {
+      title: 'Haftalık (Son 7 Gün) Gerçek Ziyaretçi Grafiği',
+      subtitle: 'Son 7 günün günlük gerçek sayfa görüntülenme ve tekil ziyaretçi (IP) eğrisi',
+      labels: weekLabels,
+      views: weekViewsSeries,
+      uniques: weekUniquesSeries
+    },
+    month: {
+      title: 'Son 30 Günlük Gerçek Ziyaretçi Grafiği (Botlar Hariç)',
+      subtitle: 'Son 30 günün günlük gerçek sayfa görüntülenme ve tekil ziyaretçi (IP) eğrisi',
+      labels,
+      views: viewsSeries,
+      uniques: uniquesSeries
+    },
+    total: {
+      title: 'Tüm Zamanlar Gerçek Ziyaretçi Grafiği (Botlar Hariç)',
+      subtitle: 'İlk kayıttan bugüne günlük gerçek sayfa görüntülenme ve tekil ziyaretçi (IP) eğrisi',
+      labels: totalLabels,
+      views: totalViewsSeries,
+      uniques: totalUniquesSeries
+    }
+  };
+
+  // Son gerçek ziyaretçiler (botlar ve arka plan istekleri hariç)
+  const recent = all(`SELECT id, path, ip, user_agent, referrer, datetime(created_at, '+3 hours') AS tr_time
+    FROM page_views WHERE ${HUMAN_WHERE} ORDER BY id DESC LIMIT 120`)
+    .map(r => {
+      const meta = resolvePageMeta(r.path);
+      const dev = parseDeviceAndBrowser(r.user_agent);
+      const ref = classifyReferrer(r.referrer);
+      return {
+        tr_time: r.tr_time || '',
+        path: r.path,
+        pageTitle: meta.title,
+        pageIcon: meta.icon,
+        pageSection: meta.section,
+        ip: r.ip,
+        deviceLabel: dev.label,
+        deviceType: dev.device === 'Tablet' ? 'tablet' : (dev.isMobile ? 'mobile' : 'desktop'),
+        refLabel: ref.label,
+        refIcon: ref.icon,
+        refCategory: ref.category
+      };
+    });
+
+  // Ziyaretçileri IP bazında gruplayarak aynı kişinin hangi sayfaları gezdiğini tek satırda özetle
+  const ipGroupMap = new Map();
+  recent.forEach(v => {
+    const key = v.ip || 'unknown';
+    if (!ipGroupMap.has(key)) {
+      ipGroupMap.set(key, {
+        ip: key,
+        lastSeen: v.tr_time,
+        firstSeen: v.tr_time,
+        deviceLabel: v.deviceLabel,
+        deviceType: v.deviceType,
+        refLabel: v.refLabel,
+        refIcon: v.refIcon,
+        totalClicks: 0,
+        sections: new Set(),
+        pages: []
+      });
+    }
+    const grp = ipGroupMap.get(key);
+    grp.firstSeen = v.tr_time;
+    grp.totalClicks++;
+    if (v.pageSection) grp.sections.add(v.pageSection);
+    // Dış kaynak varsa (Site İçi değilse) giriş kaynağı olarak onu tercih et
+    if (v.refCategory !== 'Site İçi Gezinme') {
+      grp.refLabel = v.refLabel;
+      grp.refIcon = v.refIcon;
+    }
+    grp.pages.push({
+      tr_time: v.tr_time,
+      path: v.path,
+      pageTitle: v.pageTitle,
+      pageIcon: v.pageIcon,
+      pageSection: v.pageSection
+    });
+  });
+  const recentGrouped = Array.from(ipGroupMap.values()).map(g => ({
+    ip: g.ip,
+    lastSeen: g.lastSeen,
+    firstSeen: g.firstSeen,
+    deviceLabel: g.deviceLabel,
+    deviceType: g.deviceType,
+    refLabel: g.refLabel,
+    refIcon: g.refIcon,
+    totalClicks: g.totalClicks,
+    sectionsStr: Array.from(g.sections).join('|'),
+    pages: g.pages
+  }));
+
   res.render('admin/raporlar', {
-    today: stat(dayStart), week: stat(d7), month: stat(d30),
-    totalViews: totals.total || 0, totalUniques: totals.totalUniques || 0,
-    topPages, recent,
-    chartData: { labels, views: viewsSeries, uniques: uniquesSeries }
+    today,
+    week,
+    month,
+    totalViews: totals.total || 0,
+    totalUniques: totals.totalUniques || 0,
+    filteredBotCount,
+    topPages: topPagesByPeriod.month,
+    topPagesByPeriod,
+    sectionBreakdown,
+    topClicked: {
+      news: topNewsClicked,
+      announcements: topAnnClicked,
+      places: topPlacesClicked,
+      sightseeing: topSightsClicked,
+      companies: topCompaniesClicked
+    },
+    deviceBreakdown,
+    trafficSources,
+    hourBuckets,
+    peakHourLabel,
+    peakHourViews,
+    recent,
+    recentGrouped,
+    chartData: { labels, views: viewsSeries, uniques: uniquesSeries },
+    chartDataByPeriod
   });
 });
 
@@ -2891,9 +3685,10 @@ app.post('/admin/firma-ekle', isAuthenticated, function(req, res, next) {
       galleryArr = existingRaw.slice();
     }
   }
-  if (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images)) {
-    galleryArr = applyGalleryOrder(req, galleryArr, req.files.gallery_images.map(f => pubUrl(f)));
-  }
+  const newUrls = (req.files && req.files.gallery_images && Array.isArray(req.files.gallery_images))
+    ? req.files.gallery_images.map(f => pubUrl(f))
+    : [];
+  galleryArr = applyGalleryOrder(req, galleryArr, newUrls);
 
   if (!name || !category) {
     const edit = edit_id ? get('SELECT * FROM companies WHERE id = ?', [edit_id]) : null;
@@ -3162,7 +3957,7 @@ app.get('/api/comments/:newsId', (req, res) => {
 });
 
 // Yorum beğeni toggle (anonim; localStorage tekil, sunucu sadece count tutar)
-app.post('/api/comments/:id/like', (req, res) => {
+app.post('/api/comments/:id/like', likeLimiter, (req, res) => {
   const { run, get } = require('./db');
   const comment = get('SELECT id, likes_count FROM comments WHERE id = ?', [req.params.id]);
   if (!comment.id) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
@@ -3177,15 +3972,17 @@ app.post('/api/foto-gor/:id', (req, res) => {
   const { get, run } = require('./db');
   const p = get("SELECT id FROM photo_submissions WHERE id = ? AND status = 'active'", [req.params.id]);
   if (!p.id) return res.status(404).json({ success: false, error: 'Fotoğraf bulunamadı' });
-  run('UPDATE photo_submissions SET views_count = views_count + 1 WHERE id = ?', [p.id]);
-  logPageView({
-    path: '/api/foto-gor/' + p.id,
-    method: 'POST',
-    status: 200,
-    ip: req.ip,
-    user_agent: req.headers['user-agent'] || '',
-    referrer: req.headers.referer || req.headers.referrer || ''
-  });
+  if (!isBotRequest(req)) {
+    run('UPDATE photo_submissions SET views_count = views_count + 1 WHERE id = ?', [p.id]);
+    logPageView({
+      path: '/api/foto-gor/' + p.id,
+      method: 'POST',
+      status: 200,
+      ip: req.ip,
+      user_agent: req.headers['user-agent'] || '',
+      referrer: req.headers.referer || req.headers.referrer || ''
+    });
+  }
   res.json({ success: true });
 });
 
@@ -3230,7 +4027,7 @@ app.get('/api/poll-aktif', (req, res) => {
 });
 
 // Oy kullanma: tek seçim, kullanıcı başına 1 oy (poll_uid cookie + UNIQUE(poll_id, voter_key))
-app.post('/api/poll/oy', (req, res) => {
+app.post('/api/poll/oy', async (req, res) => {
   const { get, run } = require('./db');
   if (!pollOriginOk(req)) return res.status(403).json({ success: false, error: 'Geçersiz istek kaynağı' });
   const poll = get("SELECT id, question FROM polls WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
@@ -3238,6 +4035,8 @@ app.post('/api/poll/oy', (req, res) => {
   const optionId = parseInt(String(req.body && req.body.optionId || '').replace(/\D/g, ''));
   const opt = get('SELECT id FROM poll_options WHERE id = ? AND poll_id = ?', [optionId, poll.id]);
   if (!opt.id) return res.status(400).json({ success: false, error: 'Geçerli bir seçenek seçin' });
+  const rcCheck = await verifyUserCaptcha(req);
+  if (!rcCheck.ok) return res.status(400).json({ success: false, error: rcCheck.error });
   const voterKey = pollVoterKey(req, res);
   const existing = get('SELECT id, option_id FROM poll_votes WHERE poll_id = ? AND voter_key = ?', [poll.id, voterKey]);
   if (existing.id) {
@@ -3276,7 +4075,7 @@ function requireGoogleAuth(req, res, next) {
 }
 
 // Yeni yorum ekle (girişsiz: ad + e-posta + güvenlik kodu; onaylı yayın)
-app.post('/api/comments', (req, res) => {
+app.post('/api/comments', commentLimiter, async (req, res) => {
   const { run, get } = require('./db');
   const gUser = (req.session.isGoogleAuth && req.session.googleUser) ? req.session.googleUser : null;
   const name = String(req.body.name || '').trim() || (gUser ? gUser.name : '');
@@ -3306,8 +4105,9 @@ app.post('/api/comments', (req, res) => {
     return res.status(400).json({ success: false, error: 'Yorum 1000 karakteri aşamaz' });
   }
 
-  if (!captchaOk(req, captcha)) {
-    return res.status(400).json({ success: false, error: 'Güvenlik kodu hatalı veya süresi doldu. Görseldeki yeni kodu girip tekrar deneyin.' });
+  const rcCheck = await verifyUserCaptcha(req);
+  if (!rcCheck.ok) {
+    return res.status(400).json({ success: false, error: rcCheck.error });
   }
 
   req.session.captchaCodes = [];
@@ -4017,41 +4817,441 @@ app.get('/api/trending-news', async (req, res) => {
 // 5 icerik tablosunda baslik/ozet/alan uzerinden LIKE arama; public
 // listelemelerdeki status='active' filtresi burada da gecerli.
 // Donus: { results: [{ type, emoji, title, meta, url }] } — url on ekisiz (tr'de bos).
-app.get('/api/search', (req, res) => {
+function trSearchNorm(s) {
+  return String(s || '')
+    .replace(/<[^>]+>/g, ' ')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[âîû]/g, (m) => ({ 'â': 'a', 'î': 'i', 'û': 'u' }[m] || m))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scoreSearchMatch(tokens, fullNormQ, titleText, extraText) {
+  const tNorm = trSearchNorm(titleText);
+  const eNorm = trSearchNorm(extraText);
+  const combined = tNorm + ' ' + eNorm;
+  for (const tk of tokens) {
+    if (!combined.includes(tk)) return 0;
+  }
+  let score = 40;
+  if (tNorm === fullNormQ) score += 100;
+  else if (tNorm.startsWith(fullNormQ)) score += 75;
+  else if (tNorm.includes(fullNormQ)) score += 55;
+  else if (tokens.every(tk => tNorm.includes(tk))) score += 40;
+  else if (combined.includes(fullNormQ)) score += 20;
+  return score;
+}
+
+const SITE_SEARCH_SHORTCUTS = [
+  {
+    id: 'sc-ido',
+    type: 'ulasim',
+    typeLabel: 'Ulaşım & Seferler',
+    emoji: '⛴️',
+    title: 'İDO Feribot Seferleri (Yalova ↔ Pendik & Yenikapı)',
+    meta: 'Günlük ve 7 günlük haftalık İDO hızlı feribot saatleri',
+    url: '/ulasim#ido-ulasim-saatler',
+    keywords: 'ido i̇do feribot hızlı feribot arabalı vapur yalova pendik yenikapı yenikapi deniz otobüsü ido sefer saatleri haftalık ido'
+  },
+  {
+    id: 'sc-turyol',
+    type: 'ulasim',
+    typeLabel: 'Ulaşım & Seferler',
+    emoji: '⛴️',
+    title: 'Turyol Sefer Saatleri (Çınarcık ↔ Eminönü / Kadıköy)',
+    meta: 'Çınarcık İskele ve Esenköy günlük vapur sefer saatleri ve ücretleri',
+    url: '/ulasim#turyol-ulasim-saatler',
+    keywords: 'turyol vapur deniz otobüsü eminönü eminonu kadıköy kadikoy çınarcık iskele esenköy esenkoy vapur saatleri sefer saatleri'
+  },
+  {
+    id: 'sc-otobus',
+    type: 'ulasim',
+    typeLabel: 'Ulaşım & Seferler',
+    emoji: '🚌',
+    title: 'Şehir İçi Otobüs & Minibüs Sefer Saatleri',
+    meta: 'Yalova – Çınarcık belediye otobüsü, minibüs saatleri ve ücret tarifesi',
+    url: '/ulasim#ulasim-saatler',
+    keywords: 'otobüs otobus minibüs minibus dolmuş dolmus belediye otobüsü ulaşım ulasim karpuzdere halk pazarı petrol ofisi yalova çınarcık otobüs saatleri sefer saatleri'
+  },
+  {
+    id: 'sc-eczane',
+    type: 'pharmacy',
+    typeLabel: 'Nöbetçi Eczane',
+    emoji: '💊',
+    title: 'Çınarcık Nöbetçi Eczaneler (Bugün Nöbetçi)',
+    meta: 'Bugün Çınarcık nöbetçi eczane adresi, telefonu ve yol tarifi',
+    url: '/#nobetci-eczaneler',
+    keywords: 'eczane nöbetçi eczane nobetci eczane ilaç ilac sağlık saglik açık eczane gece açık eczane pharmacy apotheke'
+  },
+  {
+    id: 'sc-deniz',
+    type: 'sea',
+    typeLabel: 'Deniz & Hava',
+    emoji: '🌊',
+    title: 'Çınarcık Deniz Durumu & Su Sıcaklığı',
+    meta: 'Canlı deniz suyu sıcaklığı, dalga boyu, rüzgar ve UV indeksi',
+    url: '/deniz',
+    keywords: 'deniz deniz durumu su sıcaklığı deniz suyu dalga boyu rüzgar uv indeksi yüzme plaj sahil'
+  },
+  {
+    id: 'sc-hava',
+    type: 'weather',
+    typeLabel: 'Deniz & Hava',
+    emoji: '🌤️',
+    title: 'Çınarcık Hava Durumu (7 / 15 Günlük & Aylık Tahmin)',
+    meta: 'Anlık sıcaklık, yağış ve 15 günlük meteoroloji tahmini',
+    url: '/#hava-durumu',
+    keywords: 'hava hava durumu meteoroloji yağmur yagmur sıcaklık sicaklik güneş rüzgar tahmin 15 günlük haftalık hava'
+  },
+  {
+    id: 'sc-etkinlik',
+    type: 'events',
+    typeLabel: 'Etkinlikler',
+    emoji: '📅',
+    title: 'Çınarcık Etkinlik Takvimi',
+    meta: 'Yaklaşan konser, festival, gösteri ve etkinlikler',
+    url: '/etkinlikler',
+    keywords: 'etkinlik etkinlikler takvim konser festival tiyatro gösteri şenlik bu hafta çınarcık'
+  },
+  {
+    id: 'sc-ilan-ver',
+    type: 'announcements',
+    typeLabel: 'İlan & Duyuru',
+    emoji: '📝',
+    title: 'Ücretsiz İlan / Duyuru / Etkinlik Ver',
+    meta: 'Çınarcık ücretsiz ilan, duyuru ve etkinlik gönderim formu',
+    url: '/ilan-ver',
+    keywords: 'ilan ver ücretsiz ilan duyuru ver etkinlik ekle satılık kiralık iş ilanı eleman arayanlar'
+  },
+  {
+    id: 'sc-fotograflar',
+    type: 'photos',
+    typeLabel: 'Fotoğraflar',
+    emoji: '📷',
+    title: 'Sizlerden Gelen Fotoğraflar',
+    meta: 'Ziyaretçilerimizin gözünden Çınarcık fotoğraf galerisi ve fotoğraf paylaşımı',
+    url: '/sizlerden-gelen',
+    keywords: 'sizlerden gelen fotoğraf fotograf galeri resim paylaş çınarcık fotoğrafları'
+  },
+  {
+    id: 'sc-mekanlar',
+    type: 'places',
+    typeLabel: 'Mekanlar',
+    emoji: '📍',
+    title: 'Çınarcık Mekanlar Rehberi (Restoran, Kafe, Otel, Plaj)',
+    meta: 'Çınarcık restoranları, kafeleri, otelleri, pansiyonları ve plajları',
+    url: '/mekanlar',
+    keywords: 'mekan mekanlar restoran kafe cafe kahvaltı balık lokanta otel pansiyon konaklama plaj beach'
+  },
+  {
+    id: 'sc-rehber',
+    type: 'guide',
+    typeLabel: 'Firma Rehberi',
+    emoji: '🏢',
+    title: 'Çınarcık Firma Rehberi & Esnaflar',
+    meta: 'Çınarcık firmaları, market, inşaat, emlak, kuaför ve hizmet rehberi',
+    url: '/rehber',
+    keywords: 'firma rehberi firmalar esnaf market inşaat emlak gayrimenkul kuaför güzellik sağlık eğitim'
+  },
+  {
+    id: 'sc-gezi',
+    type: 'sightseeing',
+    typeLabel: 'Gezilecek Yerler',
+    emoji: '🧳',
+    title: 'Çınarcık Gezilecek Yerler & Doğal Güzellikler',
+    meta: 'Delmece Yaylası, Erikli Şelalesi, Dipsiz Göl, Çınarcık sahili ve rotalar',
+    url: '/gezilecek-yerler',
+    keywords: 'gezilecek yerler gezi rehberi doğa yayla şelale göl piknik kamp yürüyüş'
+  },
+  {
+    id: 'sc-haberler',
+    type: 'news',
+    typeLabel: 'Haberler',
+    emoji: '📰',
+    title: 'Çınarcık Güncel Haberler & Son Dakika',
+    meta: 'Çınarcık gündem, belediye, yaşam ve spor haberleri',
+    url: '/haberler',
+    keywords: 'haber haberler son dakika gündem gelişmeler gazetesi'
+  },
+  {
+    id: 'sc-duyurular',
+    type: 'announcements',
+    typeLabel: 'Duyurular',
+    emoji: '📢',
+    title: 'Çınarcık Duyuru, İlan ve Etkinlikler',
+    meta: 'Güncel belediye duyuruları, vefat ilanları, emlak ve iş ilanları',
+    url: '/duyurular',
+    keywords: 'duyuru duyurular ilan ilanlar vefat cenaze elektrik su kesintisi'
+  },
+  {
+    id: 'sc-hakkinda',
+    type: 'about',
+    typeLabel: 'Hakkında',
+    emoji: 'ℹ️',
+    title: 'Çınarcık Hakkında (Tarihçe, Doğa & Kültür)',
+    meta: 'Marmara’nın İncisi Çınarcık hakkında bilgiler',
+    url: '/cinarcik-hakkinda',
+    keywords: 'çınarcık hakkında tarihçe bilgi nüfus coğrafya marmaranın incisi'
+  },
+  {
+    id: 'sc-uygulama',
+    type: 'about',
+    typeLabel: 'Uygulama',
+    emoji: '📲',
+    title: 'Marmaraİncisi Uygulamasını İndir (Android & iPhone)',
+    meta: 'Ücretsiz — telefonunuzun ana ekranına ekleyin, seferler ve eczane tek dokunuşla',
+    url: '/uygulama',
+    keywords: 'uygulama indir app mobil telefon android iphone ios ana ekran yükle kur pwa marmaraincisi'
+  },
+  {
+    id: 'sc-elektrik-kesinti',
+    type: 'guide',
+    typeLabel: 'Elektrik Kesintisi',
+    emoji: '⚡',
+    title: 'Çınarcık Planlı Elektrik Kesintileri (UEDAŞ)',
+    meta: 'Bugün ve önümüzdeki günlerde Çınarcık mahallelerindeki planlı elektrik kesintileri, saatleri ve sokaklar',
+    url: '/#elektrik-kesintileri',
+    keywords: 'elektrik kesinti kesintisi kesintiler elektrikler ne zaman gelecek uedaş uedas planlı arıza enerji'
+  },
+  {
+    id: 'sc-acil-telefonlar',
+    type: 'guide',
+    typeLabel: 'Acil & Önemli Telefonlar',
+    emoji: '📞',
+    title: 'Çınarcık Acil & Önemli Telefonlar Rehberi (Tek Tıkla Ara)',
+    meta: '112 Acil, Devlet Hastanesi (0226 245 48 56), Belediye (0226 245 10 04), Zabıta (153), UEDAŞ Elektrik Arıza (186), Doğalgaz (187), Emniyet, Jandarma & Sahil Güvenlik (158)',
+    url: '/#acil-telefonlar',
+    keywords: 'acil telefon telefonlar numaralar 112 ambulans itfaiye hastane devlet hastanesi belediye beyaz masa su arıza zabıta 153 uedaş elektrik arıza 186 armagaz doğalgaz 187 polis emniyet jandarma sahil güvenlik 158'
+  },
+  {
+    id: 'sc-iletisim',
+    type: 'contact',
+    typeLabel: 'İletişim',
+    emoji: '✉️',
+    title: 'İletişim — Bize Ulaşın',
+    meta: 'Görüş, öneri, haber ihbarı ve iletişim formu',
+    url: '/iletisim',
+    keywords: 'iletişim iletisim bize ulaşın mesaj gönder telefon e-posta adres'
+  }
+];
+
+app.get('/api/search', searchLimiter, (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2 || q.length > 80) return res.json({ results: [] });
-  const esc = q.replace(/[\\%_]/g, (m) => '\\' + m);
-  const like = '%' + esc + '%';
+  const fullNormQ = trSearchNorm(q);
+  const tokens = fullNormQ.split(' ').filter(Boolean);
+  if (!tokens.length) return res.json({ results: [] });
+
   const { all } = require('./db');
-  const out = [];
-  const add = (rows, type, emoji, urlOf, metaOf) => {
-    for (const r of rows) out.push({ type, id: r.id, emoji, title: r.title, meta: metaOf(r), url: urlOf(r) });
+  const scored = [];
+  const pushScored = (score, item) => {
+    if (score > 0) scored.push(Object.assign({ _score: score }, item));
   };
+
   try {
-    add(all(`SELECT id, title, slug, summary, category FROM news
-      WHERE status='active' AND (title LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')
-      ORDER BY views_count DESC, created_at DESC LIMIT 4`, [like, like]),
-      'news', '📰', (r) => '/haber/' + (r.slug || r.id), (r) => r.category || '');
-    add(all(`SELECT id, name AS title, slug, category, address FROM places
-      WHERE status='active' AND (name LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\')
-      ORDER BY is_featured DESC, sort_order ASC LIMIT 4`, [like, like, like]),
-      'places', '📍', (r) => '/mekan/' + (r.slug || r.id), (r) => r.category || r.address || '');
-    add(all(`SELECT id, title, slug, category FROM announcements
-      WHERE status='active' AND title LIKE ? ESCAPE '\\'
-      ORDER BY created_at DESC LIMIT 4`, [like]),
-      'announcements', '📢', (r) => '/duyuru/' + (r.slug || r.id), (r) => r.category || '');
-    add(all(`SELECT id, title, slug, summary, location FROM sightseeing
-      WHERE status='active' AND (title LIKE ? ESCAPE '\\' OR location LIKE ? ESCAPE '\\')
-      ORDER BY sort_order ASC LIMIT 4`, [like, like]),
-      'sightseeing', '🧳', (r) => '/gezilecek-yer/' + (r.slug || r.id), (r) => r.location || '');
-    add(all(`SELECT id, name AS title, slug, category, address FROM companies
-      WHERE status='active' AND (name LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\' OR sector LIKE ? ESCAPE '\\')
-      ORDER BY is_featured DESC, sort_order ASC LIMIT 3`, [like, like, like]),
-      'guide', '🏢', (r) => '/rehber/' + (r.slug || r.id), (r) => r.category || r.address || '');
+    // 1. Nöbetçi Eczaneler (canlı veritabanı tablosu)
+    const pharmacies = all("SELECT id, name, address, phone, duty_note FROM pharmacies WHERE status='active'");
+    for (const p of pharmacies) {
+      const sc = scoreSearchMatch(
+        tokens,
+        fullNormQ,
+        p.name + ' Nöbetçi Eczane',
+        'eczane nöbetçi nobetci ilaç ilac ' + (p.address || '') + ' ' + (p.phone || '') + ' ' + (p.duty_note || '')
+      );
+      if (sc > 0) {
+        pushScored(sc + 25, {
+          type: 'pharmacy',
+          typeLabel: 'Nöbetçi Eczane',
+          id: 'pharm-' + p.id,
+          emoji: '💊',
+          title: p.name + ' (Bugün Nöbetçi)',
+          meta: [p.address, p.phone].filter(Boolean).join(' · '),
+          url: '/#nobetci-eczaneler'
+        });
+      }
+    }
+
+    // 2. Site içi ana bölümler ve canlı modüller (İDO, Turyol, Otobüs, Deniz, Hava vb.)
+    for (const scItem of SITE_SEARCH_SHORTCUTS) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, scItem.title, scItem.keywords + ' ' + scItem.meta);
+      if (sc > 0) {
+        pushScored(sc + 15, {
+          type: scItem.type,
+          typeLabel: scItem.typeLabel,
+          id: scItem.id,
+          emoji: scItem.emoji,
+          title: scItem.title,
+          meta: scItem.meta,
+          url: scItem.url
+        });
+      }
+    }
+
+    // 3. Haberler (Türkçe karakter duyarsız, başlık + özet + içerik + kategori)
+    const newsRows = all("SELECT id, title, slug, summary, content, category, badge_text, views_count FROM news WHERE status='active' ORDER BY views_count DESC, created_at DESC");
+    for (const r of newsRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.title, (r.summary || '') + ' ' + (r.category || '') + ' ' + (r.badge_text || '') + ' ' + (r.content || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'news',
+          id: r.id,
+          emoji: '📰',
+          title: r.title,
+          meta: r.category || r.badge_text || '',
+          url: '/haber/' + (r.slug || r.id)
+        });
+      }
+    }
+
+    // 4. Mekanlar (isim + kategori + mutfak + açıklama + adres + özellikler)
+    const placeRows = all("SELECT id, name, slug, category, cuisine_type, description, address, features, phone FROM places WHERE status='active' ORDER BY is_featured DESC, sort_order ASC");
+    for (const r of placeRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.name, (r.category || '') + ' ' + (r.cuisine_type || '') + ' ' + (r.address || '') + ' ' + (r.features || '') + ' ' + (r.description || '') + ' ' + (r.phone || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'places',
+          id: r.id,
+          emoji: '📍',
+          title: r.name,
+          meta: [r.category, r.address].filter(Boolean).join(' · '),
+          url: '/mekan/' + (r.slug || r.id)
+        });
+      }
+    }
+
+    // 5. Duyuru, İlan & Etkinlikler (başlık + içerik + kategori)
+    const annRows = all("SELECT id, title, slug, content, category, event_date FROM announcements WHERE status='active' ORDER BY created_at DESC");
+    for (const r of annRows) {
+      const catLabel = r.category === 'ilan' ? 'İlan' : (r.category === 'etkinlik' ? 'Etkinlik' : 'Duyuru');
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.title, catLabel + ' ' + (r.content || '') + ' ' + (r.event_date || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'announcements',
+          id: r.id,
+          emoji: r.category === 'etkinlik' ? '📅' : '📢',
+          title: r.title,
+          meta: catLabel,
+          url: '/duyuru/' + (r.slug || r.id)
+        });
+      }
+    }
+
+    // 6. Gezilecek Yerler (başlık + özet + açıklama + konum + kategori)
+    const sightRows = all("SELECT id, title, slug, summary, description, location, category FROM sightseeing WHERE status='active' ORDER BY sort_order ASC");
+    for (const r of sightRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.title, (r.location || '') + ' ' + (r.category || '') + ' ' + (r.summary || '') + ' ' + (r.description || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'sightseeing',
+          id: r.id,
+          emoji: '🧳',
+          title: r.title,
+          meta: [r.category, r.location].filter(Boolean).join(' · '),
+          url: '/gezilecek-yer/' + (r.slug || r.id)
+        });
+      }
+    }
+
+    // 7. Firma Rehberi (isim + kategori + sektör + açıklama + adres + telefon)
+    const compRows = all("SELECT id, name, slug, category, sector, description, address, phone FROM companies WHERE status='active' ORDER BY is_featured DESC, sort_order ASC");
+    for (const r of compRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.name, (r.category || '') + ' ' + (r.sector || '') + ' ' + (r.address || '') + ' ' + (r.description || '') + ' ' + (r.phone || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'guide',
+          id: r.id,
+          emoji: '🏢',
+          title: r.name,
+          meta: [r.category || r.sector, r.address].filter(Boolean).join(' · '),
+          url: '/rehber/' + (r.slug || r.id)
+        });
+      }
+    }
+
+    // 8. Sizlerden Gelen Fotoğraflar (başlık + açıklama + paylaşan)
+    const photoRows = all("SELECT id, title, description, author_name FROM photo_submissions WHERE status='active' ORDER BY created_at DESC");
+    for (const r of photoRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, r.title, (r.description || '') + ' ' + (r.author_name || ''));
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'photos',
+          id: r.id,
+          emoji: '📷',
+          title: r.title,
+          meta: r.author_name ? ('Paylaşan: ' + r.author_name) : '',
+          url: '/sizlerden-gelen'
+        });
+      }
+    }
+
+    // 9. Aktif Anketler (polls + poll_options tablosu)
+    const pollRows = all("SELECT id, question FROM polls WHERE status='active' ORDER BY created_at DESC");
+    for (const p of pollRows) {
+      const opts = all('SELECT label FROM poll_options WHERE poll_id = ? ORDER BY position ASC', [p.id]).map(o => o.label).join(' · ');
+      const sc = scoreSearchMatch(tokens, fullNormQ, p.question, 'anket oy ver ' + opts);
+      if (sc > 0) {
+        pushScored(sc, {
+          type: 'poll',
+          typeLabel: 'Anket',
+          id: 'poll-' + p.id,
+          emoji: '📊',
+          title: p.question,
+          meta: opts,
+          url: '/#poll-card'
+        });
+      }
+    }
+
+    // 10. Canlı Ulaşım Hatları & Durakları (city_transport, ido_transport, ferry_schedules tablolarından dinamik)
+    const cityTr = getCityTransport();
+    if (cityTr && Array.isArray(cityTr.hatlar)) {
+      for (const h of cityTr.hatlar) {
+        const stops = (h.kalkislar || []).map(k => k.yer).join(' · ');
+        const sc = scoreSearchMatch(tokens, fullNormQ, h.ad, (h.aciklama || '') + ' ' + stops);
+        if (sc > 0) {
+          pushScored(sc + 5, {
+            type: 'ulasim',
+            typeLabel: 'Ulaşım Hattı',
+            id: 'bus-' + h.ad,
+            emoji: '🚌',
+            title: h.ad,
+            meta: stops || h.aciklama || '',
+            url: '/ulasim#ulasim-saatler'
+          });
+        }
+      }
+    }
+
+    // 11. Çınarcık Hakkında (admin'den düzenlenebilen about_page tablosu)
+    const aboutRows = all('SELECT id, banner_subtitle, content, cta_title, cta_text FROM about_page LIMIT 1');
+    for (const a of aboutRows) {
+      const sc = scoreSearchMatch(tokens, fullNormQ, 'Çınarcık Hakkında', (a.banner_subtitle || '') + ' ' + (a.content || '') + ' ' + (a.cta_title || '') + ' ' + (a.cta_text || ''));
+      if (sc > 0 && !scored.some(x => x.url === '/cinarcik-hakkinda')) {
+        pushScored(sc, {
+          type: 'about',
+          typeLabel: 'Hakkında',
+          id: 'about-' + a.id,
+          emoji: 'ℹ️',
+          title: 'Çınarcık Hakkında',
+          meta: a.banner_subtitle || '',
+          url: '/cinarcik-hakkinda'
+        });
+      }
+    }
   } catch (e) {
+    console.error('[search] hata:', e.message);
     return res.json({ results: [] });
   }
-  res.json({ results: out.slice(0, 15) });
+
+  scored.sort((a, b) => b._score - a._score);
+  const out = scored.slice(0, 15).map(({ _score, ...rest }) => rest);
+  res.json({ results: out });
 });
 
 // ---- Harita koordinat çözümleme ----
@@ -4220,52 +5420,83 @@ function stripHtml(s) {
 async function syncNobetciEczaneler() {
   const { run } = require('./db');
 
-  const page = await fetch(NOBETCI_BASE, { headers: { 'User-Agent': 'Mozilla/5.0' } }).then(r => r.text());
-  const token = (page.match(/id="h"[^>]*value="([^"]+)"/) || [])[1];
-  if (!token) throw new Error('nöbetçi eczane: doğrulama anahtarı bulunamadı');
-
-  const post = (params) => fetch(NOBETCI_BASE + 'index.php', {
-    method: 'POST',
+  const sessRes = await fetch('https://www.istanbuleczaciodasi.org.tr/api/nobetci-eczane-web/?action=session', {
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'User-Agent': 'Mozilla/5.0',
-      'X-Requested-With': 'XMLHttpRequest'
-    },
-    body: new URLSearchParams(params).toString()
-  }).then(r => r.json());
-
-  const ilceData = await post({ jx: '1', islem: 'get_ilce', il: NOBETCI_IL, h: token });
-  if (!ilceData || ilceData.error !== 0 || !Array.isArray(ilceData.ilceler)) {
-    throw new Error('nöbetçi eczane: ilçe listesi alınamadı');
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': NOBETCI_BASE
+    }
+  });
+  const sessData = await sessRes.json();
+  if (!sessData || !sessData.success || !sessData.data || !sessData.data.token) {
+    throw new Error('nöbetçi eczane: doğrulama oturumu açılamadı');
   }
-  const ilce = ilceData.ilceler.map(x => x.ilce).find(x => String(x).toLocaleLowerCase('tr') === NOBETCI_ILCE);
-  if (!ilce) throw new Error('nöbetçi eczane: Çınarcık ilçesi bulunamadı');
+  const token = sessData.data.token;
 
-  const data = await post({ jx: '1', islem: 'get_ilce_eczane', ilce, h: token });
-  if (!data || data.error !== 0 || !Array.isArray(data.eczaneler)) {
+  const distRes = await fetch('https://www.istanbuleczaciodasi.org.tr/api/nobetci-eczane-web/?action=district&id=44', {
+    headers: {
+      'Accept': 'application/json',
+      'X-Web-Token': token,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': NOBETCI_BASE
+    }
+  });
+  const dist = await distRes.json();
+  if (!dist || !dist.success || !Array.isArray(dist.data)) {
     throw new Error('nöbetçi eczane: eczane listesi alınamadı');
+  }
+
+  if (dist.data.length === 0) {
+    console.log('[nöbetçi eczane] Çınarcık: nöbetçi eczane listesi boş döndü');
+    return 0;
   }
 
   run('DELETE FROM pharmacies');
   let count = 0;
-  data.eczaneler.forEach(e => {
-    const name = stripHtml(e.eczane_ad);
-    if (!name) return;
-    let phone = String(e.eczane_tel || '').replace(/\D/g, '');
-    if (phone.length === 10) phone = '0' + phone;
-    if (phone.length > 10) phone = phone.slice(0, 11);
-    const phoneFmt = phone.length === 11
-      ? phone.slice(0, 4) + ' ' + phone.slice(4, 7) + ' ' + phone.slice(7, 9) + ' ' + phone.slice(9, 11)
-      : (e.eczane_tel || '');
+  for (const e of dist.data) {
+    const name = stripHtml(e.ad);
+    if (!name) continue;
+    let phoneFmt = '';
+    if (e.sicil && e.phoneTicket) {
+      try {
+        await new Promise(r => setTimeout(r, 1200));
+        const phoneRes = await fetch('https://www.istanbuleczaciodasi.org.tr/api/nobetci-eczane-web/?action=phone', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Web-Token': token,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': NOBETCI_BASE
+          },
+          body: JSON.stringify({ regionId: e.regionId, sicil: String(e.sicil), ticket: e.phoneTicket })
+        });
+        const pData = await phoneRes.json();
+        if (pData && pData.success && pData.data && pData.data.tel) {
+          let rawPhone = String(pData.data.tel).replace(/\D/g, '');
+          if (rawPhone.length === 10) rawPhone = '0' + rawPhone;
+          phoneFmt = rawPhone.length === 11
+            ? rawPhone.slice(0, 4) + ' ' + rawPhone.slice(4, 7) + ' ' + rawPhone.slice(7, 9) + ' ' + rawPhone.slice(9, 11)
+            : pData.data.tel;
+        }
+      } catch (err) {
+        console.warn('[nöbetçi eczane] telefon alınamadı:', err.message);
+      }
+    }
+
+    const note = (e.nobetBaslangic && e.nobetBitis)
+      ? `${e.nobetBaslangic} - ${e.nobetBitis}`
+      : (e.dutyEndsAt ? String(e.dutyEndsAt).slice(11, 16) : 'Ertesi gün 08:30');
+
     run('INSERT INTO pharmacies (name, address, phone, duty_note, status) VALUES (?,?,?,?,?)', [
       name,
-      stripHtml(e.adres).replace(/^Adres:\s*/i, '').replace(/\s*,\s*,/g, ',').replace(/,\s*$/, '').trim(),
+      stripHtml(e.adres || '').replace(/^Adres:\s*/i, '').trim(),
       phoneFmt,
-      stripHtml(e.nobet_bitis),
+      note,
       'active'
     ]);
     count++;
-  });
+  }
   console.log('[nöbetçi eczane] Çınarcık: ' + count + ' eczane güncellendi');
   return count;
 }
@@ -4496,7 +5727,7 @@ async function syncUlasim() {
   const res = await fetch(ULASIM_SOURCE, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = extractCityTransport(await res.text());
-  run('DELETE FROM city_transport');
+  run('DELETE FROM city_transport WHERE id = ?', [1]);
   run('INSERT INTO city_transport (id, data_json, source_url, updated_at) VALUES (1,?,?,datetime(\'now\'))',
     [JSON.stringify(data), ULASIM_SOURCE]);
   let sefer = 0;
@@ -4526,6 +5757,466 @@ function getCityTransport() {
     console.error('[ulasim] kayıt okunamadı:', e.message);
     return null;
   }
+}
+
+// ==================== İDO FERİBOT SEFERLERİ (Yalova ↔ Pendik & Yenikapı) ====================
+const IDO_API_BASE = 'https://api.ido.com.tr/idows/v2/ido/voyages';
+const IDO_SOURCE_URL = 'https://www.ido.com.tr/sefer-saatleri';
+const IDO_SYNC_MS = 60 * 60 * 1000; // 1 saatte bir
+const IDO_PORT_YALOVA = '500212-P';
+const IDO_PORT_PENDIK = '500115-P';
+const IDO_PORT_YENIKAPI = '500114-P';
+
+const DEFAULT_IDO_TRANSPORT = {
+  hatlar: [
+    {
+      ad: 'Yalova – Pendik Hattı',
+      aciklama: 'İDO HIZLI FERİBOT (ARAÇLI & YOLCU) · ~45 DK',
+      kalkislar: [
+        {
+          yer: 'Yalova → Pendik',
+          seferler: [
+            { saat: '07:00', gunler: [1, 2, 3, 4, 5, 6] },
+            { saat: '08:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '09:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '10:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '11:00', gunler: [3, 5, 6, 7] },
+            { saat: '12:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '13:00', gunler: [3, 6, 7] },
+            { saat: '14:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '15:00', gunler: [3, 4, 5, 6, 7] },
+            { saat: '16:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '17:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '18:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '19:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '20:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '21:00', gunler: [5, 6, 7] },
+            { saat: '22:00', gunler: [7] }
+          ]
+        },
+        {
+          yer: 'Pendik → Yalova',
+          seferler: [
+            { saat: '07:00', gunler: [1, 2, 3, 4, 5, 6] },
+            { saat: '08:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '09:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '10:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '11:00', gunler: [3, 5, 6, 7] },
+            { saat: '12:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '13:00', gunler: [3, 6, 7] },
+            { saat: '14:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '15:00', gunler: [3, 4, 5, 6, 7] },
+            { saat: '16:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '17:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '18:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '19:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '20:00', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '21:00', gunler: [5, 6, 7] },
+            { saat: '22:00', gunler: [7] }
+          ]
+        }
+      ]
+    },
+    {
+      ad: 'Yalova – Yenikapı Hattı',
+      aciklama: 'İDO HIZLI FERİBOT (ARAÇLI & YOLCU) · ~75 DK',
+      kalkislar: [
+        {
+          yer: 'Yalova → Yenikapı',
+          seferler: [
+            { saat: '07:15', gunler: [1, 2, 3, 4, 5, 6] },
+            { saat: '07:45', gunler: [7] },
+            { saat: '09:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '11:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '13:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '15:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '17:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '19:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '21:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '23:45', gunler: [7] }
+          ]
+        },
+        {
+          yer: 'Yenikapı → Yalova',
+          seferler: [
+            { saat: '07:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '09:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '11:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '13:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '15:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '17:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '19:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '21:45', gunler: [1, 2, 3, 4, 5, 6, 7] },
+            { saat: '23:45', gunler: [7] }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+function fmtIsoDay(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+async function syncIdo() {
+  const { run } = require('./db');
+  const now = new Date();
+  const end = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const fromDate = fmtIsoDay(now);
+  const toDate = fmtIsoDay(end);
+  const headers = { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' };
+
+  const [resDep, resArr] = await Promise.all([
+    fetch(`${IDO_API_BASE}?departureLocation=${IDO_PORT_YALOVA}&fromDate=${fromDate}&toDate=${toDate}`, { headers }),
+    fetch(`${IDO_API_BASE}?arrivalLocation=${IDO_PORT_YALOVA}&fromDate=${fromDate}&toDate=${toDate}`, { headers })
+  ]);
+  if (!resDep.ok || !resArr.ok) {
+    throw new Error(`HTTP ${resDep.status}/${resArr.status}`);
+  }
+  const [jsonDep, jsonArr] = await Promise.all([resDep.json(), resArr.json()]);
+  const allVoyages = [].concat(jsonDep.voyages || [], jsonArr.voyages || []);
+
+  // 4 yön için saat -> Set(gunler 1..7)
+  const routeMap = {
+    'YP': new Map(), // Yalova -> Pendik
+    'PY': new Map(), // Pendik -> Yalova
+    'YY': new Map(), // Yalova -> Yenikapı
+    'YYK': new Map() // Yenikapı -> Yalova
+  };
+  const ROUTE_LABEL = {
+    'YP': 'Yalova → Pendik',
+    'PY': 'Pendik → Yalova',
+    'YY': 'Yalova → Yenikapı',
+    'YYK': 'Yenikapı → Yalova'
+  };
+  const iptaller = [];
+  const todayIso = fmtIsoDay(now);
+
+  for (const v of allVoyages) {
+    if (!v || !v.departureTime || !v.date || !v.fromLocation || !v.toLocation) continue;
+    const st = String(v.statusForWeb || '') + ' ' + String(v.status || '');
+    if (/iptal|cancel/i.test(st)) {
+      // İptal/işlemeyen seferleri tarifeye almıyoruz; duyuru bandı için kaydediyoruz.
+      const saatI = String(v.departureTime).slice(0, 5);
+      if (!/^\d{2}:\d{2}$/.test(saatI) || String(v.date) < todayIso) continue;
+      const fc = String(v.fromLocation.code || '');
+      const tc = String(v.toLocation.code || '');
+      let ikey = null;
+      if (fc === IDO_PORT_YALOVA && tc === IDO_PORT_PENDIK) ikey = 'YP';
+      else if (fc === IDO_PORT_PENDIK && tc === IDO_PORT_YALOVA) ikey = 'PY';
+      else if (fc === IDO_PORT_YALOVA && tc === IDO_PORT_YENIKAPI) ikey = 'YY';
+      else if (fc === IDO_PORT_YENIKAPI && tc === IDO_PORT_YALOVA) ikey = 'YYK';
+      if (!ikey) continue;
+      iptaller.push({ date: String(v.date), saat: saatI, yon: ROUTE_LABEL[ikey] });
+      continue;
+    }
+    const parts = String(v.date).split('-').map(Number);
+    if (parts.length !== 3 || !parts[0]) continue;
+    const jsDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12, 0, 0)).getUTCDay();
+    const gun = jsDay === 0 ? 7 : jsDay; // 1 = Pzt .. 7 = Paz
+    const fromCode = v.fromLocation.code;
+    const toCode = v.toLocation.code;
+    let key = null;
+    if (fromCode === IDO_PORT_YALOVA && toCode === IDO_PORT_PENDIK) key = 'YP';
+    else if (fromCode === IDO_PORT_PENDIK && toCode === IDO_PORT_YALOVA) key = 'PY';
+    else if (fromCode === IDO_PORT_YALOVA && toCode === IDO_PORT_YENIKAPI) key = 'YY';
+    else if (fromCode === IDO_PORT_YENIKAPI && toCode === IDO_PORT_YALOVA) key = 'YYK';
+    if (!key) continue;
+
+    const saat = String(v.departureTime).slice(0, 5);
+    if (!/^\d{2}:\d{2}$/.test(saat)) continue;
+    if (!routeMap[key].has(saat)) routeMap[key].set(saat, new Set());
+    routeMap[key].get(saat).add(gun);
+  }
+
+  const mapToSeferler = (m, fallbackArr) => {
+    const times = Array.from(m.keys()).sort();
+    if (!times.length) return fallbackArr;
+    return times.map(saat => ({
+      saat,
+      gunler: Array.from(m.get(saat)).sort((a, b) => a - b)
+    }));
+  };
+
+  const data = {
+    iptaller: iptaller.sort((a, b) => (a.date + a.saat).localeCompare(b.date + b.saat)),
+    hatlar: [
+      {
+        ad: 'Yalova – Pendik Hattı',
+        aciklama: 'İDO HIZLI FERİBOT (ARAÇLI & YOLCU) · ~45 DK',
+        kalkislar: [
+          {
+            yer: 'Yalova → Pendik',
+            seferler: mapToSeferler(routeMap.YP, DEFAULT_IDO_TRANSPORT.hatlar[0].kalkislar[0].seferler)
+          },
+          {
+            yer: 'Pendik → Yalova',
+            seferler: mapToSeferler(routeMap.PY, DEFAULT_IDO_TRANSPORT.hatlar[0].kalkislar[1].seferler)
+          }
+        ]
+      },
+      {
+        ad: 'Yalova – Yenikapı Hattı',
+        aciklama: 'İDO HIZLI FERİBOT (ARAÇLI & YOLCU) · ~75 DK',
+        kalkislar: [
+          {
+            yer: 'Yalova → Yenikapı',
+            seferler: mapToSeferler(routeMap.YY, DEFAULT_IDO_TRANSPORT.hatlar[1].kalkislar[0].seferler)
+          },
+          {
+            yer: 'Yenikapı → Yalova',
+            seferler: mapToSeferler(routeMap.YYK, DEFAULT_IDO_TRANSPORT.hatlar[1].kalkislar[1].seferler)
+          }
+        ]
+      }
+    ]
+  };
+
+  run('DELETE FROM ido_transport');
+  run('INSERT INTO ido_transport (id, data_json, source_url, updated_at) VALUES (1,?,?,datetime(\'now\'))',
+    [JSON.stringify(data), IDO_SOURCE_URL]);
+  let seferCount = 0;
+  data.hatlar.forEach(h => (h.kalkislar || []).forEach(k => seferCount += (k.seferler || []).length));
+  console.log('[ido] ' + data.hatlar.length + ' hat / ' + seferCount + ' tarifeli saat / ' + (data.iptaller || []).length + ' iptal güncellendi');
+  return data;
+}
+
+async function safeSyncIdo() {
+  try {
+    await syncIdo();
+  } catch (e) {
+    console.error('[ido] senkronizasyon hatası:', e.message);
+  }
+}
+
+function getIdoTransport() {
+  const { get } = require('./db');
+  try {
+    const row = get('SELECT data_json, updated_at FROM ido_transport WHERE id = 1');
+    if (row && row.data_json) {
+      const data = JSON.parse(row.data_json);
+      if (data && Array.isArray(data.hatlar) && data.hatlar.length) {
+        data.updatedAt = row.updated_at || '';
+        return data;
+      }
+    }
+  } catch (e) {
+    console.error('[ido] kayıt okunamadı:', e.message);
+  }
+  return Object.assign({ updatedAt: '' }, DEFAULT_IDO_TRANSPORT);
+}
+
+// ⚡ UEDAŞ Planlı Elektrik Kesintileri (Çınarcık ilçesi)
+const OUTAGE_SOURCE_URL = 'https://www.uedas.com.tr/tr/kesintiler';
+const OUTAGE_API_URL = 'https://www.uedas.com.tr/planli-kesintiler/sec.asp';
+const OUTAGE_ILCE_ID = '2021'; // UEDAŞ Yalova / Çınarcık ilçe kimliği
+const OUTAGE_SYNC_MS = 60 * 60 * 1000; // 1 saatte bir
+const TR_MONTHS = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık'];
+
+function trTitleCase(s) {
+  return String(s || '').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ')
+    .replace(/(^|[\s.(/-])(\S)/g, (m, p, c) => p + c.toLocaleUpperCase('tr-TR'));
+}
+
+function parseOutageDate(label, now) {
+  const m = String(label || '').trim().toLocaleLowerCase('tr-TR').match(/^(\d{1,2})\s+(\S+)/);
+  if (!m) return null;
+  const mon = TR_MONTHS.indexOf(m[2]);
+  if (mon < 0) return null;
+  let year = now.getFullYear();
+  // Aralık'ta Ocak tarihi gelirse bir sonraki yıl; Ocak'ta Aralık gelirse önceki yıl
+  if (mon - now.getMonth() < -6) year++;
+  else if (mon - now.getMonth() > 6) year--;
+  return year + '-' + String(mon + 1).padStart(2, '0') + '-' + String(Number(m[1])).padStart(2, '0');
+}
+
+async function syncOutages() {
+  const { run } = require('./db');
+  const resp = await fetch(OUTAGE_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Referer': OUTAGE_SOURCE_URL,
+      'User-Agent': 'Mozilla/5.0 (compatible; MarmaraninIncisi/1.0)'
+    },
+    body: 'ilce=' + OUTAGE_ILCE_ID,
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!resp.ok) throw new Error('UEDAŞ HTTP ' + resp.status);
+  const xml = await resp.text();
+  if (xml.indexOf('<kesinti') === -1) throw new Error('UEDAŞ beklenmeyen yanıt');
+
+  const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const now = new Date();
+  const groups = new Map();
+  const blocks = xml.match(/<metinTablo>[\s\S]*?<\/metinTablo>/g) || [];
+  for (const b of blocks) {
+    const html = unesc(b.replace(/<\/?metinTablo>/g, ''));
+    const rows = html.match(/<tr>[\s\S]*?<\/tr>/g) || [];
+    for (const row of rows) {
+      const tds = (row.match(/<td[^>]*>([\s\S]*?)<\/td>/g) || []).map(td => td.replace(/<td[^>]*>|<\/td>/g, ''));
+      if (tds.length < 7) continue;
+      const ilce = tds[4].trim().toLocaleUpperCase('tr-TR');
+      if (ilce.indexOf('ÇINARCIK') === -1) continue; // sadece Çınarcık ilçesi
+      const date = parseOutageDate(tds[0], now);
+      const tm = tds[1].trim().match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+      if (!date || !tm) continue;
+      const reason = trTitleCase(tds[2]);
+      const key = date + '|' + tm[1] + '|' + tm[2] + '|' + reason;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          date, dateLabel: trTitleCase(tds[0]), start: tm[1].padStart(5, '0'), end: tm[2].padStart(5, '0'),
+          reason, mahalleler: new Map()
+        });
+      }
+      const g = groups.get(key);
+      const mah = trTitleCase(tds[5]) || 'Diğer';
+      const streets = tds[6].split(/<br\s*\/?>/i).map(s => s.replace(/<[^>]+>/g, '').trim()).filter(Boolean).map(trTitleCase);
+      if (!g.mahalleler.has(mah)) g.mahalleler.set(mah, new Set());
+      streets.forEach(s => g.mahalleler.get(mah).add(s));
+    }
+  }
+
+  const items = Array.from(groups.values()).map(g => ({
+    date: g.date, dateLabel: g.dateLabel, start: g.start, end: g.end, reason: g.reason,
+    mahalleler: Array.from(g.mahalleler.entries())
+      .map(([name, set]) => ({ name, streets: Array.from(set) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+  })).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+
+  const data = { items };
+  run('DELETE FROM power_outages');
+  run('INSERT INTO power_outages (id, data_json, source_url, updated_at) VALUES (1,?,?,datetime(\'now\'))',
+    [JSON.stringify(data), OUTAGE_SOURCE_URL]);
+  console.log('[kesinti] Çınarcık için ' + items.length + ' planlı elektrik kesintisi güncellendi');
+  return data;
+}
+
+async function safeSyncOutages() {
+  try {
+    await syncOutages();
+  } catch (e) {
+    console.error('[kesinti] senkronizasyon hatası:', e.message);
+  }
+}
+
+// 💧 Çınarcık Belediyesi su kesintileri (planlı + son 30 gün arıza)
+const SU_OUTAGE_SOURCE_URL = 'https://www.cinarcik.bel.tr/hizmetler/su-kesintileri';
+const SU_SYNC_MS = 30 * 60 * 1000; // 30 dk
+
+function decodeHtmlEntities(s) {
+  return String(s || '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (m, d) => String.fromCharCode(Number(d)));
+}
+
+function stripTags(s) {
+  return decodeHtmlEntities(String(s || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+
+// Belediye su kesintileri sayfası SSR HTML: planlı kesinti yoksa .ks-bos bloğu,
+// "Son 30 gün" listesi .ks-gecmis > li (ks-g-yer / ks-g-zaman / ks-g-tur).
+async function syncSu() {
+  const { run } = require('./db');
+  const resp = await fetch(SU_OUTAGE_SOURCE_URL, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MarmaraninIncisi/1.0)', 'Accept-Language': 'tr' },
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!resp.ok) throw new Error('Belediye HTTP ' + resp.status);
+  const html = await resp.text();
+
+  const articleEnd = html.indexOf('<section class="ks-gecmis"');
+  const headPart = articleEnd === -1 ? html : html.slice(0, articleEnd);
+  const tailPart = articleEnd === -1 ? '' : html.slice(articleEnd);
+
+  const hasEmptyState = headPart.indexOf('ks-bos') !== -1;
+
+  const parseItems = (chunk) => {
+    const out = [];
+    const liRe = /<li>\s*<span class="ks-g-yer">([\s\S]*?)<\/span>\s*<span class="ks-g-zaman">([\s\S]*?)<\/span>\s*<span class="ks-g-tur">([\s\S]*?)<\/span>\s*<\/li>/g;
+    let mm;
+    while ((mm = liRe.exec(chunk)) !== null) {
+      const placeRaw = mm[1];
+      const placeMain = stripTags((placeRaw.match(/<b>([\s\S]*?)<\/b>/) || [])[1] || '');
+      const placeStreets = stripTags((placeRaw.match(/<small>([\s\S]*?)<\/small>/) || [])[1] || '');
+      if (!placeMain && !placeStreets) continue;
+      out.push({
+        place: placeMain,
+        streets: placeStreets,
+        time: stripTags(mm[2]).replace(/\s*·\s*/g, ' · '),
+        type: stripTags(mm[3])
+      });
+    }
+    return out;
+  };
+
+  // Planlı/aktif duyuru boş değilse: ks-bos yok demektir; "Son 30 gün" öncesi liste
+  let planned = [];
+  if (!hasEmptyState) {
+    planned = parseItems(headPart).filter(it => /planl/i.test(it.type) || !/ar[ıi]za/i.test(it.type));
+  }
+  const recent = parseItems(tailPart);
+
+  const data = { planned, recent, hasEmptyState };
+  run('DELETE FROM su_outages');
+  run('INSERT INTO su_outages (id, data_json, source_url, updated_at) VALUES (1,?,?,datetime(\'now\'))',
+    [JSON.stringify({ planned, recent }), SU_OUTAGE_SOURCE_URL]);
+  console.log('[su] planlı ' + planned.length + ' / son-30-gün ' + recent.length + ' su kesinti kaydı güncellendi');
+  return data;
+}
+
+async function safeSyncSu() {
+  try {
+    await syncSu();
+  } catch (e) {
+    console.error('[su] senkronizasyon hatası:', e.message);
+  }
+}
+
+function getSuOutages() {
+  const { get } = require('./db');
+  const out = { planned: [], recent: [], updatedAt: '', sourceUrl: SU_OUTAGE_SOURCE_URL };
+  try {
+    const row = get('SELECT data_json, updated_at FROM su_outages WHERE id = 1');
+    if (!row || !row.data_json) return out;
+    const data = JSON.parse(row.data_json);
+    out.updatedAt = row.updated_at || '';
+    out.planned = data.planned || [];
+    out.recent = (data.recent || []).slice(0, 12);
+  } catch (e) {
+    console.error('[su] kayıt okunamadı:', e.message);
+  }
+  return out;
+}
+
+// Sadece bitmemiş (bugün ve sonrası) kesintileri döndürür; durum: active | today | upcoming
+function getPowerOutages() {
+  const { get } = require('./db');
+  const out = { items: [], updatedAt: '', sourceUrl: OUTAGE_SOURCE_URL };
+  try {
+    const row = get('SELECT data_json, updated_at FROM power_outages WHERE id = 1');
+    if (!row || !row.data_json) return out;
+    const data = JSON.parse(row.data_json);
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const todayStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    const nowHm = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    out.updatedAt = row.updated_at || '';
+    out.items = (data.items || []).filter(it => it.date > todayStr || (it.date === todayStr && it.end > nowHm)).map(it => {
+      let status = 'upcoming';
+      if (it.date === todayStr) status = (it.start <= nowHm && nowHm < it.end) ? 'active' : 'today';
+      const streetCount = (it.mahalleler || []).reduce((s, m) => s + (m.streets || []).length, 0);
+      return Object.assign({ status, streetCount }, it);
+    });
+  } catch (e) {
+    console.error('[kesinti] kayıt okunamadı:', e.message);
+  }
+  return out;
 }
 
 
@@ -4561,6 +6252,12 @@ initDb().then(() => {
   setInterval(safeSyncSefer, FERRY_SYNC_MS);
   safeSyncUlasim();
   setInterval(safeSyncUlasim, ULASIM_SYNC_MS);
+  safeSyncIdo();
+  setInterval(safeSyncIdo, IDO_SYNC_MS);
+  safeSyncOutages();
+  setInterval(safeSyncOutages, OUTAGE_SYNC_MS);
+  safeSyncSu();
+  setInterval(safeSyncSu, SU_SYNC_MS);
 
   app.listen(PORT, () => {
     console.log(`Marmara'nın İncisi http://localhost:${PORT} adresinde çalışıyor`);

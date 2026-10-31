@@ -21,12 +21,22 @@
         data-fav-url="/haber/<%= article.slug || article.id %>" data-fav-title="<%= article.title %>"
         data-fav-img="<%= article.main_image_url || '' %>" aria-pressed="false"></button>
     </div>
-    <% if (article.views_count) { %>
-    <div class="flex items-center gap-2 text-zinc-500 text-sm mb-4">
-      <span>👁️</span>
-      <span><%= article.views_count %> <%= t('views') %></span>
+    <%
+      var cleanWords = (article.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length;
+      var readMin = Math.max(1, Math.ceil(cleanWords / 160));
+    %>
+    <div class="flex flex-wrap items-center gap-3 text-zinc-400 text-xs sm:text-sm mb-4">
+      <% if (article.views_count) { %>
+      <span class="inline-flex items-center gap-1">
+        <span>👁️</span>
+        <span><%= article.views_count %> <%= t('views') %></span>
+      </span>
+      <% } %>
+      <span class="inline-flex items-center gap-1 bg-zinc-800/80 px-2.5 py-0.5 rounded-full text-zinc-300 font-medium">
+        <span>⏱️</span>
+        <span><%= readMin %> <%= (typeof t === 'function' && t('minRead') && t('minRead') !== 'minRead') ? t('minRead') : 'dk okuma' %></span>
+      </span>
     </div>
-    <% } %>
 
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <a href="https://wa.me/?text=<%= encodeURIComponent((article.title || '') + ' — https://marmaraninincisi.com/haber/' + (article.slug || article.id)) %>"
@@ -53,7 +63,7 @@
   <% } %>
 
   <% if (/<[a-z][\s\S]*>/i.test(article.content || '')) { %>
-  <div class="article-body rich-desc text-gray-300 leading-relaxed mb-8"><%- article.content %></div>
+  <div class="article-body rich-desc text-gray-300 leading-relaxed mb-8"><%- String(article.content || '').replace(/\s+target=["']_blank["']/gi, '').replace(/\s+rel=["']noopener\s*noreferrer["']/gi, '') %></div>
   <% } else { %>
   <div class="article-body text-gray-300 leading-relaxed mb-8 whitespace-pre-line"><%= article.content %></div>
   <% } %>
@@ -63,10 +73,10 @@
   <section class="mb-10">
     <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2"><%= t('newsGallery') %></h2>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-      <% gallery.forEach((img, i) => { %>
+      <% gallery.forEach((gUrl, i) => { %>
       <div class="h-36 bg-zinc-900/80 rounded-xl overflow-hidden flex items-center justify-center p-1 border border-zinc-800 group relative cursor-pointer shadow-lg" onclick="openLightbox(<%= i %>)">
-        <img src="<%= img %>" alt="<%= t('gallery') %> <%= i + 1 %>" class="max-h-full max-w-full object-contain mx-auto my-auto group-hover:scale-105 transition-transform duration-300">
-        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center on-photo">
+        <img src="<%= img(gUrl) %>" alt="<%= t('gallery') %> <%= i + 1 %>" class="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300">
+        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center on-photo rounded-lg">
           <span class="text-white text-xs"><%= t('zoom') %></span>
         </div>
       </div>
@@ -90,7 +100,14 @@
     var galleryImages = <%- JSON.stringify(gallery).replace(/</g, '\\u003c') %>;
     var currentIdx = 0;
     function openLightbox(idx) { currentIdx = idx; updateLightbox(); var lb = document.getElementById('lightbox'); lb.classList.remove('hidden'); lb.classList.add('flex'); document.body.style.overflow = 'hidden'; }
-    function updateLightbox() { document.getElementById('lightbox-img').src = galleryImages[currentIdx]; document.getElementById('lb-counter').textContent = (currentIdx + 1) + ' / ' + galleryImages.length; document.getElementById('lb-prev').style.display = currentIdx > 0 ? '' : 'none'; document.getElementById('lb-next').style.display = currentIdx < galleryImages.length - 1 ? '' : 'none'; }
+    function updateLightbox() {
+      var raw = galleryImages[currentIdx] || '';
+      try { raw = encodeURI(raw).replace(/"/g, '%22'); } catch (_) {}
+      document.getElementById('lightbox-img').src = raw;
+      document.getElementById('lb-counter').textContent = (currentIdx + 1) + ' / ' + galleryImages.length;
+      document.getElementById('lb-prev').style.display = currentIdx > 0 ? '' : 'none';
+      document.getElementById('lb-next').style.display = currentIdx < galleryImages.length - 1 ? '' : 'none';
+    }
     function navigateLightbox(dir) { currentIdx += dir; if (currentIdx < 0) currentIdx = 0; if (currentIdx >= galleryImages.length) currentIdx = galleryImages.length - 1; updateLightbox(); }
     function closeLightbox() { var lb = document.getElementById('lightbox'); lb.classList.add('hidden'); lb.classList.remove('flex'); document.body.style.overflow = ''; }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); if (e.key === 'ArrowLeft') navigateLightbox(-1); if (e.key === 'ArrowRight') navigateLightbox(1); });
@@ -185,16 +202,8 @@
           class="w-full bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors resize-none"
           placeholder="<%= t('commentPlaceholder') %>"></textarea>
         <!-- Güvenlik Kodu -->
-        <div class="flex items-center gap-3 flex-wrap mt-3">
-          <img id="captcha-img" src="<%= commentCaptchaImage %>" alt="<%= t('securityCodeAlt') %>"
-            title="<%= t('refresh') %>" onclick="refreshCommentCaptcha()"
-            class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none">
-          <input id="comment-captcha" type="text" maxlength="5" autocomplete="off"
-            inputmode="text" autocapitalize="characters" spellcheck="false"
-            placeholder="<%= t('captchaPlaceholder') %>"
-            class="w-40 bg-zinc-950 text-white border border-zinc-800 rounded-xl px-4 py-2.5 text-sm uppercase tracking-widest placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
-          <button type="button" onclick="refreshCommentCaptcha()"
-            class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition"><%= t('refresh') %></button>
+        <div class="mt-3">
+          <div class="portal-recaptcha" id="comment-recaptcha"></div>
         </div>
         <div class="flex items-center justify-between mt-3">
           <span id="char-count" class="text-zinc-500 text-xs">0 / 1000</span>
@@ -225,10 +234,7 @@
 
     // Güvenlik kodunu yenile
     function refreshCommentCaptcha() {
-      var img = document.getElementById('captcha-img');
-      var input = document.getElementById('comment-captcha');
-      if (img) img.src = '/captcha.svg?t=' + Date.now();
-      if (input) input.value = '';
+      if (window.PortalRecaptcha) window.PortalRecaptcha.reset(document.getElementById('comment-recaptcha'));
     }
 
     // Yorum gönder (girişsiz: ad + e-posta + güvenlik kodu)
@@ -236,8 +242,14 @@
       var content = document.getElementById('comment-content').value.trim();
       var name = document.getElementById('comment-name').value.trim();
       var email = document.getElementById('comment-email').value.trim();
-      var captcha = document.getElementById('comment-captcha').value.trim();
-      if (!content || !captcha) return;
+      var rcEl = document.getElementById('comment-recaptcha');
+      var captcha = window.PortalRecaptcha ? window.PortalRecaptcha.getToken(rcEl) : '';
+      if (!content) return;
+      if (!captcha) {
+        if (window.PortalRecaptcha) window.PortalRecaptcha.highlight(rcEl);
+        if (window.adminToast) adminToast(window.PortalRecaptcha ? window.PortalRecaptcha.hintText : 'Lütfen "Ben robot değilim" kutusunu işaretleyin.', 'error');
+        return;
+      }
 
       var btn = document.getElementById('submit-comment-btn');
       btn.disabled = true;
@@ -250,7 +262,7 @@
           news_id: articleId,
           name: name,
           email: email,
-          captcha: captcha,
+          'g-recaptcha-response': captcha,
           content: content
         })
       })
@@ -260,12 +272,12 @@
         btn.textContent = "<%= t('send') %>";
         if (data.success) {
           document.getElementById('comment-content').value = '';
-          document.getElementById('comment-captcha').value = '';
-          document.getElementById('captcha-img').src = '/captcha.svg?t=' + Date.now();
+          refreshCommentCaptcha();
           charCount.textContent = '0 / 1000';
           if (window.adminToast) adminToast("<%= t('commentReceived') %>", 'success');
         } else {
           var cErr = (data.error || "<%= t('errorOccurred') %>");
+          refreshCommentCaptcha();
           if (window.adminToast) adminToast(cErr, 'error');
         }
       })
@@ -365,11 +377,11 @@
             }
             html += '  </div>';
             html += '  <div class="comment-display">';
-            html += '    <p class="text-zinc-300 text-sm leading-relaxed">' + c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>';
+            html += '    <p class="text-zinc-300 text-sm leading-relaxed">' + escHtml(c.content) + '</p>';
             html += '  </div>';
             if (isOwner) {
               html += '  <div class="comment-edit hidden mt-3">';
-              html += '    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3">' + c.content.replace(/</g, '&lt;') + '</textarea>';
+              html += '    <textarea class="w-full bg-zinc-950 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-emerald-500" rows="3">' + escHtml(c.content) + '</textarea>';
               html += '    <div class="flex gap-2 mt-2">';
               html += '      <button onclick="savePubEdit(' + c.id + ')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold transition"><%= t('save') %></button>';
               html += '      <button onclick="cancelPubEdit(' + c.id + ')" class="bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1 rounded text-xs font-bold transition"><%= t('cancel') %></button>';

@@ -1,0 +1,285 @@
+<%
+  // 4 ana güzergah için haftalık (1=Pzt .. 7=Paz) sefer listelerini hazırla
+  var ndBusCinarcik = [];
+  var ndBusYalova = [];
+  if (typeof transport !== 'undefined' && transport && Array.isArray(transport.hatlar)) {
+    transport.hatlar.forEach(function(h) {
+      (h.kalkislar || []).forEach(function(k) {
+        var yer = String(k.yer || '').toLowerCase();
+        if (yer.indexOf('çınarcık') !== -1 && yer.indexOf('petrol') === -1 && yer.indexOf('pazar') === -1) {
+          (k.seferler || []).forEach(function(s) {
+            ndBusCinarcik.push({ saat: s.saat, gunler: s.gunler || [1,2,3,4,5,6,7], note: 'Çınarcık Kalkış' });
+          });
+        } else if (yer.indexOf('yalova') !== -1) {
+          (k.seferler || []).forEach(function(s) {
+            ndBusYalova.push({ saat: s.saat, gunler: s.gunler || [1,2,3,4,5,6,7], note: 'Yalova Kalkış' });
+          });
+        }
+      });
+    });
+  }
+
+  var ndIdoPendik = [];
+  var ndIdoYenikapi = [];
+  if (typeof idoTransport !== 'undefined' && idoTransport && Array.isArray(idoTransport.hatlar)) {
+    idoTransport.hatlar.forEach(function(h) {
+      (h.kalkislar || []).forEach(function(k) {
+        var yer = String(k.yer || '');
+        if (yer.indexOf('Yalova →') === 0) {
+          var dest = yer.replace('Yalova →', '').trim();
+          var destLower = dest.toLowerCase();
+          (k.seferler || []).forEach(function(s) {
+            if (destLower.indexOf('pendik') !== -1) {
+              ndIdoPendik.push({ saat: s.saat, gunler: s.gunler || [1,2,3,4,5,6,7], note: 'İDO Hızlı Feribot' });
+            } else if (destLower.indexOf('yenikap') !== -1) {
+              ndIdoYenikapi.push({ saat: s.saat, gunler: s.gunler || [1,2,3,4,5,6,7], note: 'İDO Hızlı Feribot' });
+            }
+          });
+        }
+      });
+    });
+  }
+
+  var ndTuryol = [];
+  if (typeof ferryGroups !== 'undefined' && Array.isArray(ferryGroups)) {
+    ferryGroups.forEach(function(g) {
+      var dirLabel = String(g.title || 'Turyol');
+      (g.items || []).forEach(function(it) {
+        (it.columns || []).forEach(function(col) {
+          var cl = String(col.label || '').toUpperCase();
+          var gunler = [1, 2, 3, 4, 5, 6, 7];
+          if (cl.indexOf('HAFTA') !== -1 || cl.indexOf('WEEKDAY') !== -1) gunler = [1, 2, 3, 4, 5];
+          else if (cl.indexOf('CUMARTES') !== -1 || cl.indexOf('SAT') !== -1) gunler = [6];
+          else if (cl.indexOf('PAZAR') !== -1 || cl.indexOf('SUN') !== -1) gunler = [7];
+          (col.times || []).forEach(function(tm) {
+            if (/^\d{2}:\d{2}$/.test(String(tm).trim())) {
+              ndTuryol.push({ saat: String(tm).trim(), gunler: gunler, note: dirLabel });
+            }
+          });
+        });
+      });
+    });
+  }
+
+  function findNextServer(list) {
+    if (!list || !list.length) return null;
+    var now = new Date();
+    var jsDay = now.getDay();
+    var today = jsDay === 0 ? 7 : jsDay;
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var best = null;
+    for (var offset = 0; offset <= 7; offset++) {
+      var d = ((today - 1 + offset) % 7) + 1;
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        if ((it.gunler || []).indexOf(d) === -1) continue;
+        var hm = String(it.saat || '').split(':');
+        if (hm.length < 2) continue;
+        var m = Number(hm[0]) * 60 + Number(hm[1]);
+        var diff = offset * 1440 + (m - nowMin);
+        if (diff < 0) continue;
+        if (!best || diff < best.diffMin) {
+          best = { saat: it.saat, note: it.note || '', diffMin: diff, offsetDays: offset };
+        }
+      }
+      if (best) break;
+    }
+    return best;
+  }
+
+  function fmtCountdownServer(best) {
+    if (!best) return 'Sefer bilgisi yok';
+    if (best.diffMin === 0) return 'Şimdi kalkıyor';
+    if (best.diffMin < 60) return best.diffMin + ' dk sonra';
+    if (best.offsetDays === 0) {
+      var h = Math.floor(best.diffMin / 60);
+      var m = best.diffMin % 60;
+      return m > 0 ? (h + ' sa ' + m + ' dk sonra') : (h + ' saat sonra');
+    }
+    if (best.offsetDays === 1) return 'Yarın ' + best.saat;
+    return best.saat;
+  }
+
+  var isUlasimPage = typeof path !== 'undefined' && /\/ulasim$/.test(path);
+  var ndLp = typeof lp !== 'undefined' ? lp : '';
+  var ndBase = isUlasimPage ? '' : (ndLp + '/ulasim');
+  var cards = [
+    {
+      key: 'bus_cinarcik',
+      icon: '🚌',
+      title: 'Çınarcık → Yalova',
+      sub: 'Belediye Otobüsü',
+      href: ndBase + '#ulasim-saatler',
+      accent: 'emerald',
+      list: ndBusCinarcik,
+      init: findNextServer(ndBusCinarcik)
+    },
+    {
+      key: 'bus_yalova',
+      icon: '🚌',
+      title: 'Yalova → Çınarcık',
+      sub: 'Belediye Otobüsü',
+      href: ndBase + '#ulasim-saatler',
+      accent: 'emerald',
+      list: ndBusYalova,
+      init: findNextServer(ndBusYalova)
+    },
+    {
+      key: 'ido_pendik',
+      icon: '⛴️',
+      title: 'Yalova → Pendik',
+      sub: 'İDO Hızlı Feribot',
+      href: ndBase + '#ido-ulasim-saatler',
+      accent: 'sky',
+      list: ndIdoPendik,
+      init: findNextServer(ndIdoPendik)
+    },
+    {
+      key: 'ido_yenikapi',
+      icon: '⛴️',
+      title: 'Yalova → Yenikapı',
+      sub: 'İDO Hızlı Feribot',
+      href: ndBase + '#ido-ulasim-saatler',
+      accent: 'sky',
+      list: ndIdoYenikapi,
+      init: findNextServer(ndIdoYenikapi)
+    },
+    {
+      key: 'turyol',
+      icon: '🚢',
+      title: 'Turyol Vapur Seferi',
+      sub: 'Çınarcık ↔ Eminönü',
+      href: ndBase + '#turyol-ulasim-saatler',
+      accent: 'cyan',
+      list: ndTuryol,
+      init: findNextServer(ndTuryol)
+    }
+  ];
+%>
+
+<div class="bg-zinc-900/95 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-lg <%= isUlasimPage ? 'mb-6' : '' %>" id="live-next-departures">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+    <div class="flex items-center gap-2.5">
+      <span class="relative flex h-2.5 w-2.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+      </span>
+      <h3 class="text-sm sm:text-base font-extrabold text-white tracking-tight">Canlı Sıradaki Seferler</h3>
+      <span class="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Anlık Geri Sayım</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-[11px] text-zinc-400 flex items-center gap-1.5">
+        <span>🕐</span>
+        <span class="nd-live-clock font-mono font-semibold text-zinc-300"><%= new Date().toTimeString().slice(0, 5) %></span>
+      </span>
+      <% if (!isUlasimPage) { %>
+      <a href="<%= ndBase %>" class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 px-2.5 py-1 rounded-lg transition-colors">Tüm Sefer Saatleri →</a>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <% cards.forEach(function(c) { %>
+    <a href="<%= c.href %>"
+       title="<%= c.title %> (<%= c.sub %>) — Sıradaki: <%= c.init ? c.init.saat : '—' %>"
+       class="nd-card group bg-zinc-950/90 hover:bg-zinc-950 border border-zinc-800/90 hover:border-emerald-500/50 rounded-xl p-3.5 transition-all flex flex-col justify-between gap-2.5"
+       data-nd-list="<%- JSON.stringify(c.list).replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>">
+      <div>
+        <div class="flex items-center gap-1.5 text-white font-bold text-[13px] sm:text-sm group-hover:text-emerald-300 transition-colors leading-snug">
+          <span class="shrink-0"><%= c.icon %></span>
+          <span><%= c.title %></span>
+        </div>
+        <p class="nd-sub text-[11px] text-zinc-400 mt-0.5 leading-tight"><%= c.init && c.init.note ? c.init.note : c.sub %></p>
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/70">
+        <span class="nd-time text-lg sm:text-xl font-black tracking-tight text-white bg-zinc-900 border border-zinc-800 group-hover:border-emerald-500/40 px-2.5 py-0.5 rounded-lg shrink-0 transition-colors">
+          <%= c.init ? c.init.saat : '—' %>
+        </span>
+        <div class="flex flex-col items-end min-w-0">
+          <span class="nd-badge inline-flex items-center gap-1 text-[11px] font-extrabold <%= c.init && c.init.diffMin <= 30 ? 'text-amber-300' : 'text-emerald-400' %>">
+            <span>⏱️</span>
+            <span class="nd-countdown"><%= fmtCountdownServer(c.init) %></span>
+          </span>
+          <span class="text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors mt-0.5">Tüm saatler →</span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</div>
+
+<script>
+(function () {
+  var wrap = document.getElementById('live-next-departures');
+  if (!wrap || wrap.getAttribute('data-nd-bound') === '1') return;
+  wrap.setAttribute('data-nd-bound', '1');
+
+  function findNext(list, now) {
+    if (!list || !list.length) return null;
+    var jsDay = now.getDay();
+    var today = jsDay === 0 ? 7 : jsDay;
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var best = null;
+    for (var offset = 0; offset <= 7; offset++) {
+      var d = ((today - 1 + offset) % 7) + 1;
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        if ((it.gunler || []).indexOf(d) === -1) continue;
+        var hm = String(it.saat || '').split(':');
+        if (hm.length < 2) continue;
+        var m = Number(hm[0]) * 60 + Number(hm[1]);
+        var diff = offset * 1440 + (m - nowMin);
+        if (diff < 0) continue;
+        if (!best || diff < best.diffMin) {
+          best = { saat: it.saat, note: it.note || '', diffMin: diff, offsetDays: offset };
+        }
+      }
+      if (best) break;
+    }
+    return best;
+  }
+
+  function fmtCountdown(best) {
+    if (!best) return 'Sefer bilgisi yok';
+    if (best.diffMin === 0) return 'Şimdi kalkıyor!';
+    if (best.diffMin < 60) return best.diffMin + ' dk sonra';
+    if (best.offsetDays === 0) {
+      var h = Math.floor(best.diffMin / 60);
+      var m = best.diffMin % 60;
+      return m > 0 ? (h + ' sa ' + m + ' dk sonra') : (h + ' saat sonra');
+    }
+    if (best.offsetDays === 1) return 'Yarın ' + best.saat;
+    return best.saat;
+  }
+
+  function tick() {
+    var now = new Date();
+    var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var clockEl = wrap.querySelector('.nd-live-clock');
+    if (clockEl) clockEl.textContent = p2(now.getHours()) + ':' + p2(now.getMinutes());
+
+    var cards = wrap.querySelectorAll('.nd-card');
+    cards.forEach(function (card) {
+      var raw = card.getAttribute('data-nd-list');
+      if (!raw) return;
+      var list = [];
+      try { list = JSON.parse(raw); } catch (e) { return; }
+      var best = findNext(list, now);
+      var timeEl = card.querySelector('.nd-time');
+      var subEl = card.querySelector('.nd-sub');
+      var cdEl = card.querySelector('.nd-countdown');
+      var badgeEl = card.querySelector('.nd-badge');
+      if (timeEl) timeEl.textContent = best ? best.saat : '—';
+      if (subEl && best && best.note) subEl.textContent = best.note;
+      if (cdEl) cdEl.textContent = fmtCountdown(best);
+      if (badgeEl && best) {
+        badgeEl.classList.toggle('text-amber-300', best.diffMin <= 20);
+        badgeEl.classList.toggle('text-emerald-400', best.diffMin > 20);
+      }
+    });
+  }
+
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>

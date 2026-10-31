@@ -40,10 +40,16 @@ if (-not (Test-Path $localDb)) {
   Write-Host 'UYARI: lokal db/cinarcik.db yok - paket DB olmadan uretiliyor (Turso zorunlu).' -ForegroundColor Yellow
 }
 
-# .NET ZipFile: forward-slash path yazar (Compress-Archive backslash kullanir,
-# bazi extractor'lar bozabilir).
+# .NET ZipFile: Linux/cPanel uyumlulugu icin tum zip entry yollarinda mutlaka '/' (forward-slash) kullanilir.
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-[IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
+$archive = [System.IO.Compression.ZipFile]::Open($zip, [System.IO.Compression.ZipArchiveMode]::Create)
+$stageLen = $stage.TrimEnd('\').Length + 1
+Get-ChildItem -Path $stage -Recurse -File | ForEach-Object {
+    $rel = $_.FullName.Substring($stageLen).Replace('\', '/')
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $_.FullName, $rel) | Out-Null
+}
+$archive.Dispose()
 $mb = [math]::Round((Get-Item $zip).Length / 1MB, 2)
 Write-Host "OK: $zip ($mb MB)" -ForegroundColor Green
 Write-Host ''

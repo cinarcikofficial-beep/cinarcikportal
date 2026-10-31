@@ -38,6 +38,9 @@
 
 <!-- Company List -->
 <div class="max-w-7xl mx-auto px-4 py-8">
+  <!-- 📞 Çınarcık Acil & Önemli Telefonlar -->
+  <%- include('partials/emergency-phones') %>
+
   <% if (companies.length === 0) { %>
     <div class="text-center py-20">
       <span class="text-5xl block mb-4">📋</span>
@@ -52,7 +55,7 @@
       %>
         <a href="/rehber/<%= company.slug || company.id %>"
           class="company-card group text-left w-full block bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all shadow-lg hover:shadow-xl fade-in-up"
-          style="animation-delay: <%= idx * 50 %>ms"
+          style="animation-delay: <%= (idx % 6) * 50 %>ms; <%= idx >= 6 ? 'display:none;' : '' %>"
           data-category="<%= company.category || 'Genel' %>"
           data-name="<%= (company.name || '').toLowerCase() %>"
           data-sector="<%= (company.sector || '').toLowerCase() %>">
@@ -79,6 +82,34 @@
         </a>
       <% }) %>
     </div>
+
+    <%
+      const safeLang = typeof lang !== 'undefined' ? lang : 'tr';
+      const loadMoreCompaniesTxt = (typeof t === 'function' && t('loadMoreCompanies') && t('loadMoreCompanies') !== 'loadMoreCompanies')
+        ? t('loadMoreCompanies')
+        : ({ tr: 'Daha Fazla Firma Göster', en: 'Load More Companies', ru: 'Показать больше компаний', ar: 'عرض المزيد من الشركات', de: 'Mehr Firmen anzeigen' })[safeLang] || 'Daha Fazla Firma Göster';
+      const allCompaniesLoadedTxt = (typeof t === 'function' && t('allCompaniesLoaded') && t('allCompaniesLoaded') !== 'allCompaniesLoaded')
+        ? t('allCompaniesLoaded')
+        : ({ tr: 'Tüm firmalar görüntülendi', en: 'All companies displayed', ru: 'Все компании показаны', ar: 'تم عرض جميع الشركات', de: 'Alle Firmen angezeigt' })[safeLang] || 'Tüm firmalar görüntülendi';
+    %>
+    <div class="flex flex-col items-center justify-center mt-10 mb-6 gap-3" id="loadMoreCompaniesContainer">
+      <button type="button" id="loadMoreCompaniesBtn"
+        style="<%= companies.length > 6 ? '' : 'display:none;' %>"
+        class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5)] border border-emerald-400/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 cursor-pointer select-none">
+        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-black/20 text-white text-xs transition-transform duration-300 group-hover:translate-y-0.5">
+          ↓
+        </span>
+        <span class="tracking-wide"><%= loadMoreCompaniesTxt %></span>
+        <span class="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm group-hover:bg-white group-hover:text-emerald-700 transition-colors">
+          +3
+        </span>
+      </button>
+
+      <div id="allCompaniesLoadedNotice" style="<%= companies.length <= 6 ? 'display:inline-flex;' : 'display:none;' %>" class="items-center gap-2 px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-400">
+        <span class="text-emerald-400 font-bold">✓</span>
+        <span><%= allCompaniesLoadedTxt %></span>
+      </div>
+    </div>
   <% } %>
 </div>
 
@@ -86,29 +117,52 @@
 (function() {
   var searchInput = document.getElementById('company-search');
   var pills = document.querySelectorAll('.cat-pill');
-  var cards = document.querySelectorAll('.company-card');
+  var cards = Array.from(document.querySelectorAll('.company-card'));
+  var loadMoreBtn = document.getElementById('loadMoreCompaniesBtn');
+  var allLoadedNotice = document.getElementById('allCompaniesLoadedNotice');
+  var visibleLimit = 6;
 
-  function filter() {
+  function filter(resetLimit) {
+    if (resetLimit !== false) visibleLimit = 6;
     var term = searchInput ? searchInput.value.toLowerCase() : '';
     var activePill = document.querySelector('.cat-pill.cat-active');
     var cat = activePill ? activePill.dataset.category : 'all';
 
-    cards.forEach(function(card) {
+    var matching = cards.filter(function(card) {
       var name = card.dataset.name || '';
       var sector = card.dataset.sector || '';
       var category = card.dataset.category || '';
       var matchSearch = name.includes(term) || sector.includes(term);
       var matchCat = cat === 'all' || category === cat;
-      card.style.display = (matchSearch && matchCat) ? '' : 'none';
+      return matchSearch && matchCat;
+    });
+
+    cards.forEach(function(card) {
+      var idx = matching.indexOf(card);
+      card.style.display = (idx !== -1 && idx < visibleLimit) ? '' : 'none';
+    });
+
+    if (loadMoreBtn) {
+      loadMoreBtn.style.display = (matching.length > visibleLimit) ? '' : 'none';
+    }
+    if (allLoadedNotice) {
+      allLoadedNotice.style.display = (matching.length > 0 && matching.length <= visibleLimit) ? 'inline-flex' : 'none';
+    }
+  }
+
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', function() {
+      visibleLimit += 3;
+      filter(false);
     });
   }
 
-  if (searchInput) searchInput.addEventListener('input', filter);
+  if (searchInput) searchInput.addEventListener('input', function() { filter(true); });
   pills.forEach(function(pill) {
     pill.addEventListener('click', function() {
       pills.forEach(function(p) { p.classList.remove('cat-active'); });
       pill.classList.add('cat-active');
-      filter();
+      filter(true);
     });
   });
 })();

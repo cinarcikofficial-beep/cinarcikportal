@@ -13,8 +13,13 @@
   .ql-wrapbox .ql-snow button.ql-active .ql-stroke { stroke: #10b981; }
   .ql-wrapbox .ql-snow button.ql-active .ql-fill { fill: #10b981; }
   .ql-wrapbox .ql-snow .ql-picker.ql-active { color: #10b981; }
-  .ql-wrapbox .ql-snow .ql-tooltip { background: #18181b; border-color: #27272a; color: #e4e4e7; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-  .ql-wrapbox .ql-snow .ql-tooltip input[type=text] { background: #09090b; border-color: #3f3f46; color: #fff; }
+  .ql-wrapbox .ql-snow .ql-tooltip { background: #18181b; border-color: #27272a; color: #e4e4e7; box-shadow: 0 4px 14px rgba(0,0,0,.5); z-index: 50; }
+  .ql-wrapbox .ql-snow .ql-tooltip input[type=text] { background: #09090b; border-color: #3f3f46; color: #fff; border-radius: 6px; padding: 3px 8px; }
+  .ql-wrapbox .ql-snow .ql-tooltip[data-mode="link"]::before { content: "Link (Örn: /ulasim):"; }
+  .ql-wrapbox .ql-snow .ql-tooltip.ql-editing a.ql-action::after { content: "Kaydet"; color: #10b981; font-weight: 700; }
+  .ql-wrapbox .ql-snow .ql-tooltip::before { content: "Bağlantı:"; }
+  .ql-wrapbox .ql-snow .ql-tooltip a.ql-action::after { content: "Düzenle"; }
+  .ql-wrapbox .ql-snow .ql-tooltip a.ql-remove::before { content: "Kaldır"; }
   .ql-wrapbox .ql-editor h1 { font-size: 1.5rem; font-weight: 800; color: #fff; margin: .5rem 0 .35rem; }
   .ql-wrapbox .ql-editor h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin: .5rem 0 .35rem; }
   .ql-wrapbox .ql-editor h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin: .5rem 0 .35rem; }
@@ -29,6 +34,42 @@
 
 <script src="/vendor/quill/quill.min.js"></script>
 <script>
+  (function () {
+    if (typeof Quill === 'undefined') return;
+    try {
+      var Link = Quill.import('formats/link');
+      var origCreate = Link.create;
+      Link.create = function (value) {
+        var href = String(value || '').trim();
+        if (/^https?:\/\/(www\.)?marmaraninincisi\.com/i.test(href)) {
+          href = href.replace(/^https?:\/\/(www\.)?marmaraninincisi\.com/i, '') || '/';
+        } else if (href && !/^(https?:\/\/|mailto:|tel:|\/|#|\?)/i.test(href) && href.indexOf('.') === -1) {
+          href = '/' + href;
+        }
+        var node = origCreate.call(this, href);
+        node.setAttribute('href', href);
+        // Yeni sekmede açılmasını önle — aynı sayfa içerisinde yönlensin
+        node.removeAttribute('target');
+        node.removeAttribute('rel');
+        return node;
+      };
+      Link.sanitize = function (url) {
+        var s = String(url || '').trim();
+        if (!s) return '';
+        if (/^https?:\/\/(www\.)?marmaraninincisi\.com/i.test(s)) {
+          return s.replace(/^https?:\/\/(www\.)?marmaraninincisi\.com/i, '') || '/';
+        }
+        if (!/^(https?:\/\/|mailto:|tel:|\/|#|\?)/i.test(s) && s.indexOf('.') === -1) {
+          return '/' + s;
+        }
+        return s;
+      };
+      Quill.register(Link, true);
+    } catch (err) {
+      console.warn('Quill Link customize error:', err);
+    }
+  })();
+
   window.initQuillEditor = function (editorId, hiddenId, placeholder, required) {
     var hidden = document.getElementById(hiddenId);
     var initial = hidden ? hidden.value : '';
@@ -49,12 +90,22 @@
       }
     });
     if (initial) {
-      if (/<[a-z][\s\S]*>/i.test(initial)) quill.clipboard.dangerouslyPasteHTML(initial);
-      else quill.setText(initial.replace(/\n+$/, ''));
+      var cleanInitial = String(initial).replace(/\s+target=["']_blank["']/gi, '').replace(/\s+rel=["']noopener\s*noreferrer["']/gi, '');
+      if (/<[a-z][\s\S]*>/i.test(cleanInitial)) quill.clipboard.dangerouslyPasteHTML(cleanInitial);
+      else quill.setText(cleanInitial.replace(/\n+$/, ''));
     }
     var form = hidden && hidden.closest('form');
     if (form) {
       form.addEventListener('submit', function (e) {
+        // Tüm linklerden target="_blank" özelliğini temizle (aynı sayfada açılsın)
+        Array.prototype.forEach.call(quill.root.querySelectorAll('a'), function (a) {
+          a.removeAttribute('target');
+          a.removeAttribute('rel');
+          var h = a.getAttribute('href') || '';
+          if (/^https?:\/\/(www\.)?marmaraninincisi\.com/i.test(h)) {
+            a.setAttribute('href', h.replace(/^https?:\/\/(www\.)?marmaraninincisi\.com/i, '') || '/');
+          }
+        });
         var html = quill.root.innerHTML;
         if (!quill.getText().trim()) html = '';
         if (required && !html) {

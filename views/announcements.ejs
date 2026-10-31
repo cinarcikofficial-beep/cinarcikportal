@@ -1,14 +1,13 @@
 <% layout('partials/layout') %>
 <% locals.pageTitle = t('annList') %>
 
-<div class="page-banner">
-  <h1>📢 <%= t('annList') %></h1>
-  <p><%= t('annSubtitle') %></p>
-</div>
-
 <style>
   .ann-full .rich-desc img { max-width: 100%; height: auto; border-radius: 0.75rem; margin: 0.5rem 0; }
-  .ann-full .rich-desc a { word-break: break-word; }
+  .ann-full .rich-desc a { position: relative; z-index: 10; color: #34d399; text-decoration: underline; font-weight: 600; word-break: break-word; }
+  .ann-full .rich-desc a:hover { color: #6ee7b7; }
+  .cat-pill { border: 1px solid #3f3f46; color: #a1a1aa; transition: all .2s ease; cursor: pointer; }
+  .cat-pill:hover { border-color: #10b981; color: #34d399; }
+  .cat-pill.active { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.45); color: #34d399; }
   @keyframes ilanFlash {
     0%, 100% { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.25), 0 0 0 0 rgba(52, 211, 153, 0); filter: brightness(1); }
     50% { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3), 0 0 22px 6px rgba(52, 211, 153, 0.6); filter: brightness(1.4); }
@@ -20,12 +19,21 @@
   html.light #ilan-modal input, html.light #ilan-modal textarea, html.light #ilan-modal select { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
 </style>
 
-<section class="section">
-  <div class="flex items-center justify-end mb-6">
+<section class="section pt-6 sm:pt-8">
+  <div class="section-header">
+    <h2>📢 <%= t('annList') %></h2>
     <button type="button" id="open-ilan-modal-btn" class="ilan-flash inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-950/40">
       ✏️ <%= t('postListing') %>
     </button>
   </div>
+
+  <div class="flex flex-wrap gap-2 mb-6" id="annCatPills">
+    <button type="button" class="cat-pill active rounded-full px-4 py-1.5 text-xs font-bold" data-cat="all"><%= t('catAll') %></button>
+    <button type="button" class="cat-pill rounded-full px-4 py-1.5 text-xs font-bold" data-cat="duyuru"><%= t('announcement') %></button>
+    <button type="button" class="cat-pill rounded-full px-4 py-1.5 text-xs font-bold" data-cat="ilan"><%= t('ad') %></button>
+    <button type="button" class="cat-pill rounded-full px-4 py-1.5 text-xs font-bold" data-cat="etkinlik"><%= t('event') %></button>
+  </div>
+
   <% if (typeof submitted !== 'undefined' && submitted) { %>
     <div class="bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-sm rounded-xl px-4 py-3 mb-6 flex items-center gap-2.5">
       <span class="text-lg">✓</span>
@@ -39,20 +47,25 @@
     <p><%= t('annSoon') %></p>
   </div>
   <% } else { %>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-    <% announcements.forEach(a => { %>
+  <div id="annCatEmpty" style="display:none;" class="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-10 text-center mb-6">
+    <p class="text-3xl mb-2">📢</p>
+    <p class="text-zinc-400 text-sm"><%= t('noAnnouncements') %></p>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch" id="announcementsGrid">
+    <% announcements.forEach((a, idx) => { %>
     <%
       const isRich = /<[a-z][\s\S]*>/i.test(a.content || '');
       const dateStr = new Date(a.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long', year: 'numeric' });
+      const cleanContent = String(a.content || '').replace(/\s+target=["']_blank["']/gi, '').replace(/\s+rel=["']noopener\s*noreferrer["']/gi, '');
     %>
-    <div class="card announcement-card ann-full relative flex flex-col">
+    <div class="card announcement-card ann-full ann-card-item relative flex flex-col" data-cat="<%= a.category || 'duyuru' %>" <%- idx >= 6 ? 'style="display:none;"' : '' %>>
       <span class="announce-tag <%= a.category === 'ilan' ? 'tag-ilan' : a.category === 'etkinlik' ? 'tag-etkinlik' : 'tag-duyuru' %>"><%= a.category === 'ilan' ? t('ad') : a.category === 'etkinlik' ? t('event') : t('announcement') %></span>
       <% if (a.image) { %><img src="<%= img(a.image) %>" alt="<%= a.title %>" loading="lazy" decoding="async" class="w-full h-64 object-cover ann-img-frame rounded-xl mb-3" /><% } %>
       <h3 class="text-lg font-bold text-white mb-1 line-clamp-2 min-h-[3.5rem]"><%= a.title %></h3>
       <span class="card-date block mb-3"><%= dateStr %></span>
       <div class="article-body flex-1 text-sm text-zinc-300 leading-relaxed">
         <% if (isRich) { %>
-        <div class="rich-desc"><%- a.content %></div>
+        <div class="rich-desc"><%- cleanContent %></div>
         <% } else { %>
         <div class="whitespace-pre-line"><%= a.content %></div>
         <% } %>
@@ -60,6 +73,34 @@
       <a href="/duyuru/<%= a.slug || a.id %>" class="absolute inset-0 rounded-2xl" aria-label="<%= a.title %>"></a>
     </div>
     <% }) %>
+  </div>
+
+  <%
+    const safeLang = typeof lang !== 'undefined' ? lang : 'tr';
+    const loadMoreAnnTxt = (typeof t === 'function' && t('loadMoreAnnouncements') && t('loadMoreAnnouncements') !== 'loadMoreAnnouncements')
+      ? t('loadMoreAnnouncements')
+      : ({ tr: 'Daha Fazla Duyuru Göster', en: 'Load More Announcements', ru: 'Показать больше объявлений', ar: 'عرض المزيد من الإعلانات', de: 'Mehr Ankündigungen anzeigen' })[safeLang] || 'Daha Fazla Duyuru Göster';
+    const allAnnLoadedTxt = (typeof t === 'function' && t('allAnnouncementsLoaded') && t('allAnnouncementsLoaded') !== 'allAnnouncementsLoaded')
+      ? t('allAnnouncementsLoaded')
+      : ({ tr: 'Tüm duyurular görüntülendi', en: 'All announcements displayed', ru: 'Все объявления показаны', ar: 'تم عرض جميع الإعلانات', de: 'Alle Ankündigungen angezeigt' })[safeLang] || 'Tüm duyurular görüntülendi';
+  %>
+  <div class="flex flex-col items-center justify-center mt-10 mb-6 gap-3" id="loadMoreAnnContainer">
+    <button type="button" id="loadMoreAnnBtn"
+      style="<%= announcements.length > 6 ? '' : 'display:none;' %>"
+      class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-600 shadow-[0_4px_20px_rgba(16,185,129,0.35)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5)] border border-emerald-400/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 cursor-pointer select-none">
+      <span class="flex items-center justify-center w-6 h-6 rounded-full bg-black/20 text-white text-xs transition-transform duration-300 group-hover:translate-y-0.5">
+        ↓
+      </span>
+      <span class="tracking-wide"><%= loadMoreAnnTxt %></span>
+      <span class="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm group-hover:bg-white group-hover:text-emerald-700 transition-colors">
+        +3
+      </span>
+    </button>
+
+    <div id="allAnnLoadedNotice" style="<%= announcements.length <= 6 ? 'display:inline-flex;' : 'display:none;' %>" class="items-center gap-2 px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-400">
+      <span class="text-emerald-400 font-bold">✓</span>
+      <span><%= allAnnLoadedTxt %></span>
+    </div>
   </div>
   <% } %>
 </section>
@@ -153,19 +194,9 @@
         </div>
       </div>
 
-      <!-- Güvenlik Kodu (Captcha) -->
-      <div class="bg-zinc-950/90 border border-zinc-800 rounded-xl p-3.5">
-        <label for="modal-captcha" class="block text-zinc-400 text-xs font-medium mb-1.5"><%= t('securityCode') %> <span class="text-red-400">*</span></label>
-        <div class="flex items-center gap-2.5 flex-wrap">
-          <img id="modal-captcha-img" src="/captcha.svg" alt="<%= t('securityCodeAlt') %>" title="<%= t('refresh') %>"
-            class="h-11 w-36 rounded-lg border border-zinc-800 cursor-pointer select-none bg-zinc-900 object-contain hover:border-emerald-500/50 transition-colors">
-          <button type="button" id="modal-captcha-refresh" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer" title="<%= t('refresh') %>">🔄 <%= t('refresh') %></button>
-          <input type="text" id="modal-captcha" name="captcha" required maxlength="5" autocomplete="off"
-            inputmode="text" autocapitalize="characters" spellcheck="false"
-            placeholder="<%= t('captchaPlaceholder') %>"
-            class="w-32 bg-zinc-900 text-white border border-zinc-800 rounded-xl px-3 py-2.5 text-sm uppercase tracking-widest text-center font-bold focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
-        </div>
-        <p class="text-zinc-500 text-[11px] mt-1.5"><%= t('captchaNote') %></p>
+      <!-- Robot Doğrulaması (reCAPTCHA) -->
+      <div class="pt-1">
+        <div class="portal-recaptcha" id="modal-recaptcha"></div>
       </div>
 
       <!-- Footer Butonları -->
@@ -203,8 +234,7 @@
   var submitSpinner = document.getElementById('modal-submit-spinner');
 
   function refreshCaptcha() {
-    if (captchaImg) captchaImg.src = '/captcha.svg?t=' + Date.now();
-    if (captchaInput) captchaInput.value = '';
+    if (window.PortalRecaptcha) window.PortalRecaptcha.reset(form);
   }
 
   function showAlert(msg, isSuccess) {
@@ -355,6 +385,52 @@
         if (window.adminToast) adminToast(msg, 'error');
         refreshCaptcha();
       });
+    });
+  }
+
+  // Kategori Gruplama (Tümü / Duyuru / İlan / Etkinlik) + Daha Fazla Duyuru Göster (+3)
+  var annCards = Array.prototype.slice.call(document.querySelectorAll('.ann-card-item'));
+  var annCatPills = document.querySelectorAll('#annCatPills .cat-pill');
+  var annCatEmpty = document.getElementById('annCatEmpty');
+  var loadMoreAnnBtn = document.getElementById('loadMoreAnnBtn');
+  var allAnnLoadedNotice = document.getElementById('allAnnLoadedNotice');
+  var annVisibleLimit = 6;
+  var activeAnnCat = 'all';
+
+  function updateAnnDisplay() {
+    var matching = annCards.filter(function(card) {
+      var c = card.getAttribute('data-cat') || 'duyuru';
+      return activeAnnCat === 'all' || c === activeAnnCat;
+    });
+    annCards.forEach(function(card) {
+      var idx = matching.indexOf(card);
+      card.style.display = (idx !== -1 && idx < annVisibleLimit) ? '' : 'none';
+    });
+    if (annCatEmpty) {
+      annCatEmpty.style.display = matching.length === 0 ? '' : 'none';
+    }
+    if (loadMoreAnnBtn) {
+      loadMoreAnnBtn.style.display = matching.length > annVisibleLimit ? '' : 'none';
+    }
+    if (allAnnLoadedNotice) {
+      allAnnLoadedNotice.style.display = (matching.length > 0 && matching.length <= annVisibleLimit) ? 'inline-flex' : 'none';
+    }
+  }
+
+  annCatPills.forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      annCatPills.forEach(function(p) { p.classList.remove('active'); });
+      pill.classList.add('active');
+      activeAnnCat = pill.getAttribute('data-cat') || 'all';
+      annVisibleLimit = 6;
+      updateAnnDisplay();
+    });
+  });
+
+  if (loadMoreAnnBtn) {
+    loadMoreAnnBtn.addEventListener('click', function() {
+      annVisibleLimit += 3;
+      updateAnnDisplay();
     });
   }
 })();

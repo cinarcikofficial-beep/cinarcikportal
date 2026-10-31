@@ -1,12 +1,10 @@
 <% layout('partials/layout') %>
 <% locals.pageTitle = t('seaTitle') %>
 
-<div class="page-banner">
-  <h1>🌊 <%= t('seaTitle') %></h1>
-  <p><%= t('seaSub') %></p>
-</div>
-
-<section class="section">
+<section class="section pt-6 sm:pt-8">
+  <div class="section-header">
+    <h2>🌊 <%= t('seaTitle') %></h2>
+  </div>
   <% if (!sea) { %>
   <div class="empty-state">
     <div class="empty-icon">🌊</div>

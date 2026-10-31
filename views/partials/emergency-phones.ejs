@@ -1,0 +1,108 @@
+<%
+  var emergencyList = [
+    {
+      icon: '🚨',
+      title: '112 Acil Çağrı Merkezi',
+      sub: 'Ambulans · Polis · İtfaiye · Jandarma',
+      phone: '112',
+      tel: '112',
+      urgent: true
+    },
+    {
+      icon: '🏥',
+      title: 'Çınarcık Devlet Hastanesi',
+      sub: '7/24 Acil Servis & Hastane Santral',
+      phone: '0226 246 16 66',
+      tel: '02262461666',
+      urgent: true
+    },
+    {
+      icon: '🏛️',
+      title: 'Çınarcık Belediyesi',
+      sub: 'Çağrı Merkezi · Beyaz Masa · Su Arıza',
+      phone: '444 04 77',
+      tel: '4440477',
+      urgent: false
+    },
+    {
+      icon: '👮',
+      title: 'Zabıta Müdürlüğü',
+      sub: 'Alo 153 Zabıta & Denetim Hattı',
+      phone: '153',
+      tel: '153',
+      urgent: false
+    },
+    {
+      icon: '⚡',
+      title: 'UEDAŞ Elektrik Arıza',
+      sub: '7/24 Elektrik Kesinti & Arıza Hattı',
+      phone: '186',
+      tel: '186',
+      urgent: false
+    },
+    {
+      icon: '🔥',
+      title: 'Armagaz Doğalgaz Acil',
+      sub: '7/24 Doğalgaz Arıza & İhbar Hattı',
+      phone: '187',
+      tel: '187',
+      urgent: false
+    },
+    {
+      icon: '🚓',
+      title: 'Çınarcık İlçe Emniyet',
+      sub: 'Polis Merkezi Amirliği Santral',
+      phone: '0226 245 10 80',
+      tel: '02262451080',
+      urgent: false
+    },
+    {
+      icon: '⚓',
+      title: 'Sahil Güvenlik & Jandarma',
+      sub: 'Deniz Acil (158) · Jandarma: 0226 245 10 06',
+      phone: '158',
+      tel: '158',
+      urgent: false
+    }
+  ];
+  var isRehberPage = typeof path !== 'undefined' && path === '/rehber';
+%>
+
+<div id="acil-telefonlar" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg scroll-mt-24 <%= isRehberPage ? 'mb-8' : '' %>">
+  <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5">
+      <span class="text-lg">📞</span>
+      <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Çınarcık Acil & Önemli Telefonlar</h2>
+      <span class="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Tek Tıkla Ara</span>
+    </div>
+    <span class="text-xs text-zinc-500">7/24 Resmi Kurum & Arıza Hatları</span>
+  </div>
+
+  <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <% emergencyList.forEach(function(item) { %>
+    <a href="tel:<%= item.tel %>"
+       title="<%= item.title %> — Hemen Ara: <%= item.phone %>"
+       class="group bg-zinc-950/90 hover:bg-zinc-950 border <%= item.urgent ? 'border-red-500/30 hover:border-red-500/60' : 'border-zinc-800/90 hover:border-emerald-500/50' %> rounded-xl p-3.5 transition-all flex flex-col justify-between gap-2.5">
+      <div class="flex items-start gap-2.5">
+        <span class="text-xl leading-none mt-0.5 shrink-0"><%= item.icon %></span>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-white font-bold text-xs sm:text-[13px] group-hover:text-emerald-300 transition-colors leading-snug">
+            <%= item.title %>
+          </h3>
+          <p class="text-[11px] text-zinc-400 mt-0.5 leading-tight"><%= item.sub %></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/70">
+        <span class="font-mono text-sm sm:text-base font-extrabold tracking-tight <%= item.urgent ? 'text-red-400' : 'text-emerald-400' %>">
+          <%= item.phone %>
+        </span>
+        <span class="inline-flex items-center gap-1 text-[11px] font-semibold bg-zinc-900 group-hover:bg-emerald-500/15 text-zinc-300 group-hover:text-emerald-300 border border-zinc-800 group-hover:border-emerald-500/30 px-2.5 py-1 rounded-lg transition-all">
+          <span>📲</span>
+          <span>Ara</span>
+        </span>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</div>
+

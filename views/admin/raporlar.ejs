@@ -1,111 +1,618 @@
 <% layout('partials/layout') %>
-<% locals.pageTitle = 'Raporlar' %>
+<% locals.pageTitle = 'Raporlar & Ziyaretçi Analizi' %>
 
 <div class="max-w-7xl mx-auto px-4 py-8 space-y-6">
-  <a href="/admin" class="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm">
-    <span class="text-lg">←</span> Yönetim Paneline Dön
-  </a>
-
   <div class="flex items-center justify-between gap-3 flex-wrap">
+    <a href="/admin" class="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition-colors text-sm font-medium">
+      <span class="text-lg">←</span> Yönetim Paneline Dön
+    </a>
+    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      🛡️ Bot & Sistem Filtresi Aktif · <strong><%= (filteredBotCount || 0).toLocaleString('tr-TR') %></strong> bot/arka plan isteği hariç tutuldu
+    </div>
+  </div>
+
+  <!-- Başlık -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-zinc-800/80 pb-5">
     <div>
-      <h1 class="text-3xl font-bold text-white flex items-center gap-3">
-        <span class="text-2xl">📊</span> Raporlar
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+        <span class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl">📊</span>
+        Ziyaretçi & Tıklama Raporları
       </h1>
-      <p class="text-gray-400 mt-1 text-sm">Sayfa trafiği, ziyaretçi IP'leri ve en çok ziyaret edilen sayfalar (son 90 gün saklanır). Render iç kontrolleri (10.x) istatistiklere sayılmaz; son ziyaretlerde "Render iç" rozetiyle işaretlenir.</p>
+      <p class="text-gray-400 mt-1.5 text-sm">
+        Googlebot, arama motoru örümcekleri, sağlık kontrolleri ve arka plan API/görsel istekleri filtrelenmiş <strong>gerçek ziyaretçi</strong> verileri.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/admin/raporlar" class="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition-colors">
+        🔄 Verileri Yenile
+      </a>
     </div>
   </div>
 
-  <!-- Özet kartları -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-gray-400 text-sm">Bugün</p>
-      <p class="text-3xl font-bold text-white mt-1"><%= today.views %></p>
-      <p class="text-emerald-400 text-xs mt-1"><%= today.uniques %> benzersiz IP</p>
+  <!-- 1. BÖLÜM: 4 Ana Bot-Harici Ziyaretçi Kartı (Tıklanınca Grafiği ve Tabloyu Değiştirir) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="kpiCardsGrid">
+    <!-- Günlük (Bugün) -->
+    <div data-kpi-period="today" role="button" tabindex="0" class="kpi-period-card cursor-pointer select-none relative overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 rounded-2xl p-5 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">Bugün (Günlük)</span>
+        <span class="text-xl">⚡</span>
+      </div>
+      <div class="mt-3 flex items-baseline gap-2.5">
+        <p class="text-3xl sm:text-4xl font-extrabold text-white"><%= (today.views || 0).toLocaleString('tr-TR') %></p>
+        <span class="text-xs text-zinc-400 font-medium">görüntülenme</span>
+      </div>
+      <div class="mt-3 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+        <span class="text-emerald-400 font-semibold">👤 <%= (today.uniques || 0).toLocaleString('tr-TR') %> tekil ziyaretçi</span>
+        <span class="text-zinc-400" title="Dünkü gerçek sayfa görüntülenme sayısı">
+          Dün: <strong class="text-zinc-200"><%= (today.yesterdayViews || 0).toLocaleString('tr-TR') %></strong>
+          <% if (today.diffPct !== null && today.diffPct !== undefined) { %>
+            <span class="ml-1 font-bold <%= today.diffPct >= 0 ? 'text-emerald-400' : 'text-amber-400' %>">
+              (<%= today.diffPct >= 0 ? '+' : '' %><%= today.diffPct %>%)
+            </span>
+          <% } %>
+        </span>
+      </div>
     </div>
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-gray-400 text-sm">Son 7 Gün</p>
-      <p class="text-3xl font-bold text-white mt-1"><%= week.views %></p>
-      <p class="text-emerald-400 text-xs mt-1"><%= week.uniques %> benzersiz IP</p>
+
+    <!-- Haftalık (Son 7 Gün) -->
+    <div data-kpi-period="week" role="button" tabindex="0" class="kpi-period-card cursor-pointer select-none relative overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-sky-500/50 rounded-2xl p-5 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-lg">Haftalık (Son 7 Gün)</span>
+        <span class="text-xl">📅</span>
+      </div>
+      <div class="mt-3 flex items-baseline gap-2.5">
+        <p class="text-3xl sm:text-4xl font-extrabold text-white"><%= (week.views || 0).toLocaleString('tr-TR') %></p>
+        <span class="text-xs text-zinc-400 font-medium">görüntülenme</span>
+      </div>
+      <div class="mt-3 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+        <span class="text-sky-400 font-semibold">👤 <%= (week.uniques || 0).toLocaleString('tr-TR') %> tekil ziyaretçi</span>
+        <span class="text-zinc-400">Ort: <strong class="text-zinc-200"><%= (week.avgDaily || 0).toLocaleString('tr-TR') %></strong> / gün</span>
+      </div>
     </div>
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-gray-400 text-sm">Son 30 Gün</p>
-      <p class="text-3xl font-bold text-white mt-1"><%= month.views %></p>
-      <p class="text-emerald-400 text-xs mt-1"><%= month.uniques %> benzersiz IP</p>
+
+    <!-- Aylık (Son 30 Gün — Varsayılan Seçili) -->
+    <div data-kpi-period="month" role="button" tabindex="0" class="kpi-period-card cursor-pointer select-none relative overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/30 border border-emerald-500/60 ring-1 ring-emerald-500/30 rounded-2xl p-5 shadow-lg transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-lg">Son 30 Gün</span>
+        <span class="text-xl">📈</span>
+      </div>
+      <div class="mt-3 flex items-baseline gap-2.5">
+        <p class="text-3xl sm:text-4xl font-extrabold text-white"><%= (month.views || 0).toLocaleString('tr-TR') %></p>
+        <span class="text-xs text-zinc-400 font-medium">görüntülenme</span>
+      </div>
+      <div class="mt-3 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+        <span class="text-purple-400 font-semibold">👤 <%= (month.uniques || 0).toLocaleString('tr-TR') %> tekil ziyaretçi</span>
+        <span class="text-zinc-400">Ort: <strong class="text-zinc-200"><%= (month.avgDaily || 0).toLocaleString('tr-TR') %></strong> / gün</span>
+      </div>
     </div>
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-gray-400 text-sm">Toplam</p>
-      <p class="text-3xl font-bold text-white mt-1"><%= totalViews %></p>
-      <p class="text-emerald-400 text-xs mt-1"><%= totalUniques %> benzersiz IP</p>
+
+    <!-- Toplam (Tüm Zamanlar) -->
+    <div data-kpi-period="total" role="button" tabindex="0" class="kpi-period-card cursor-pointer select-none relative overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 rounded-2xl p-5 transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">Toplam (Bot Harici)</span>
+        <span class="text-xl">🏆</span>
+      </div>
+      <div class="mt-3 flex items-baseline gap-2.5">
+        <p class="text-3xl sm:text-4xl font-extrabold text-white"><%= (totalViews || 0).toLocaleString('tr-TR') %></p>
+        <span class="text-xs text-zinc-400 font-medium">görüntülenme</span>
+      </div>
+      <div class="mt-3 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+        <span class="text-amber-400 font-semibold">👤 <%= (totalUniques || 0).toLocaleString('tr-TR') %> tekil ziyaretçi</span>
+        <span class="text-zinc-400" title="Filtrelenen bot, örümcek ve sistem istekleri">🤖 <%= (filteredBotCount || 0).toLocaleString('tr-TR') %> bot elendi</span>
+      </div>
     </div>
   </div>
 
-  <!-- Grafik -->
+  <!-- 2. BÖLÜM: Seçili Döneme Göre Değişen Gerçek Trafik Grafiği -->
   <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-    <h2 class="text-white font-bold mb-4">Son 30 Günlük Trafik</h2>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+      <div>
+        <h2 class="text-white font-bold text-base flex items-center gap-2">
+          <span>📉</span> <span id="trafficChartTitle">Son 30 Günlük Gerçek Ziyaretçi Grafiği (Botlar Hariç)</span>
+        </h2>
+        <p id="trafficChartSubtitle" class="text-zinc-400 text-xs mt-0.5">Yukarıdaki kutulara (Bugün, Haftalık, Son 30 Gün, Toplam) tıklayarak grafiği değiştirebilirsiniz</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <span class="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
+          <span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Sayfa Görüntülenme
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-indigo-400 font-medium">
+          <span class="w-3 h-3 rounded-sm bg-indigo-500 inline-block"></span> Tekil Ziyaretçi (IP)
+        </span>
+      </div>
+    </div>
     <div class="h-72">
       <canvas id="trafficChart"></canvas>
     </div>
   </div>
 
-  <!-- En çok ziyaret edilen sayfalar -->
+  <!-- 3. BÖLÜM: En Çok Hangi Sayfaya Gitmişler? (Sekmeli: Bugün / Haftalık / 30 Gün / Toplam) -->
   <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-    <div class="p-4 border-b border-zinc-800">
-      <h2 class="text-white font-bold">En Çok Ziyaret Edilen Sayfalar (son 30 gün)</h2>
+    <div class="p-4 sm:p-5 border-b border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-white font-bold text-base flex items-center gap-2">
+          <span>🧭</span> En Çok Ziyaret Edilen Sayfalar (Gerçek Kullanıcılar)
+        </h2>
+        <p class="text-zinc-400 text-xs mt-0.5">Ziyaretçilerin hangi sayfaya kaç kez girdiğini dönem bazında inceleyin</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800" id="topPagesTabs">
+        <button type="button" data-period="today" class="tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white" title="Bugünkü tekil ziyaretçi (IP) sayısı">
+          Bugün (<%= (today.uniques || 0).toLocaleString('tr-TR') %>)
+        </button>
+        <button type="button" data-period="week" class="tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white" title="Son 7 gündeki tekil ziyaretçi (IP) sayısı">
+          Haftalık · 7 Gün (<%= (week.uniques || 0).toLocaleString('tr-TR') %>)
+        </button>
+        <button type="button" data-period="month" class="tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600 text-white shadow" title="Son 30 gündeki tekil ziyaretçi (IP) sayısı">
+          Son 30 Gün (<%= (month.uniques || 0).toLocaleString('tr-TR') %>)
+        </button>
+        <button type="button" data-period="total" class="tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white" title="Tüm zamanlardaki toplam tekil ziyaretçi (IP) sayısı">
+          Toplam (<%= (totalUniques || 0).toLocaleString('tr-TR') %>)
+        </button>
+      </div>
     </div>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-zinc-800 text-gray-400 text-left">
-          <th class="p-4 font-medium">Sayfa</th>
-          <th class="p-4 font-medium text-right whitespace-nowrap">Görüntülenme</th>
-          <th class="p-4 font-medium text-right whitespace-nowrap">Benzersiz IP</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (!topPages || topPages.length === 0) { %>
-          <tr><td colspan="3" class="p-12 text-center text-gray-500">Henüz veri yok.</td></tr>
-        <% } else { topPages.forEach(function(p) { %>
-          <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-            <td class="p-4 text-zinc-200 font-mono text-xs break-all"><%= p.path %></td>
-            <td class="p-4 text-right text-white font-semibold"><%= p.views %></td>
-            <td class="p-4 text-right text-emerald-400"><%= p.uniques %></td>
-          </tr>
-        <% }); } %>
-      </tbody>
-    </table>
+
+    <% ['today', 'week', 'month', 'total'].forEach(function(periodKey) {
+         var list = (topPagesByPeriod && topPagesByPeriod[periodKey]) ? topPagesByPeriod[periodKey] : [];
+    %>
+      <div class="tp-panel <%= periodKey === 'month' ? '' : 'hidden' %>" data-tp-panel="<%= periodKey %>">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-zinc-800 text-zinc-400 text-left text-xs uppercase tracking-wider bg-zinc-950/40">
+                <th class="py-3 px-4 w-12">#</th>
+                <th class="py-3 px-4">Sayfa Başlığı & Bağlantı</th>
+                <th class="py-3 px-4 whitespace-nowrap">Bölüm</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap">Görüntülenme</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap">Tekil IP</th>
+                <th class="py-3 px-4 w-44">Trafik Payı</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!list || list.length === 0) { %>
+                <tr>
+                  <td colspan="6" class="p-10 text-center text-zinc-500 text-sm">Bu dönemde henüz gerçek ziyaretçi kaydı bulunmuyor.</td>
+                </tr>
+              <% } else { list.forEach(function(p) { %>
+                <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                  <td class="py-3 px-4 text-zinc-500 font-bold text-xs">#<%= p.rank %></td>
+                  <td class="py-3 px-4">
+                    <a href="<%= p.path %>" target="_blank" class="text-white hover:text-emerald-400 font-semibold text-sm inline-flex items-center gap-1.5 transition-colors">
+                      <span><%= p.icon %></span>
+                      <span><%= p.title %></span>
+                      <span class="text-zinc-500 text-xs">↗</span>
+                    </a>
+                    <div class="text-zinc-500 font-mono text-[11px] break-all mt-0.5"><%= p.path %></div>
+                  </td>
+                  <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 border border-zinc-700 text-zinc-300">
+                      <%= p.section %>
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right text-white font-bold text-sm whitespace-nowrap"><%= (p.views || 0).toLocaleString('tr-TR') %></td>
+                  <td class="py-3 px-4 text-right text-emerald-400 font-semibold text-xs whitespace-nowrap"><%= (p.uniques || 0).toLocaleString('tr-TR') %></td>
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: <%= Math.min(100, p.pct) %>%"></div>
+                      </div>
+                      <span class="text-xs text-zinc-400 w-9 text-right font-mono">%<%= p.pct %></span>
+                    </div>
+                  </td>
+                </tr>
+              <% }); } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% }); %>
   </div>
 
-  <!-- Son ziyaretler -->
-  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-    <div class="p-4 border-b border-zinc-800">
-      <h2 class="text-white font-bold">Son Ziyaretler</h2>
+  <!-- 4. BÖLÜM: En Çok Neyi Tıklamışlar? (Bölüm Dağılımı + İçerik Tıklama Liderleri) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Sol: En Çok İlgi Gören Site Bölümleri (5 Sütun) -->
+    <div class="lg:col-span-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
+      <div>
+        <h2 class="text-white font-bold text-base flex items-center gap-2">
+          <span>🎯</span> En Çok İlgi Gören Bölümler (Son 30 Gün)
+        </h2>
+        <p class="text-zinc-400 text-xs mt-0.5 mb-4">Ziyaretçilerin sitede en çok vakit geçirdiği ana kategoriler</p>
+
+        <% if (!sectionBreakdown || sectionBreakdown.length === 0) { %>
+          <p class="text-zinc-500 text-sm py-8 text-center">Henüz bölüm verisi yok.</p>
+        <% } else { %>
+          <div class="space-y-3.5">
+            <% sectionBreakdown.forEach(function(sec) { %>
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-zinc-200 font-semibold flex items-center gap-1.5">
+                    <span><%= sec.icon %></span>
+                    <span><%= sec.section %></span>
+                  </span>
+                  <span class="text-zinc-400">
+                    <strong class="text-white"><%= sec.views.toLocaleString('tr-TR') %></strong> tıklama ·
+                    <span class="text-emerald-400"><%= sec.uniques.toLocaleString('tr-TR') %> tekil</span>
+                    <span class="ml-1 text-zinc-500">(%<%= sec.pct %>)</span>
+                  </span>
+                </div>
+                <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full" style="width: <%= Math.max(3, Math.min(100, sec.pct)) %>%"></div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="mt-5 pt-4 border-t border-zinc-800/80 text-xs text-zinc-400 flex items-start gap-2">
+        <span class="text-base leading-none">💡</span>
+        <span>
+          <strong>İpucu:</strong> En çok tıklanan bölümlerdeki içerikleri güncel tutmak (ör. sefer saatleri, güncel haberler ve duyurular) ziyaretçilerin siteye tekrar gelme oranını doğrudan artırır.
+        </span>
+      </div>
     </div>
-    <div class="overflow-x-auto">
+
+    <!-- Sağ: En Çok Tıklanan İçerikler (7 Sütun — Sekmeli) -->
+    <div class="lg:col-span-7 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
+      <div class="p-4 sm:p-5 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-white font-bold text-base flex items-center gap-2">
+            <span>🔥</span> En Çok Tıklanan İçerikler
+          </h2>
+          <p class="text-zinc-400 text-xs mt-0.5">Bugün ve toplamda en çok okunan/incelenen kayıtlar</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800" id="clickedContentTabs">
+          <button type="button" data-cc-tab="news" class="cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white">📰 Haberler</button>
+          <button type="button" data-cc-tab="announcements" class="cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">📢 Duyurular</button>
+          <button type="button" data-cc-tab="places" class="cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">📍 Mekanlar</button>
+          <button type="button" data-cc-tab="sightseeing" class="cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">🧳 Gezi</button>
+          <button type="button" data-cc-tab="companies" class="cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white">🏢 Firmalar</button>
+        </div>
+      </div>
+
+      <%
+        var contentPanels = [
+          { key: 'news', list: topClicked.news, basePath: '/haber/', titleField: 'title', catField: 'category', emptyText: 'Henüz haber verisi yok.' },
+          { key: 'announcements', list: topClicked.announcements, basePath: '/duyuru/', titleField: 'title', catField: 'category', emptyText: 'Henüz duyuru verisi yok.' },
+          { key: 'places', list: topClicked.places, basePath: '/mekan/', titleField: 'name', catField: 'category', emptyText: 'Henüz mekan verisi yok.' },
+          { key: 'sightseeing', list: topClicked.sightseeing, basePath: '/gezilecek-yer/', titleField: 'title', catField: 'category', emptyText: 'Henüz gezilecek yer verisi yok.' },
+          { key: 'companies', list: topClicked.companies, basePath: '/rehber/', titleField: 'name', catField: 'category', emptyText: 'Henüz firma verisi yok.' }
+        ];
+      %>
+      <% contentPanels.forEach(function(cp, idx) { %>
+        <div class="cc-panel <%= idx === 0 ? '' : 'hidden' %> flex-1 overflow-x-auto" data-cc-panel="<%= cp.key %>">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-zinc-800 text-zinc-400 text-left text-xs uppercase bg-zinc-950/40">
+                <th class="py-2.5 px-4 w-10">#</th>
+                <th class="py-2.5 px-4">İçerik Başlığı</th>
+                <th class="py-2.5 px-4 text-right whitespace-nowrap">Bugün</th>
+                <th class="py-2.5 px-4 text-right whitespace-nowrap">Toplam Tıklanma</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!cp.list || cp.list.length === 0) { %>
+                <tr><td colspan="4" class="p-8 text-center text-zinc-500 text-xs"><%= cp.emptyText %></td></tr>
+              <% } else { cp.list.forEach(function(item, i) {
+                   var itemTitle = item[cp.titleField] || ('#' + item.id);
+                   var itemCat = item[cp.catField] || '';
+                   var itemHref = cp.basePath + (item.slug || item.id);
+              %>
+                <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                  <td class="py-3 px-4 text-zinc-500 font-bold text-xs">#<%= i + 1 %></td>
+                  <td class="py-3 px-4">
+                    <a href="<%= itemHref %>" target="_blank" class="text-zinc-100 hover:text-emerald-400 font-semibold text-xs sm:text-sm line-clamp-1 transition-colors">
+                      <%= itemTitle %> ↗
+                    </a>
+                    <% if (itemCat) { %>
+                      <span class="text-[11px] text-zinc-500"><%= itemCat %></span>
+                    <% } %>
+                  </td>
+                  <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <% if (item.views_today > 0) { %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        +<%= item.views_today %> bugün
+                      </span>
+                    <% } else { %>
+                      <span class="text-zinc-600 text-xs">0</span>
+                    <% } %>
+                  </td>
+                  <td class="py-3 px-4 text-right font-bold text-white whitespace-nowrap">
+                    👁 <%= (item.views_count || 0).toLocaleString('tr-TR') %>
+                  </td>
+                </tr>
+              <% }); } %>
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+
+  <!-- 5. BÖLÜM: Ziyaretçi Profili & Akıllı Analiz Kartları (Cihaz / Trafik Kaynağı / En Yoğun Saatler) -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Cihaz & Tarayıcı Dağılımı -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-bold text-sm flex items-center gap-2 mb-1">
+        <span>📱</span> Cihaz & Tarayıcı Dağılımı
+      </h3>
+      <p class="text-zinc-400 text-xs mb-4">Son 30 günde gerçek ziyaretçilerin giriş yaptığı cihazlar</p>
+
+      <div class="grid grid-cols-3 gap-2.5 mb-4">
+        <div class="bg-zinc-950/70 border border-zinc-800 rounded-xl p-3 text-center">
+          <div class="text-lg">📱</div>
+          <div class="text-lg font-extrabold text-emerald-400 mt-0.5">%<%= deviceBreakdown.mobile.pct %></div>
+          <div class="text-[11px] text-zinc-400">Mobil (<%= deviceBreakdown.mobile.count %>)</div>
+        </div>
+        <div class="bg-zinc-950/70 border border-zinc-800 rounded-xl p-3 text-center">
+          <div class="text-lg">💻</div>
+          <div class="text-lg font-extrabold text-sky-400 mt-0.5">%<%= deviceBreakdown.desktop.pct %></div>
+          <div class="text-[11px] text-zinc-400">Bilgisayar (<%= deviceBreakdown.desktop.count %>)</div>
+        </div>
+        <div class="bg-zinc-950/70 border border-zinc-800 rounded-xl p-3 text-center">
+          <div class="text-lg">📲</div>
+          <div class="text-lg font-extrabold text-purple-400 mt-0.5">%<%= deviceBreakdown.tablet.pct %></div>
+          <div class="text-[11px] text-zinc-400">Tablet (<%= deviceBreakdown.tablet.count %>)</div>
+        </div>
+      </div>
+
+      <div class="border-t border-zinc-800/80 pt-3">
+        <p class="text-xs font-semibold text-zinc-400 mb-2">En Çok Kullanılan Tarayıcılar</p>
+        <div class="space-y-1.5">
+          <% (deviceBreakdown.topBrowsers || []).forEach(function(b) { %>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-zinc-300"><%= b.name %></span>
+              <span class="text-zinc-400"><strong class="text-white"><%= b.count %></strong> (%<%= b.pct %>)</span>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trafik Kaynakları (Nereden Geliyorlar?) -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-bold text-sm flex items-center gap-2 mb-1">
+        <span>🔗</span> Ziyaretçiler Nereden Geliyor?
+      </h3>
+      <p class="text-zinc-400 text-xs mb-4">Son 30 günlük yönlendirme (referrer) kaynakları</p>
+
+      <div class="space-y-3">
+        <% (trafficSources || []).forEach(function(src) { %>
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-zinc-200 font-medium flex items-center gap-1.5">
+                <span><%= src.icon %></span>
+                <span><%= src.label %></span>
+              </span>
+              <span class="text-zinc-400">
+                <strong class="text-white"><%= src.count.toLocaleString('tr-TR') %></strong> (%<%= src.pct %>)
+              </span>
+            </div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-500 rounded-full" style="width: <%= Math.max(2, Math.min(100, src.pct)) %>%"></div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- Günün En Yoğun Saatleri -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between">
+      <div>
+        <h3 class="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <span>⏰</span> Günün En Yoğun Saatleri (TR)
+        </h3>
+        <p class="text-zinc-400 text-xs mb-3">Ziyaretçilerin siteye en çok girdiği saat dilimleri</p>
+
+        <div class="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 mb-4 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] text-emerald-300 font-medium uppercase tracking-wider">En Yoğun Saat Dilimi</div>
+            <div class="text-lg font-extrabold text-white mt-0.5"><%= peakHourLabel %></div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-emerald-400 font-bold"><%= (peakHourViews || 0).toLocaleString('tr-TR') %> görüntülenme</div>
+            <div class="text-[11px] text-zinc-400">Son 30 gün toplamı</div>
+          </div>
+        </div>
+
+        <%
+          var maxHr = Math.max.apply(null, (hourBuckets && hourBuckets.length ? hourBuckets : [1])) || 1;
+        %>
+        <div class="grid grid-cols-12 gap-1 items-end h-20 pt-2">
+          <% for (var h = 0; h < 24; h += 2) {
+               var pairSum = ((hourBuckets && hourBuckets[h]) || 0) + ((hourBuckets && hourBuckets[h + 1]) || 0);
+               var pairMax = maxHr * 2 || 1;
+               var barH = Math.max(8, Math.round((pairSum / pairMax) * 100));
+          %>
+            <div class="flex flex-col items-center gap-1 h-full justify-end" title="<%= String(h).padStart(2,'0') %>:00 - <%= String((h+2)%24).padStart(2,'0') %>:00 arası <%= pairSum %> görüntülenme">
+              <div class="w-full bg-emerald-500/70 hover:bg-emerald-400 rounded-t transition-all" style="height: <%= Math.min(100, barH) %>%"></div>
+              <span class="text-[9px] text-zinc-500 font-mono"><%= String(h).padStart(2, '0') %></span>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <p class="text-[11px] text-zinc-400 mt-3 pt-2.5 border-t border-zinc-800/80">
+        💡 Yeni haber ve duyuruları <strong><%= peakHourLabel %></strong> öncesinde paylaşmak etkileşimi artırır.
+      </p>
+    </div>
+  </div>
+
+  <!-- 6. BÖLÜM: Son Gerçek Ziyaretçiler Akışı (Gruplu & Filtreli · Botlar Hariç) -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+    <div class="p-4 sm:p-5 border-b border-zinc-800 space-y-3.5">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-white font-bold text-base flex items-center gap-2">
+            <span>🕵️</span> Son Gerçek Ziyaretçiler (Botlar Hariç)
+          </h2>
+          <p class="text-zinc-400 text-xs mt-0.5">Aynı ziyaretçinin (IP) gezdiği sayfaları tek satırda gruplu veya tüm tıklamaları tek tek inceleyin</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Görünüm Modu Seçici: Gruplu (IP) vs Tek Tek -->
+          <div class="inline-flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800">
+            <button type="button" data-rv-mode="grouped" class="rv-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600 text-white shadow">
+              👥 Ziyaretçiye Göre Grupla (<%= (recentGrouped || []).length %>)
+            </button>
+            <button type="button" data-rv-mode="flat" class="rv-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white">
+              📋 Tüm Tıklamalar (<%= (recent || []).length %>)
+            </button>
+          </div>
+
+          <!-- Arama Kutusu -->
+          <div class="w-full sm:w-56">
+            <input type="text" id="recentSearchInput" placeholder="Sayfa, IP veya cihaz ara..." class="w-full bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 outline-none transition-colors">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bölüm & Cihaz Gruplama Hapları -->
+      <div class="flex flex-wrap items-center gap-1.5 pt-1" id="rvFilterPills">
+        <button type="button" data-rv-filter="all" class="rv-pill px-3 py-1 rounded-full text-xs font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+          Tümü
+        </button>
+        <button type="button" data-rv-filter="dev:mobile" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          📱 Mobil
+        </button>
+        <button type="button" data-rv-filter="dev:desktop" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          💻 Bilgisayar
+        </button>
+        <button type="button" data-rv-filter="sec:Ana Sayfa" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          🏠 Ana Sayfa
+        </button>
+        <button type="button" data-rv-filter="sec:Ulaşım & Seferler" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          🚌 Ulaşım & Seferler
+        </button>
+        <button type="button" data-rv-filter="sec:Haberler" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          📰 Haberler
+        </button>
+        <button type="button" data-rv-filter="sec:Duyurular" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          📢 Duyurular
+        </button>
+        <button type="button" data-rv-filter="sec:Mekanlar" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          📍 Mekanlar
+        </button>
+        <button type="button" data-rv-filter="sec:Gezilecek Yerler" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          🧳 Gezilecek Yerler
+        </button>
+        <button type="button" data-rv-filter="sec:Firma Rehberi" class="rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white">
+          🏢 Firma Rehberi
+        </button>
+      </div>
+    </div>
+
+    <!-- A) ZİYARETÇİYE (IP) GÖRE GRUPLU GÖRÜNÜM (Varsayılan) -->
+    <div id="rvGroupedPanel" class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b border-zinc-800 text-gray-400 text-left">
-            <th class="p-4 font-medium whitespace-nowrap">Zaman</th>
-            <th class="p-4 font-medium">Sayfa</th>
-            <th class="p-4 font-medium whitespace-nowrap">IP</th>
-            <th class="p-4 font-medium">Tarayıcı</th>
-            <th class="p-4 font-medium">Referrer</th>
+          <tr class="border-b border-zinc-800 text-zinc-400 text-left text-xs uppercase bg-zinc-950/40">
+            <th class="py-3 px-4 whitespace-nowrap">Son Görülme (TR)</th>
+            <th class="py-3 px-4 whitespace-nowrap">Ziyaretçi IP & Cihaz</th>
+            <th class="py-3 px-4 whitespace-nowrap">Geldiği Kaynak</th>
+            <th class="py-3 px-4">Gezdiği Sayfalar (Gezinti Rotası)</th>
           </tr>
         </thead>
         <tbody>
-          <% if (!recent || recent.length === 0) { %>
-            <tr><td colspan="5" class="p-12 text-center text-gray-500">Henüz veri yok.</td></tr>
-          <% } else { recent.forEach(function(v) { %>
-            <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors<%= v.is_internal ? ' opacity-60' : '' %>">
-              <td class="p-4 text-zinc-400 whitespace-nowrap text-xs"><%= v.created_at %></td>
-              <td class="p-4 text-zinc-200 font-mono text-xs break-all"><%= v.path %></td>
-              <td class="p-4 whitespace-nowrap font-semibold text-xs <%= v.is_internal ? 'text-zinc-500' : 'text-emerald-400' %>">
-                <%= v.ip %><% if (v.is_internal) { %><span class="ml-2 inline-block bg-zinc-800 border border-zinc-600 text-zinc-400 text-[10px] font-bold px-1.5 py-0.5 rounded align-middle">Render iç</span><% } %>
+          <% if (!recentGrouped || recentGrouped.length === 0) { %>
+            <tr><td colspan="4" class="p-12 text-center text-gray-500">Henüz gerçek ziyaretçi kaydı yok.</td></tr>
+          <% } else { recentGrouped.forEach(function(g) { %>
+            <tr class="rv-grouped-row border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
+                data-dev="<%= g.deviceType %>"
+                data-sec="<%= g.sectionsStr %>">
+              <td class="py-3.5 px-4 text-zinc-400 whitespace-nowrap text-xs font-mono align-top">
+                <div class="text-zinc-200 font-semibold"><%= g.lastSeen %></div>
+                <% if (g.totalClicks > 1 && g.firstSeen !== g.lastSeen) { %>
+                  <div class="text-[10px] text-zinc-500 mt-0.5">İlk: <%= g.firstSeen.slice(11) %></div>
+                <% } %>
               </td>
-              <td class="p-4 text-zinc-400 text-xs max-w-xs truncate"><%= (v.user_agent || '').substring(0, 90) %></td>
-              <td class="p-4 text-zinc-500 text-xs max-w-[160px] truncate"><%= (v.referrer || '-') %></td>
+              <td class="py-3.5 px-4 whitespace-nowrap align-top">
+                <div class="font-mono font-bold text-xs text-emerald-400"><%= g.ip %></div>
+                <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded-md bg-zinc-800/90 border border-zinc-700/80 text-zinc-300 text-[11px] font-medium">
+                  <%= g.deviceLabel %>
+                </span>
+              </td>
+              <td class="py-3.5 px-4 text-zinc-400 text-xs max-w-[180px] truncate align-top" title="<%= g.refLabel %>">
+                <span><%= g.refIcon %></span> <%= g.refLabel %>
+              </td>
+              <td class="py-3.5 px-4 align-top">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold <%= g.totalClicks > 1 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-400 border border-zinc-700' %>">
+                    <%= g.totalClicks %> sayfa görüntüledi
+                  </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <% g.pages.slice(0, 6).forEach(function(pg, pIdx) { %>
+                    <a href="<%= pg.path %>" target="_blank" title="<%= pg.tr_time %> — <%= pg.path %>"
+                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-500/40 text-zinc-200 hover:text-emerald-300 text-xs transition-colors">
+                      <span><%= pg.pageIcon %></span>
+                      <span class="max-w-[180px] truncate font-medium"><%= pg.pageTitle %></span>
+                    </a>
+                    <% if (pIdx < Math.min(g.pages.length, 6) - 1) { %>
+                      <span class="text-zinc-600 text-xs">←</span>
+                    <% } %>
+                  <% }); %>
+                  <% if (g.pages.length > 6) { %>
+                    <span class="text-xs text-zinc-500 font-medium px-1.5">+<%= g.pages.length - 6 %> sayfa daha</span>
+                  <% } %>
+                </div>
+              </td>
             </tr>
           <% }); } %>
         </tbody>
       </table>
+    </div>
+
+    <!-- B) TÜM TIKLAMALAR (TEK TEK SATIR) GÖRÜNÜMÜ -->
+    <div id="rvFlatPanel" class="hidden overflow-x-auto">
+      <table class="w-full text-sm" id="recentVisitorsTable">
+        <thead>
+          <tr class="border-b border-zinc-800 text-zinc-400 text-left text-xs uppercase bg-zinc-950/40">
+            <th class="py-3 px-4 whitespace-nowrap">Zaman (TR)</th>
+            <th class="py-3 px-4">Ziyaret Edilen Sayfa</th>
+            <th class="py-3 px-4 whitespace-nowrap">Cihaz & Tarayıcı</th>
+            <th class="py-3 px-4 whitespace-nowrap">Geldiği Kaynak</th>
+            <th class="py-3 px-4 whitespace-nowrap">Ziyaretçi IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!recent || recent.length === 0) { %>
+            <tr><td colspan="5" class="p-12 text-center text-gray-500">Henüz gerçek ziyaretçi kaydı yok.</td></tr>
+          <% } else { recent.forEach(function(v) { %>
+            <tr class="recent-visitor-row border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
+                data-dev="<%= v.deviceType %>"
+                data-sec="<%= v.pageSection %>">
+              <td class="py-3 px-4 text-zinc-400 whitespace-nowrap text-xs font-mono"><%= v.tr_time %></td>
+              <td class="py-3 px-4">
+                <a href="<%= v.path %>" target="_blank" class="text-zinc-100 hover:text-emerald-400 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors">
+                  <span><%= v.pageIcon %></span>
+                  <span><%= v.pageTitle %></span>
+                </a>
+                <div class="text-zinc-500 font-mono text-[11px] break-all"><%= v.path %></div>
+              </td>
+              <td class="py-3 px-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-zinc-800/90 border border-zinc-700/80 text-zinc-200 text-xs font-medium">
+                  <%= v.deviceLabel %>
+                </span>
+              </td>
+              <td class="py-3 px-4 text-zinc-400 text-xs max-w-[200px] truncate" title="<%= v.refLabel %>">
+                <span><%= v.refIcon %></span> <%= v.refLabel %>
+              </td>
+              <td class="py-3 px-4 whitespace-nowrap font-mono font-semibold text-xs text-emerald-400">
+                <%= v.ip %>
+              </td>
+            </tr>
+          <% }); } %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Daha Fazla Göster Alt Çubuğu -->
+    <div class="p-4 border-t border-zinc-800/80 bg-zinc-950/30 flex items-center justify-between flex-wrap gap-3">
+      <span id="rvShowingInfo" class="text-xs text-zinc-400"></span>
+      <button type="button" id="rvLoadMoreBtn" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition-colors cursor-pointer">
+        ↓ Daha Fazla Ziyaretçi Göster (+10)
+      </button>
     </div>
   </div>
 </div>
@@ -113,50 +620,252 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   (function () {
+    // 1) Döneme Göre Dinamik Trafik Grafiği (Bugün / Haftalık / Son 30 Gün / Toplam)
     var data = <%- JSON.stringify(chartData) %>;
+    var byPeriod = <%- JSON.stringify(typeof chartDataByPeriod !== 'undefined' ? chartDataByPeriod : {}) %>;
     var el = document.getElementById('trafficChart');
-    if (!el || !window.Chart) return;
-    new Chart(el.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: data.labels,
-        datasets: [
-          {
-            label: 'Görüntülenme',
-            data: data.views,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16,185,129,0.15)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2
-          },
-          {
-            label: 'Benzersiz IP',
-            data: data.uniques,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.10)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: true, maxTicksLimit: 15 },
-            grid: { color: 'rgba(63,63,70,0.5)' }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { color: '#9ca3af', precision: 0 },
-            grid: { color: 'rgba(63,63,70,0.5)' }
-          }
+    var chartTitleEl = document.getElementById('trafficChartTitle');
+    var chartSubtitleEl = document.getElementById('trafficChartSubtitle');
+    var trafficChartInstance = null;
+
+    if (el && window.Chart) {
+      trafficChartInstance = new Chart(el.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Gerçek Görüntülenme',
+              data: data.views,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16,185,129,0.15)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3
+            },
+            {
+              label: 'Tekil Ziyaretçi (IP)',
+              data: data.uniques,
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99,102,241,0.10)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3
+            }
+          ]
         },
-        plugins: { legend: { labels: { color: '#d4d4d8' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: true, maxTicksLimit: 15 },
+              grid: { color: 'rgba(63,63,70,0.4)' }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#9ca3af', precision: 0 },
+              grid: { color: 'rgba(63,63,70,0.4)' }
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 2) Üstteki 4 Özet Kartı + En Çok Ziyaret Edilen Sayfalar Sekmeleri Senkron Geçişi
+    var kpiCards = document.querySelectorAll('.kpi-period-card');
+    var tpButtons = document.querySelectorAll('.tp-tab');
+    var tpPanels = document.querySelectorAll('.tp-panel');
+
+    function setActivePeriod(target) {
+      if (!target) return;
+
+      // a) Üstteki 4 kartın seçili vurgusunu güncelle
+      kpiCards.forEach(function (card) {
+        var isSel = card.getAttribute('data-kpi-period') === target;
+        if (isSel) {
+          card.className = 'kpi-period-card cursor-pointer select-none relative overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/30 border border-emerald-500/60 ring-1 ring-emerald-500/30 rounded-2xl p-5 shadow-lg transition-all';
+        } else {
+          card.className = 'kpi-period-card cursor-pointer select-none relative overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl p-5 transition-all';
+        }
+      });
+
+      // b) Grafiği seçilen döneme (Bugün saatlik / Haftalık 7 gün / Son 30 gün / Toplam) güncelle
+      if (trafficChartInstance && byPeriod && byPeriod[target]) {
+        var pd = byPeriod[target];
+        trafficChartInstance.data.labels = pd.labels || [];
+        trafficChartInstance.data.datasets[0].data = pd.views || [];
+        trafficChartInstance.data.datasets[1].data = pd.uniques || [];
+        trafficChartInstance.options.scales.x.ticks.maxTicksLimit = (target === 'today') ? 12 : (target === 'week' ? 7 : 15);
+        trafficChartInstance.update();
+        if (chartTitleEl && pd.title) chartTitleEl.textContent = pd.title;
+        if (chartSubtitleEl && pd.subtitle) chartSubtitleEl.textContent = pd.subtitle;
       }
+
+      // c) "En Çok Ziyaret Edilen Sayfalar" sekmesini ve tablosunu da aynı döneme geçir
+      tpButtons.forEach(function (b) {
+        if (b.getAttribute('data-period') === target) {
+          b.className = 'tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600 text-white shadow';
+        } else {
+          b.className = 'tp-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white';
+        }
+      });
+      tpPanels.forEach(function (panel) {
+        if (panel.getAttribute('data-tp-panel') === target) {
+          panel.classList.remove('hidden');
+        } else {
+          panel.classList.add('hidden');
+        }
+      });
+    }
+
+    kpiCards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        setActivePeriod(card.getAttribute('data-kpi-period'));
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setActivePeriod(card.getAttribute('data-kpi-period'));
+        }
+      });
     });
+
+    tpButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setActivePeriod(btn.getAttribute('data-period'));
+      });
+    });
+
+    // 3) En Çok Tıklanan İçerikler Sekmeleri (Haberler / Duyurular / Mekanlar / Gezi / Firmalar)
+    var ccButtons = document.querySelectorAll('.cc-tab');
+    var ccPanels = document.querySelectorAll('.cc-panel');
+    ccButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = btn.getAttribute('data-cc-tab');
+        ccButtons.forEach(function (b) {
+          if (b.getAttribute('data-cc-tab') === target) {
+            b.className = 'cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white';
+          } else {
+            b.className = 'cc-tab px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white';
+          }
+        });
+        ccPanels.forEach(function (panel) {
+          if (panel.getAttribute('data-cc-panel') === target) {
+            panel.classList.remove('hidden');
+          } else {
+            panel.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // 4) Son Ziyaretçiler: Gruplu (IP) / Tek Tek Görünüm + Bölüm/Cihaz Filtresi + Anlık Arama + (+10) Daha Fazla Göster
+    var rvMode = 'grouped';
+    var rvFilter = 'all';
+    var rvLimit = 10;
+    var searchInput = document.getElementById('recentSearchInput');
+    var groupedPanel = document.getElementById('rvGroupedPanel');
+    var flatPanel = document.getElementById('rvFlatPanel');
+    var loadMoreBtn = document.getElementById('rvLoadMoreBtn');
+    var showingInfo = document.getElementById('rvShowingInfo');
+    var modeBtns = document.querySelectorAll('.rv-mode-btn');
+    var filterPills = document.querySelectorAll('.rv-pill');
+
+    function rowMatchesFilter(row, q) {
+      if (q) {
+        var text = (row.textContent || '').toLowerCase();
+        if (text.indexOf(q) === -1) return false;
+      }
+      if (rvFilter === 'all') return true;
+      if (rvFilter.indexOf('dev:') === 0) {
+        var wantDev = rvFilter.slice(4);
+        return row.getAttribute('data-dev') === wantDev;
+      }
+      if (rvFilter.indexOf('sec:') === 0) {
+        var wantSec = rvFilter.slice(4);
+        var secs = (row.getAttribute('data-sec') || '').split('|');
+        return secs.indexOf(wantSec) !== -1;
+      }
+      return true;
+    }
+
+    function applyRecentVisitorsView() {
+      var q = searchInput ? (searchInput.value || '').toLowerCase().trim() : '';
+      var activeRows = document.querySelectorAll(rvMode === 'grouped' ? '.rv-grouped-row' : '.recent-visitor-row');
+      var matched = [];
+      activeRows.forEach(function (row) {
+        if (rowMatchesFilter(row, q)) matched.push(row);
+        else row.style.display = 'none';
+      });
+      matched.forEach(function (row, idx) {
+        row.style.display = (idx < rvLimit) ? '' : 'none';
+      });
+      var shownCount = Math.min(rvLimit, matched.length);
+      if (showingInfo) {
+        showingInfo.textContent = matched.length > 0
+          ? ('Toplam ' + matched.length + (rvMode === 'grouped' ? ' tekil ziyaretçiden ' : ' tıklamadan ') + shownCount + ' tanesi gösteriliyor')
+          : 'Eşleşen ziyaretçi kaydı bulunamadı.';
+      }
+      if (loadMoreBtn) {
+        loadMoreBtn.style.display = (matched.length > rvLimit) ? '' : 'none';
+      }
+    }
+
+    modeBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        rvMode = btn.getAttribute('data-rv-mode') || 'grouped';
+        rvLimit = 10;
+        modeBtns.forEach(function (b) {
+          if (b.getAttribute('data-rv-mode') === rvMode) {
+            b.className = 'rv-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600 text-white shadow';
+          } else {
+            b.className = 'rv-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-zinc-400 hover:text-white';
+          }
+        });
+        if (groupedPanel && flatPanel) {
+          if (rvMode === 'grouped') {
+            groupedPanel.classList.remove('hidden');
+            flatPanel.classList.add('hidden');
+          } else {
+            groupedPanel.classList.add('hidden');
+            flatPanel.classList.remove('hidden');
+          }
+        }
+        applyRecentVisitorsView();
+      });
+    });
+
+    filterPills.forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        rvFilter = pill.getAttribute('data-rv-filter') || 'all';
+        rvLimit = 10;
+        filterPills.forEach(function (p) {
+          if (p.getAttribute('data-rv-filter') === rvFilter) {
+            p.className = 'rv-pill px-3 py-1 rounded-full text-xs font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          } else {
+            p.className = 'rv-pill px-3 py-1 rounded-full text-xs font-medium transition-all bg-zinc-950 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-white';
+          }
+        });
+        applyRecentVisitorsView();
+      });
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        rvLimit = 10;
+        applyRecentVisitorsView();
+      });
+    }
+
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', function () {
+        rvLimit += 10;
+        applyRecentVisitorsView();
+      });
+    }
+
+    applyRecentVisitorsView();
   })();
 </script>

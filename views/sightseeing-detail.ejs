@@ -54,6 +54,28 @@
     </div>
   </div>
 
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-zinc-900/60 border border-zinc-800/80 rounded-xl px-4 py-3">
+    <div class="flex items-center gap-2 text-xs sm:text-sm text-zinc-400">
+      <span>👁️</span>
+      <span><%= item.views_count || 1 %> <%= t('views') %></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="https://wa.me/?text=<%= encodeURIComponent((item.title || '') + ' — https://marmaraninincisi.com/gezilecek-yer/' + (item.slug || item.id)) %>"
+        target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1da851] text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition-all"
+        title="<%= t('shareWhatsapp') %>">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 2C6.477 2 2 6.477 2 12.001c0 1.77.464 3.426 1.276 4.864L2 22l5.29-1.243A9.943 9.943 0 0 0 12.001 22C17.525 22 22 17.525 22 12.001 22 6.477 17.525 2 12.001 2zm5.925 14.19a1.617 1.617 0 0 1-.86 1.15c-.63.333-1.518.47-2.452-.086-1.51-.886-2.418-1.6-3.528-2.71-1.11-1.11-1.824-2.018-2.71-3.528-.556-.934-.42-1.822-.086-2.452.26-.493.66-.762 1.15-.86.188-.037.439-.01.63.06.193.071.421.217.53.384.115.174.48 1.16.553 1.335.073.175.122.302.078.48a2.72 2.72 0 0 1-.2.486c-.084.148-.212.366-.19.546.027.206.168.51.565.98.397.47.63.676.86.84.146.103.321.062.565-.057.244-.12.482-.308.672-.28.167.024.354.186.508.354.154.168.448.447.565.565.117.117.4.52.488.565.087.045.213.053.32.026z"/></svg>
+        <span>WhatsApp</span>
+      </a>
+      <button type="button" onclick="navigator.clipboard.writeText(window.location.href);if(window.adminToast){window.adminToast('<%= t('linkCopied') %>', 'info');}"
+        class="inline-flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition-all"
+        title="<%= t('copyLink') %>">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        <span><%= t('copyLink') %></span>
+      </button>
+    </div>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
     <!-- Detay -->

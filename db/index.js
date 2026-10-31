@@ -57,6 +57,9 @@ const IDENTITY_COLS = {
   pharmacies: ['name', 'phone'],
   ferry_schedules: ['origin', 'destination'],
   city_transport: ['id'],
+  ido_transport: ['id'],
+  power_outages: ['id'],
+  su_outages: ['id'],
   place_reviews: ['place_id', 'user_name', 'comment'],
   content_translations: ['lang', 'src_hash'],
   about_page: []
@@ -64,7 +67,7 @@ const IDENTITY_COLS = {
 
 // İçeriği tek kaynaktan gelen tablolar (nöbetçi eczane, sefer saatleri,
 // belediye ulaşım): bu tablolarda birleşim tüm liste tarafında yenisi olandan yapılır.
-const SET_TABLES = ['pharmacies', 'ferry_schedules', 'city_transport'];
+const SET_TABLES = ['pharmacies', 'ferry_schedules', 'city_transport', 'ido_transport', 'power_outages', 'su_outages'];
 
 // ON DELETE CASCADE ile birlikte silinen alt tablolar (silme kaydına eklenir).
 const CASCADE_CHILDREN = {
@@ -620,9 +623,13 @@ function mergeSetTable(table, cdb, cloudNewer) {
   const takeCloud = !localRows.length || maxCloud > maxLocal || (maxCloud === maxLocal && cloudNewer && cloudRows.length !== localRows.length);
   if (!takeCloud) return;
 
-  // Liste tablolarında satır kimliği id'dir (liste sık sık sıfırlanıp yeniden
-  // doldurulur, guid değil); eşleştirme de id ile yapılır.
-  const keyOf = r => pkKeyOf(pk.map(p => r[p]));
+  // Eşleştirme instance'lar arası kimlik olan sync_guid ile yapılır; guid yoksa
+  // id'ye düşülür. İlk olarak 31 Eki: id eşleştirmesi, farklı instance'lar
+  // (canlı + lokal) kendi auto-increment id'leriyle aynı kaydı eklediğinde
+  // nöbetçi eczane/IDO gibi liste tablolarında mükerrer satırlar üretiyordu.
+  const keyOf = r => (r.sync_guid && GUID_RE.test(String(r.sync_guid)))
+    ? 'g:' + String(r.sync_guid)
+    : 'p:' + pkKeyOf(pk.map(p => r[p]));
   const cloudKeys = new Set(cloudRows.map(keyOf));
   const cloudNames = infoOf(cdb, table).map(c => c.name);
   const cols = infoOf(db, table).map(c => c.name).filter(n => cloudNames.includes(n));
@@ -948,6 +955,30 @@ function createTables() {
     if (!cols.includes('origin')) db.run("ALTER TABLE ferry_schedules ADD COLUMN origin TEXT NOT NULL DEFAULT 'Çınarcık İskele'");
     if (!cols.includes('prices_json')) db.run("ALTER TABLE ferry_schedules ADD COLUMN prices_json TEXT DEFAULT '[]'");
   }
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ido_transport (
+      id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id = 1),
+      data_json TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS power_outages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id = 1),
+      data_json TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS su_outages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id = 1),
+      data_json TEXT NOT NULL,
+      source_url TEXT DEFAULT '',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS city_transport (
       id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id = 1),

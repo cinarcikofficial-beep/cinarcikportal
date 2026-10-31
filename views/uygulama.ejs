@@ -1,0 +1,132 @@
+<% layout('partials/layout') %>
+
+<section class="section pt-6 sm:pt-8">
+  <!-- Hero -->
+  <div class="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-zinc-900 via-zinc-950 to-emerald-950/40 p-6 sm:p-10 shadow-2xl">
+    <div class="grid lg:grid-cols-2 gap-8 items-center">
+      <div>
+        <div class="flex items-center gap-3 mb-5">
+          <img src="/icons/icon-192.png" alt="Marmaraİncisi" width="72" height="72" class="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl shadow-lg">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Marmaraİncisi</h1>
+            <p class="text-xs sm:text-sm text-emerald-400 font-semibold">Ücretsiz · Mağaza gerekmez · 1 MB'den küçük</p>
+          </div>
+        </div>
+        <p class="text-zinc-300 text-sm sm:text-base leading-relaxed mb-6">
+          Çınarcık'ın tüm güncel bilgileri artık telefonunuzun ana ekranında. Uygulama gibi tam ekran açılır, internet yokken bile daha önce baktığınız sayfaları gösterir.
+        </p>
+
+        <button type="button" id="app-install-btn" class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-base rounded-2xl px-7 py-4 shadow-lg shadow-emerald-500/25 transition-all">
+          📲 Uygulamayı Şimdi Yükle
+        </button>
+        <div id="app-installed" class="hidden inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold rounded-2xl px-5 py-3.5">
+          ✅ Uygulama bu cihazda zaten yüklü
+        </div>
+        <p id="app-install-hint" class="text-xs text-zinc-500 mt-3">Cihazınıza uygun kurulum adımları aşağıda gösteriliyor.</p>
+
+        <div class="grid grid-cols-2 gap-2.5 mt-7">
+          <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300"><span class="text-lg block mb-1">⛴️</span>Canlı feribot &amp; otobüs seferleri</div>
+          <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300"><span class="text-lg block mb-1">💊</span>Bugünün nöbetçi eczanesi</div>
+          <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300"><span class="text-lg block mb-1">⚡</span>Elektrik &amp; su kesinti uyarıları</div>
+          <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300"><span class="text-lg block mb-1">📰</span>Haberler, duyurular, etkinlikler</div>
+        </div>
+      </div>
+
+      <!-- QR (masaüstünde) -->
+      <div class="flex flex-col items-center text-center">
+        <div class="bg-white rounded-3xl p-4 shadow-2xl">
+          <img src="/icons/qr-uygulama.png" alt="Marmaraİncisi uygulama QR kodu" width="220" height="220" class="w-48 h-48 sm:w-56 sm:h-56">
+        </div>
+        <p class="text-sm font-bold text-white mt-4">📷 Telefonunuzun kamerasıyla okutun</p>
+        <p class="text-xs text-zinc-500 mt-1">marmaraninincisi.com/uygulama</p>
+        <a href="/icons/qr-uygulama.png" download="marmaraincisi-qr.png" class="mt-3 text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline">QR kodunu indir (afiş / broşür için)</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kurulum adımları -->
+  <div class="section-header mt-10"><h2>📖 Nasıl Yüklenir?</h2></div>
+  <div class="grid md:grid-cols-3 gap-4">
+    <div id="guide-android" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-extrabold text-base mb-3 flex items-center gap-2">🤖 Android</h3>
+      <ol class="space-y-2.5 text-sm text-zinc-300 list-decimal list-inside">
+        <li><b class="text-white">Chrome</b> ile bu sayfayı açın.</li>
+        <li>Yukarıdaki <b class="text-emerald-400">📲 Uygulamayı Şimdi Yükle</b> butonuna dokunun.</li>
+        <li>Açılan pencerede <b class="text-white">Yükle</b>'ye dokunun.</li>
+      </ol>
+      <p class="text-xs text-zinc-500 mt-3">Buton görünmüyorsa: sağ üstteki <b>⋮</b> menüsü → <b>"Uygulamayı yükle"</b> / <b>"Ana ekrana ekle"</b>.</p>
+    </div>
+    <div id="guide-ios" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-extrabold text-base mb-3 flex items-center gap-2">🍎 iPhone / iPad</h3>
+      <ol class="space-y-2.5 text-sm text-zinc-300 list-decimal list-inside">
+        <li>Bu sayfayı <b class="text-white">Safari</b> ile açın.</li>
+        <li>Alttaki <b class="text-white">Paylaş ⬆️</b> simgesine dokunun.</li>
+        <li>Aşağı kaydırıp <b class="text-white">"Ana Ekrana Ekle"</b>yi seçin.</li>
+        <li>Sağ üstten <b class="text-white">Ekle</b>'ye dokunun.</li>
+      </ol>
+      <p class="text-xs text-zinc-500 mt-3">Chrome veya Instagram içinden açtıysanız, sayfayı Safari'de açın.</p>
+    </div>
+    <div id="guide-desktop" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <h3 class="text-white font-extrabold text-base mb-3 flex items-center gap-2">💻 Bilgisayar</h3>
+      <ol class="space-y-2.5 text-sm text-zinc-300 list-decimal list-inside">
+        <li><b class="text-white">Chrome</b> veya <b class="text-white">Edge</b> ile siteyi açın.</li>
+        <li>Adres çubuğunun sağındaki <b class="text-white">⊕ Yükle</b> simgesine tıklayın.</li>
+        <li>Telefona kurmak için QR kodu okutun.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- SSS -->
+  <div class="section-header mt-10"><h2>❓ Sık Sorulanlar</h2></div>
+  <div class="space-y-2.5">
+    <details class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><summary class="cursor-pointer font-bold text-white text-sm">App Store / Google Play'de var mı?</summary><p class="text-sm text-zinc-400 mt-2">Gerek yok. Marmaraİncisi doğrudan siteden yüklenen bir web uygulamasıdır (PWA). Mağaza hesabı, şifre veya ödeme istemez.</p></details>
+    <details class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><summary class="cursor-pointer font-bold text-white text-sm">Güncelleme yapmam gerekir mi?</summary><p class="text-sm text-zinc-400 mt-2">Hayır. Sitedeki her yenilik uygulamada otomatik olarak görünür.</p></details>
+    <details class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><summary class="cursor-pointer font-bold text-white text-sm">Telefonumda yer kaplar mı?</summary><p class="text-sm text-zinc-400 mt-2">Çok az; 1 MB'den küçüktür. Kişisel bilgi, rehber veya konum erişimi istemez.</p></details>
+    <details class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><summary class="cursor-pointer font-bold text-white text-sm">Nasıl kaldırırım?</summary><p class="text-sm text-zinc-400 mt-2">Ana ekrandaki ikona basılı tutup <b>Kaldır</b> / <b>Uygulamayı Sil</b> demeniz yeterli.</p></details>
+  </div>
+</section>
+
+<script>
+(function () {
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/i.test(ua);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var btn = document.getElementById('app-install-btn');
+  var hint = document.getElementById('app-install-hint');
+
+  // Cihaza uygun rehberi öne çıkar
+  var activeId = isIOS ? 'guide-ios' : (isAndroid ? 'guide-android' : 'guide-desktop');
+  var active = document.getElementById(activeId);
+  if (active) {
+    active.classList.remove('border-zinc-800');
+    active.classList.add('border-emerald-500/60', 'ring-1', 'ring-emerald-500/30');
+    active.insertAdjacentHTML('afterbegin', '<span class="inline-block mb-2 text-[11px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-2 py-0.5">Sizin cihazınız</span>');
+  }
+
+  if (standalone) {
+    document.getElementById('app-installed').classList.remove('hidden');
+    hint.classList.add('hidden');
+    return;
+  }
+
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    btn.classList.remove('hidden');
+    hint.textContent = 'Tek dokunuşla ana ekranınıza eklenir.';
+  });
+  window.addEventListener('appinstalled', function () {
+    btn.classList.add('hidden');
+    document.getElementById('app-installed').classList.remove('hidden');
+  });
+  btn.addEventListener('click', function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.finally(function () { deferred = null; });
+  });
+  if (isIOS) hint.innerHTML = 'iPhone\'da: Safari\'de <b class="text-zinc-300">Paylaş ⬆️ → "Ana Ekrana Ekle"</b>.';
+})();
+</script>
+

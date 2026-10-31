@@ -61,7 +61,7 @@
 <!-- 🖼️ Çınarcık Görsel Hero -->
 <%
   const heroCtas = [
-    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('ferrySchedule'), href: '#sefer-saatleri' }],
+    [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('ferrySchedule'), href: lp + '/ulasim#turyol-ulasim-saatler' }],
     [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('pharmacies'), href: '#nobetci-eczaneler' }],
     [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('places'), href: '/mekanlar' }],
     [{ label: t('news') + ' →', href: '/haberler', primary: true }, { label: t('sightseeing'), href: '/gezilecek-yerler' }],
@@ -85,7 +85,7 @@
       <p id="hero-sub" class="text-zinc-300 text-sm sm:text-base max-w-xl"><%= t('heroSlide1Sub') %></p>
       <div id="hero-ctas" class="flex flex-wrap gap-3 pt-1">
         <a href="/haberler" class="bg-emerald-600 hover:bg-emerald-500 transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('news') %> →</a>
-        <a href="#sefer-saatleri" class="bg-white/10 hover:bg-white/20 backdrop-blur-md transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('ferrySchedule') %></a>
+        <a href="<%= lp %>/ulasim#turyol-ulasim-saatler" class="bg-white/10 hover:bg-white/20 backdrop-blur-md transition font-bold px-5 py-2.5 rounded-lg text-sm"><%= t('ferrySchedule') %></a>
       </div>
     </div>
   </div>
@@ -96,7 +96,7 @@
   <button id="hero-next" aria-label="<%= t('nextImage') %>" class="hero-nav-btn absolute right-4 top-1/2 z-20 text-white w-11 h-11 rounded-full flex items-center justify-center text-xl font-bold transition">›</button>
 </section>
 
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-4 py-6"><%- include('partials/power-outages') %>
 <div class="section-header">
   <h2>📰 <%= t('news') %></h2>
   <a href="/haberler" class="see-all"><%= t('allNews') %></a>
@@ -143,6 +143,9 @@
             <span class="poll-opt-label"><%= o.label %></span>
           </label>
           <% }) %>
+        </div>
+        <div class="mt-3.5">
+          <div class="portal-recaptcha" id="poll-recaptcha"></div>
         </div>
         <div class="mt-4 flex items-center gap-3 flex-wrap">
           <button type="submit" id="poll-vote-btn" class="poll-vote-btn inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20">
@@ -202,17 +205,23 @@
     e.preventDefault();
     var checked = form.querySelector('input[name="poll-opt"]:checked');
     if (!checked) { msg.textContent = '<%= t("pollSelect") %>'; return; }
+    var rcToken = window.PortalRecaptcha ? window.PortalRecaptcha.getToken(form) : '';
+    if (!rcToken) {
+      if (window.PortalRecaptcha) window.PortalRecaptcha.highlight(form);
+      msg.textContent = window.PortalRecaptcha ? window.PortalRecaptcha.hintText : 'Lütfen "Ben robot değilim" kutusunu işaretleyin.';
+      return;
+    }
     voteBtn.disabled = true;
     voteBtn.style.opacity = '0.6';
     fetch('/api/poll/oy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ optionId: parseInt(checked.value, 10) })
+      body: JSON.stringify({ optionId: parseInt(checked.value, 10), 'g-recaptcha-response': rcToken })
     }).then(function (r) { return r.json(); }).then(function (j) {
       voteBtn.disabled = false;
       voteBtn.style.opacity = '';
       if (j && j.success) { st[pollId] = checked.value; writeState(st); msg.textContent = ''; renderResults(j); }
-      else { msg.textContent = ((j && j.error) || '<%= t("pollError") %>'); }
+      else { if (window.PortalRecaptcha) window.PortalRecaptcha.reset(form); msg.textContent = ((j && j.error) || '<%= t("pollError") %>'); }
     }).catch(function () {
       voteBtn.disabled = false;
       voteBtn.style.opacity = '';
@@ -447,10 +456,15 @@
                 <span class="flex-shrink-0 inline-block bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"><%= t('onDuty') %></span>
               </div>
               <% if (p.address) { %>
-                <p class="text-zinc-400 text-sm mt-1.5">📍 <%= p.address %></p>
+                <a href="https://www.google.com/maps/search/?api=1&query=<%= encodeURIComponent(p.name + ' ' + p.address + ' Çınarcık Yalova') %>" target="_blank" rel="noopener noreferrer" class="text-zinc-400 hover:text-emerald-400 text-sm mt-1.5 block transition-colors">📍 <%= p.address %> ↗</a>
               <% } %>
               <% if (p.phone) { %>
-                <a href="tel:<%= p.phone.replace(/\s/g, '') %>" class="inline-flex items-center gap-1.5 text-zinc-300 hover:text-emerald-400 text-sm mt-1 transition-colors">📞 <%= p.phone %></a>
+              <div class="flex flex-wrap items-center gap-3 mt-2">
+                <a href="tel:<%= p.phone.replace(/\s/g, '') %>" class="inline-flex items-center gap-1.5 text-zinc-300 hover:text-emerald-400 text-sm transition-colors font-medium">📞 <%= p.phone %></a>
+                <% if (p.address) { %>
+                  <a href="https://www.google.com/maps/dir/?api=1&destination=<%= encodeURIComponent(p.name + ' ' + p.address + ' Çınarcık') %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-semibold">🗺️ Yol Tarifi Al →</a>
+                <% } %>
+              </div>
               <% } %>
               <% if (p.duty_note) { %>
                 <p class="text-xs text-zinc-500 mt-2">🕐 <%= t('dutyEnd') %>: <%= p.duty_note %></p>
@@ -471,237 +485,21 @@
       </div>
     </div>
 
-    <!-- ⛴️ Sefer Saatleri -->
-    <div id="sefer-saatleri" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg scroll-mt-24">
-      <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <span>⛴️</span> <%= t('turyolSchedule') %>
-        </h2>
-        <span class="text-xs text-zinc-500"><%= t('ferryRoute') %></span>
-      </div>
-      <div class="p-4 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <% if (typeof ferryGroups !== 'undefined' && ferryGroups.length > 0) { %>
-          <% ferryGroups.forEach(g => { %>
-          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-sky-500/40">
-            <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
-              <span class="text-sky-400">🚢</span> <%= g.title %>
-            </h3>
-            <p class="text-[10px] uppercase tracking-wide text-sky-500/70 font-semibold mb-3"><%= g.badge %></p>
-            <div class="<%= g.items.length > 1 ? 'space-y-3' : '' %>">
-              <% g.items.forEach(item => { %>
-              <div>
-                <% if (g.showLabel) { %>
-                <p class="text-[11px] text-zinc-400 font-semibold mb-1.5"><%= item.label %></p>
-                <% } %>
-                <div class="grid grid-cols-3 gap-2 text-center">
-                  <% item.columns.forEach(col => { %>
-                  <div>
-                    <p class="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5 font-semibold"><%= col.label %></p>
-                    <div class="space-y-1">
-                      <% if (col.times.length > 0) { %>
-                        <% col.times.forEach(t => { %>
-                          <span class="block bg-zinc-900 border border-zinc-800 rounded-lg py-1.5 px-2 text-sm text-sky-400 font-bold"><%= t %></span>
-                        <% }) %>
-                      <% } else { %>
-                        <span class="block text-xs text-zinc-600 py-1.5">—</span>
-                      <% } %>
-                    </div>
-                  </div>
-                  <% }) %>
-                </div>
-              </div>
-              <% }) %>
-            </div>
-          </div>
-          <% }) %>
-        <% } else { %>
-          <p class="text-zinc-500 text-sm text-center py-6">
-            <%= t('noFerry') %>
-          </p>
-        <% } %>
-        </div>
+    <!-- 📞 Çınarcık Acil & Önemli Telefonlar -->
+    <%- include('partials/emergency-phones') %>
 
-        <%
-          var ferryPriceList = [];
-          if (typeof ferryGroups !== 'undefined' && ferryGroups) {
-            ferryGroups.forEach(function (gg) {
-              gg.items.forEach(function (it) {
-                (it.prices || []).forEach(function (pp) {
-                  if (ferryPriceList.indexOf(pp) === -1) ferryPriceList.push(pp);
-                });
-              });
-            });
-          }
-        %>
-        <% if (ferryPriceList.length) { %>
-        <button type="button" id="ferry-fee-btn" aria-expanded="false" aria-controls="ferry-fee-panel"
-          class="w-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-sky-500/40 rounded-xl px-4 py-3 text-sm font-bold text-sky-400 transition-all flex items-center justify-between gap-2">
-          <span>💰 <%= t('ferryFeesBtn') %></span>
-          <span class="ferry-fee-caret text-zinc-500 transition-transform duration-200">▾</span>
-        </button>
-        <div id="ferry-fee-panel" class="hidden space-y-3">
-          <% (typeof ferryGroups !== 'undefined' ? ferryGroups : []).forEach(function (gg) { %>
-          <%
-            var gp = [];
-            gg.items.forEach(function (it) {
-              (it.prices || []).forEach(function (pp) { if (gp.indexOf(pp) === -1) gp.push(pp); });
-            });
-          %>
-          <% if (gp.length) { %>
-          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-            <h3 class="text-white font-bold text-sm mb-2 flex items-center gap-2">
-              <span class="text-sky-400">🚢</span> <%= gg.title %>
-            </h3>
-            <div class="flex flex-wrap gap-2">
-              <% gp.forEach(function (pp) { %>
-              <span class="inline-block bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-sky-400 font-bold"><%= pp %></span>
-              <% }) %>
-            </div>
-          </div>
-          <% } %>
-          <% }) %>
-        </div>
-        <% } %>
-      </div>
-      <div class="px-4 pb-4 text-[11px] text-zinc-600">
-        <%= t('dataSource') %>:
-        <a href="https://www.turyol.com/Home/Tarifeler" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Turyol Sefer Saatleri</a>
-        <%= t('autoUpdated') %>
-      </div>
-    </div>
-
-    <!-- 🚌 Şehir İçi Otobüs Seferleri -->
-    <%
-      var bJsDay = new Date().getDay();
-      var bToday = bJsDay === 0 ? 7 : bJsDay;
-      var bNow = new Date();
-      var bNowMin = bNow.getHours() * 60 + bNow.getMinutes();
-      var hasBus = typeof transport !== 'undefined' && transport && Array.isArray(transport.hatlar) && transport.hatlar.length > 0;
-      var hasFees = typeof transport !== 'undefined' && transport && Array.isArray(transport.ucretler) && transport.ucretler.length > 0;
-    %>
-    <div id="otobus-saatleri" class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg scroll-mt-24">
-      <div class="p-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <span>🚌</span> <%= t('busSchedule') %>
-        </h2>
-        <span class="text-xs text-zinc-500"><%= t('busRoute') %></span>
-      </div>
-      <div class="p-4 space-y-4">
-        <% if (hasBus) { %>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <% transport.hatlar.forEach(hat => { %>
-          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 transition-colors hover:border-emerald-500/40">
-            <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2">
-              <span class="text-emerald-400">🚌</span> <%= hat.ad %>
-            </h3>
-            <% if (hat.aciklama) { %>
-            <p class="text-[10px] uppercase tracking-wide text-emerald-500/70 font-semibold mb-3"><%= hat.aciklama %></p>
-            <% } else { %>
-            <div class="mb-1"></div>
-            <% } %>
-            <div class="space-y-3">
-              <% (hat.kalkislar || []).forEach(k => { %>
-              <%
-                var todays = (k.seferler || []).filter(function (s) {
-                  return (s.gunler || []).indexOf(bToday) !== -1;
-                });
-                var marked = false;
-              %>
-              <div>
-                <p class="text-[11px] text-zinc-400 font-semibold mb-1.5"><%= k.yer %></p>
-                <% if (todays.length) { %>
-                <div class="time-chips flex flex-wrap gap-2">
-                  <% todays.forEach(s => { %>
-                  <%
-                    var isPast = false;
-                    var hm = String(s.saat || '').split(':');
-                    if (hm.length >= 2) isPast = (Number(hm[0]) * 60 + Number(hm[1])) < bNowMin;
-                    var chipCls = '';
-                    if (isPast) chipCls = 'is-past';
-                    else if (!marked) { chipCls = 'is-next'; marked = true; }
-                  %>
-                  <span class="time-chip <%= chipCls %>">
-                    <b><%= s.saat %></b>
-                    <span class="chip-note chip-next-label"><%= t('ulasimNext') %></span>
-                    <% if (s.not) { %><span class="chip-note chip-real-note"><%= s.not %></span><% } %>
-                  </span>
-                  <% }) %>
-                </div>
-                <% } else { %>
-                <p class="text-xs text-zinc-600"><%= t('busNoToday') %></p>
-                <% } %>
-              </div>
-              <% }) %>
-            </div>
-          </div>
-          <% }) %>
-          </div>
-        <% } else { %>
-          <p class="text-zinc-500 text-sm text-center py-6"><%= t('ulasimEmpty') %></p>
-        <% } %>
-
-        <% if (hasFees) { %>
-        <button type="button" id="bus-fee-btn" aria-expanded="false" aria-controls="bus-fee-panel"
-          class="w-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-xl px-4 py-3 text-sm font-bold text-emerald-400 transition-all flex items-center justify-between gap-2">
-          <span>💰 <%= t('busFeesBtn') %></span>
-          <span class="bus-fee-caret text-zinc-500 transition-transform duration-200">▾</span>
-        </button>
-        <div id="bus-fee-panel" class="hidden space-y-4">
-          <% transport.ucretler.forEach(u => { %>
-          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-            <h3 class="text-white font-bold text-sm mb-3"><%= u.baslik %></h3>
-            <div class="space-y-2">
-              <% (u.satirlar || []).forEach(s => { %>
-              <div class="flex items-start justify-between gap-3 text-sm border-b border-zinc-800/70 pb-2 last:border-0 last:pb-0">
-                <span class="text-zinc-300"><%= s.ad %></span>
-                <span class="text-emerald-400 font-bold whitespace-nowrap"><%= s.tutar %></span>
-              </div>
-              <% }) %>
-            </div>
-            <% if (u.not) { %>
-            <p class="text-[11px] text-zinc-500 mt-3 leading-relaxed"><%= u.not %></p>
-            <% } %>
-          </div>
-          <% }) %>
-        </div>
-        <% } %>
-      </div>
-      <div class="px-4 pb-4">
-        <a href="<%= lp %>/ulasim" class="block bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-xl px-4 py-3 text-sm font-bold text-emerald-400 transition-all">🚌 <%= t('busDetailLink') %> →</a>
-      </div>
-      <div class="px-4 pb-4 text-[11px] text-zinc-600">
-        <%= t('dataSource') %>:
-        <a href="https://cinarcik.bel.tr/cinarcik/ulasim" target="_blank" rel="noopener" class="underline hover:text-zinc-400 transition-colors">Çınarcık Belediyesi — Ulaşım</a>
-        <%= t('autoUpdated') %><% if (transport && transport.updatedAt) { %> · <%= t('lastUpdate') %>: <%= String(transport.updatedAt).slice(0, 16).replace('T', ' ') %><% } %>
-      </div>
-    </div>
+    <!-- 🚨 Canlı Sıradaki Seferler Geri Sayım Bandı -->
+    <%- include('partials/next-departures') %>
 
   </div>
 </section>
-
-<script>
-(function () {
-  [['ferry-fee-btn', 'ferry-fee-panel'], ['bus-fee-btn', 'bus-fee-panel']].forEach(function (pair) {
-    var btn = document.getElementById(pair[0]);
-    var panel = document.getElementById(pair[1]);
-    if (!btn || !panel) return;
-    btn.addEventListener('click', function () {
-      var hidden = panel.classList.toggle('hidden');
-      btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-      var caret = btn.querySelector('.ferry-fee-caret, .bus-fee-caret');
-      if (caret) caret.style.transform = hidden ? '' : 'rotate(180deg)';
-    });
-  });
-})();
-</script>
 
 <script>
 (function(){
   var lp = "<%= lp %>";
   // Haberler sunucu tarafında basıldı: admin'de yapılan her değişiklik
   // ana sayfada da aynen görünür, ayrı bir API/fetch adımı yoktur.
-  var headlines = <%- JSON.stringify((headlines || []).map(function(n){ return { id:n.id, slug:n.slug, title:n.title, badge_text:n.badge_text, summary:n.summary, main_image_url:n.main_image_url }; })).replace(/</g, '\\u003c') %>;
+  var headlines = <%- JSON.stringify((headlines || []).slice(0, 5).map(function(n){ return { id:n.id, slug:n.slug, title:n.title, badge_text:n.badge_text, summary:n.summary, main_image_url:n.main_image_url }; })).replace(/</g, '\\u003c') %>;
   headlines.forEach(function(h) { if (h.main_image_url) { var im = new Image(); im.src = h.main_image_url; } });
   var current = 0;
   var autoplay = true;

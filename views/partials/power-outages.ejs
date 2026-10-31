@@ -1,0 +1,201 @@
+<%
+  var po = (typeof powerOutages !== 'undefined' && powerOutages) ? powerOutages : { items: [] };
+  var poItems = po.items || [];
+  var poFirst = poItems[0];
+  var poTrDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  function poDayLabel(it) {
+    if (it.status === 'active') return 'ŞU AN';
+    if (it.status === 'today') return 'Bugün';
+    var d = new Date(it.date + 'T12:00:00');
+    var t = new Date(); t.setHours(12, 0, 0, 0);
+    var diff = Math.round((d - t) / 86400000);
+    if (diff === 1) return 'Yarın';
+    return it.dateLabel || poTrDays[d.getDay()];
+  }
+  function poMahNames(it) {
+    return (it.mahalleler || []).map(function (m) { return m.name; })
+      .filter(function (v, i, a) { return a.indexOf(v) === i; });
+  }
+
+  // 💧 Su kesintileri (belediye)
+  var su = (typeof suOutages !== 'undefined' && suOutages) ? suOutages : { planned: [], recent: [] };
+  var suPlanned = su.planned || [];
+  var suRecent = su.recent || [];
+
+  // ⛴️ İDO iptalleri (bugün ve sonrası)
+  var ido = (typeof idoTransport !== 'undefined' && idoTransport) ? idoTransport : null;
+  var idoIptaller = [];
+  if (ido && Array.isArray(ido.iptaller)) {
+    var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var nowD = new Date();
+    var todayIso = nowD.getFullYear() + '-' + pad2(nowD.getMonth() + 1) + '-' + pad2(nowD.getDate());
+    var trDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    var trMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    ido.iptaller.forEach(function (it) {
+      if (!it || !it.date || String(it.date) < todayIso) return;
+      var d = new Date(it.date + 'T12:00:00');
+      var diff = Math.round((d - new Date(new Date().setHours(12, 0, 0, 0))) / 86400000);
+      it.gunEtiket = diff === 0 ? 'Bugün' : (diff === 1 ? 'Yarın' : (d.getDate() + ' ' + trMonths[d.getMonth()]));
+      idoIptaller.push(it);
+    });
+  }
+  var hasAnyDuyuru = poItems.length || suPlanned.length || idoIptaller.length;
+%>
+<% if (hasAnyDuyuru) { %>
+<div class="mb-6 space-y-3">
+<% } %>
+<% if (poItems.length) { %>
+<div id="elektrik-kesintileri" class="scroll-mt-24 rounded-2xl border <%= poFirst.status === 'active' ? 'border-red-500/50 bg-red-950/30' : 'border-amber-500/40 bg-amber-950/20' %> shadow-lg overflow-hidden">
+  <details class="group/po">
+    <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
+      <span class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl <%= poFirst.status === 'active' ? 'bg-red-500/20' : 'bg-amber-500/15' %> text-xl">
+        ⚡
+        <% if (poFirst.status === 'active') { %>
+        <span class="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>
+        <% } %>
+      </span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-sm sm:text-base font-extrabold text-white">Planlı Elektrik Kesintisi</h2>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full <%= poFirst.status === 'active' ? 'bg-red-500 text-white' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30' %>">
+            <%= poDayLabel(poFirst) %> · <%= poFirst.start %>–<%= poFirst.end %>
+          </span>
+          <% if (poItems.length > 1) { %>
+          <span class="text-[11px] font-semibold text-zinc-400">+<%= poItems.length - 1 %> kesinti daha</span>
+          <% } %>
+        </div>
+        <p class="text-xs sm:text-[13px] text-zinc-300 mt-1 leading-snug">
+          <% var fNames = poMahNames(poFirst); %>
+          <strong class="text-white"><%= fNames.slice(0, 6).join(', ') %></strong><%= fNames.length > 6 ? (' ve ' + (fNames.length - 6) + ' mahalle daha') : '' %>
+          <span class="text-zinc-500">— <%= poFirst.reason %></span>
+        </p>
+      </div>
+      <span class="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-amber-300 bg-zinc-900/70 border border-zinc-700 px-3 py-1.5 rounded-lg">
+        <span class="group-open/po:hidden">Detaylar ▾</span>
+        <span class="hidden group-open/po:inline">Kapat ▴</span>
+      </span>
+    </summary>
+
+    <div class="px-4 pb-4 space-y-3 border-t border-zinc-800/70 pt-4">
+      <% poItems.forEach(function (it) { %>
+      <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full <%= it.status === 'active' ? 'bg-red-500 text-white' : (it.status === 'today' ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-800 text-zinc-200') %>"><%= poDayLabel(it) %></span>
+            <span class="text-sm font-extrabold text-white"><%= it.dateLabel %></span>
+            <span class="font-mono text-sm font-bold text-amber-300"><%= it.start %> – <%= it.end %></span>
+          </div>
+          <span class="text-[11px] text-zinc-400">🔧 <%= it.reason %> · <%= poMahNames(it).length %> mahalle · <%= it.streetCount %> sokak</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <% (it.mahalleler || []).forEach(function (m) { %>
+          <details class="group/mah">
+            <summary class="list-none cursor-pointer text-[11px] font-semibold text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-amber-500/40 px-2.5 py-1 rounded-lg transition-colors [&::-webkit-details-marker]:hidden">
+              📍 <%= m.name %> <span class="text-zinc-500">(<%= (m.streets || []).length %>)</span>
+            </summary>
+            <div class="mt-1.5 mb-1 max-w-xl text-[11px] leading-relaxed text-zinc-400 bg-zinc-900/80 border border-zinc-800 rounded-lg p-2.5">
+              <%= (m.streets || []).length ? m.streets.join(' · ') : 'Sokak bilgisi verilmemiş' %>
+            </div>
+          </details>
+          <% }) %>
+        </div>
+      </div>
+      <% }) %>
+      <p class="text-[11px] text-zinc-500">
+        Veri kaynağı: <a href="<%= po.sourceUrl %>" target="_blank" rel="noopener" class="underline hover:text-zinc-300">UEDAŞ Planlı Kesintiler</a> · saatlik otomatik güncellenir · Arıza bildirimi: <a href="tel:186" class="text-amber-300 font-semibold">186</a>
+      </p>
+    </div>
+  </details>
+</div>
+<% } %>
+<% if (suPlanned.length) { %>
+<div id="su-kesintileri" class="scroll-mt-24 rounded-2xl border border-sky-500/40 bg-sky-950/20 shadow-lg overflow-hidden">
+  <details class="group/su">
+    <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-xl">💧</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-sm sm:text-base font-extrabold text-white">Su Kesintisi Duyurusu</h2>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">Çınarcık Belediyesi</span>
+          <% if (suPlanned.length > 1) { %>
+          <span class="text-[11px] font-semibold text-zinc-400">+<%= suPlanned.length - 1 %> duyuru daha</span>
+          <% } %>
+        </div>
+        <p class="text-xs sm:text-[13px] text-zinc-300 mt-1 leading-snug">
+          <strong class="text-white"><%= suPlanned.slice(0, 3).map(function (s) { return s.place; }).filter(Boolean).join(', ') %></strong>
+          <span class="text-zinc-500">— <%= suPlanned[0].time %> <% var f0 = suPlanned[0]; if (f0 && f0.type) { %>· <%= f0.type %><% } %></span>
+        </p>
+      </div>
+      <span class="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-sky-300 bg-zinc-900/70 border border-zinc-700 px-3 py-1.5 rounded-lg">
+        <span class="group-open/su:hidden">Detaylar ▾</span>
+        <span class="hidden group-open/su:inline">Kapat ▴</span>
+      </span>
+    </summary>
+
+    <div class="px-4 pb-4 space-y-3 border-t border-zinc-800/70 pt-4">
+      <% suPlanned.forEach(function (s) { %>
+      <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <span class="text-sm font-extrabold text-white">📍 <%= s.place %></span>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30"><%= s.type || 'Kesinti' %></span>
+        </div>
+        <% if (s.streets) { %><p class="text-[11px] text-zinc-400 leading-relaxed"><%= s.streets %></p><% } %>
+        <p class="font-mono text-sm font-bold text-sky-300 mt-1"><%= s.time %></p>
+      </div>
+      <% }) %>
+      <% if (suRecent.length) { %>
+      <div>
+        <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-wide mb-1.5">Son 30 Gün</p>
+        <div class="space-y-1.5">
+          <% suRecent.forEach(function (s) { %>
+          <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-400 bg-zinc-950/60 border border-zinc-800/70 rounded-lg px-3 py-1.5">
+            <span class="text-zinc-300"><%= s.place %><%= s.streets ? ' — ' + s.streets : '' %></span>
+            <span class="text-zinc-500"><%= s.time %> · <%= s.type %></span>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+      <p class="text-[11px] text-zinc-500">
+        Veri kaynağı: <a href="<%= su.sourceUrl %>" target="_blank" rel="noopener" class="underline hover:text-zinc-300">Çınarcık Belediyesi Su Kesintileri</a> · 30 dakikada bir otomatik güncellenir · Arıza bildirimi: <a href="tel:4440477" class="text-sky-300 font-semibold">444 04 77</a>
+      </p>
+    </div>
+  </details>
+</div>
+<% } %>
+<% if (idoIptaller.length) { %>
+<div id="ido-iptalleri" class="scroll-mt-24 rounded-2xl border border-red-500/40 bg-red-950/20 shadow-lg overflow-hidden">
+  <details class="group/idop" open>
+    <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
+      <span class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-xl">
+        ⛴️
+        <span class="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>
+      </span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-sm sm:text-base font-extrabold text-white">İptal Edilen İDO Seferleri</h2>
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30"><%= idoIptaller.length %> sefer</span>
+        </div>
+        <p class="text-xs sm:text-[13px] text-zinc-300 mt-1 leading-snug truncate">
+          <%= idoIptaller[0].gunEtiket %> <%= idoIptaller[0].saat %> <span class="text-zinc-500">— <%= idoIptaller[0].yon %></span>
+        </p>
+      </div>
+      <span class="shrink-0 text-[11px] font-semibold text-red-300">!</span>
+    </summary>
+    <div class="px-4 pb-4 border-t border-zinc-800/70 pt-4 space-y-1.5">
+      <% idoIptaller.forEach(function (it) { %>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[12px] bg-zinc-950/60 border border-zinc-800/70 rounded-lg px-3 py-1.5">
+        <span class="text-zinc-300"><strong class="text-white"><%= it.gunEtiket %></strong> · <%= it.yon %></span>
+        <span class="font-mono font-bold text-red-300"><%= it.saat %></span>
+      </div>
+      <% }) %>
+      <p class="text-[11px] text-zinc-500">
+        Veri kaynağı: <a href="https://www.ido.com.tr/sefer-saatleri" target="_blank" rel="noopener" class="underline hover:text-zinc-300">İDO Sefer Saatleri</a> · saatlik otomatik güncellenir · Bilet değişimi için İDO'ya başvurun
+      </p>
+    </div>
+  </details>
+</div>
+<% } %>
+<% if (hasAnyDuyuru) { %>
+</div>
+<% } %>

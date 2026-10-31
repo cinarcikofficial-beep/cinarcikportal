@@ -1,12 +1,10 @@
 <% layout('partials/layout') %>
 <% locals.pageTitle = t('favList') %>
 
-<div class="page-banner">
-  <h1>★ <%= t('favList') %></h1>
-  <p>Marmara'nın İncisi</p>
-</div>
-
-<section class="section">
+<section class="section pt-6 sm:pt-8">
+  <div class="section-header">
+    <h2>★ <%= t('favList') %></h2>
+  </div>
   <div id="fav-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 no-reveal"></div>
   <div id="fav-empty" class="text-center text-zinc-500 max-w-xl mx-auto py-10 text-sm leading-relaxed"><%= t('favEmpty') %></div>
 </section>

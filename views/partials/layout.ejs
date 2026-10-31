@@ -3,9 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %></title>
-  <link rel="icon" type="image/png" href="/img/logo-circle.png">
-  <link rel="stylesheet" href="/css/tailwind.css">
+  <%
+    var fullTitle = '';
+    if (path === '/' || path === '') {
+      fullTitle = (typeof pageTitle !== 'undefined' && pageTitle) ? (pageTitle + ' — Marmara\'nın İncisi') : ('Çınarcık Haber, Mekan ve Gezi Rehberi — Marmara\'nın İncisi');
+    } else if (typeof pageTitle !== 'undefined' && pageTitle) {
+      fullTitle = pageTitle + ' — Marmara\'nın İncisi';
+    } else {
+      fullTitle = t('defaultPageTitle') + ' — Marmara\'nın İncisi';
+    }
+  %>
+  <title><%= fullTitle %></title>
+  <link rel="icon" type="image/webp" href="/img/logo-circle.webp">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Marmaraİncisi">
+  <link rel="stylesheet" href="/css/tailwind.css?v=20261029">
   <meta name="description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDesc') %>">
   <meta name="google-site-verification" content="CzjrSopLFPONrxTH1m5RDQ7bft0jSV1u52Du475UUUM">
 
@@ -30,10 +47,12 @@
   <link rel="alternate" hreflang="ru" href="<%= siteUrl %>/ru<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="ar" href="<%= siteUrl %>/ar<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="de" href="<%= siteUrl %>/de<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="fr" href="<%= siteUrl %>/fr<%= path === '/' ? '/' : path %>">
+  <link rel="alternate" hreflang="nl" href="<%= siteUrl %>/nl<%= path === '/' ? '/' : path %>">
   <link rel="alternate" hreflang="x-default" href="<%= siteUrl %><%= path === '/' ? '/' : path %>">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %>">
+  <meta property="og:title" content="<%= fullTitle %>">
   <meta property="og:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDescShort') %>">
   <meta property="og:type" content="<%= typeof ogType !== 'undefined' ? ogType : 'website' %>">
   <meta property="og:url" content="<%= siteUrl %><%= lp %><%= path === '/' ? '/' : path %>">
@@ -43,16 +62,26 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Marmara'nın İncisi | <%= typeof pageTitle !== 'undefined' ? pageTitle : t('defaultPageTitle') %>">
+  <meta name="twitter:title" content="<%= fullTitle %>">
   <meta name="twitter:description" content="<%= typeof metaDescription !== 'undefined' ? metaDescription : t('metaDescShort') %>">
   <meta name="twitter:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : siteUrl + '/img/logo-circle.png' %>">
 
   <meta name="robots" content="<%= typeof robotsMeta !== 'undefined' ? robotsMeta : 'index, follow' %>">
   <link rel="alternate" type="application/rss+xml" title="Marmara'nın İncisi — Haberler RSS" href="/rss.xml">
   <link rel="stylesheet" href="/css/style.css?v=20261023">
+  <!-- DNS Prefetch & Preconnect for Fast Mobile Asset Resolution -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://flagcdn.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+
+  <!-- Non-blocking Google Fonts (Eliminates Render-blocking on Mobile & Desktop) -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;800&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;800&display=swap"></noscript>
   <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light');}catch(e){}</script>
 
   <!-- JSON-LD: Site + Organization (her sayfada) -->
@@ -123,7 +152,7 @@
       <div class="flex items-center gap-2 lg:gap-3 xl:gap-4 min-w-0">
       <a href="/" class="flex items-center shrink-0" aria-label="<%= t('homeAria') %>">
         <div class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 xl:w-24 xl:h-24 rounded-full overflow-hidden border-2 border-white/30 ring-2 ring-emerald-500/40 shadow-xl shadow-black/50 bg-white">
-          <img src="/img/logo-circle.png" alt="<%= t('logoAlt') %>" class="w-full h-full object-cover">
+          <img src="/img/logo-circle.webp" alt="<%= t('logoAlt') %>" width="96" height="96" class="w-full h-full object-cover">
         </div>
       </a>
       <nav id="main-nav" class="main-nav hidden xl:flex items-center gap-0.5 xl:gap-1 text-[13px] xl:text-sm font-semibold whitespace-nowrap">
@@ -136,20 +165,26 @@
         <a href="<%= lp %>/gezilecek-yerler" class="px-2 xl:px-2.5 py-2 rounded-full transition-all <%= path === '/gezilecek-yerler' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden 2xl:inline' %>">🧳 </span><%= t('sightseeing') %></a>
         <a href="<%= lp %>/sizlerden-gelen" class="px-2 xl:px-2.5 py-2 rounded-full transition-all <%= path === '/sizlerden-gelen' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden 2xl:inline' %>">📷 </span><%= t('photosTitle') %></a>
         <a href="<%= lp %>/cinarcik-hakkinda" class="px-2 xl:px-2.5 py-2 rounded-full transition-all <%= path === '/cinarcik-hakkinda' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'text-zinc-300 hover:text-emerald-300 hover:bg-zinc-800/80 border border-transparent' %>"><span class="<%= isAdmin ? 'hidden' : 'hidden 2xl:inline' %>">ℹ️ </span><%= t('about') %></a>
+        <a href="<%= lp %>/uygulama" id="nav-app-icon-btn" title="Uygulamayı İndir" aria-label="Uygulamayı İndir" class="hidden xl:inline-flex group items-center px-2.5 py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/35 transition-all duration-300 shadow-sm shrink-0 hover:shadow-emerald-500/20">
+          <span class="text-sm leading-none">📲</span>
+          <span class="max-w-0 group-hover:max-w-[120px] transition-all duration-300 ease-out overflow-hidden whitespace-nowrap text-xs font-bold pl-0 group-hover:pl-1.5 opacity-0 group-hover:opacity-100">Uygulamayı İndir</span>
+        </a>
+        <a href="<%= lp %>/uygulama" class="xl:hidden px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-2 mt-2"><span>📲</span> <span>Uygulamayı İndir</span></a>
       </nav>
       </div>
       <div class="nav-right flex items-center gap-1.5 sm:gap-2">
+        
         <span class="inline-flex items-center gap-1 relative" id="lang-dropdown">
           <button id="lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Dil seçimi" title="Dil seçimi"
             class="px-2 py-1.5 rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 text-sm font-semibold cursor-pointer hover:border-emerald-500/50 focus:border-emerald-500/60 focus:outline-none transition flex items-center gap-1.5">
-            <img src="https://flagcdn.com/w40/<%= ({tr:'tr',en:'gb',ru:'ru',ar:'sa',de:'de'})[lang] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
+            <img src="https://flagcdn.com/w40/<%= ({tr:'tr',en:'gb',ru:'ru',ar:'sa',de:'de',fr:'fr',nl:'nl'})[lang] %>.png" alt="" width="20" height="15" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
             <span><%= lang.toUpperCase() %></span>
           </button>
           <div id="lang-menu" class="hidden absolute right-0 top-full mt-1 w-40 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[60] py-1 overflow-hidden">
-            <% [['tr','tr','Türkçe'],['en','gb','English'],['de','de','Deutsch'],['ru','ru','Русский'],['ar','sa','العربية']].forEach(function(item){ %>
+            <% [['tr','tr','Türkçe'],['en','gb','English'],['de','de','Deutsch'],['fr','fr','Français'],['nl','nl','Nederlands'],['ru','ru','Русский'],['ar','sa','العربية']].forEach(function(item){ %>
               <% var l = item[0]; var langHref = (l === 'tr' ? '' : '/' + l) + (path === '/' ? '/' : path); %>
               <a href="<%= langHref %>" class="flex items-center gap-2 px-3 py-2 text-sm <%= lang === l ? 'text-emerald-400 bg-zinc-700/50' : 'text-zinc-200 hover:bg-zinc-700' %> transition-colors">
-                <img src="https://flagcdn.com/w40/<%= item[1] %>.png" alt="" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
+                <img src="https://flagcdn.com/w40/<%= item[1] %>.png" alt="" width="20" height="15" class="w-5 h-auto rounded-[1px]" onerror="this.style.display='none'" />
                 <%= item[2] %>
               </a>
             <% }); %>
@@ -265,7 +300,13 @@
     function hl(text, q) {
       var e = esc(text);
       if (!q) return e;
-      return e.replace(new RegExp('(' + escRe(esc(q)) + ')', 'ig'), '<mark>$1</mark>');
+      var raw = String(text == null ? '' : text);
+      if (!q) return esc(raw);
+      var pat = escRe(q.trim()).replace(/[iıİI]/g, '[iıİI]').replace(/[cçCÇ]/g, '[cçCÇ]').replace(/[sşSŞ]/g, '[sşSŞ]').replace(/[gğGĞ]/g, '[gğGĞ]').replace(/[uüUÜ]/g, '[uüUÜ]').replace(/[oöOÖ]/g, '[oöOÖ]');
+      try {
+        var re = new RegExp('(' + pat + ')', 'ig');
+        return raw.split(re).map(function(part, idx) { return idx % 2 === 1 ? '<mark>' + esc(part) + '</mark>' : esc(part); }).join('');
+      } catch (err) { return esc(raw); }
     }
     function setStatus(msg) {
       statusEl.textContent = msg || '';
@@ -304,7 +345,7 @@
           + '</span>'
           + (it.meta ? '<span class="search-meta">' + esc(it.meta) + '</span>' : '')
           + '</span>'
-          + '<span class="search-type">' + esc(TYPE_LABEL[it.type] || '') + '</span>'
+          + '<span class="search-type">' + esc(it.typeLabel || TYPE_LABEL[it.type] || '') + '</span>'
           + (favMode ? '<button type="button" class="search-fav-del" data-del-type="' + esc(it.type) + '" data-del-id="' + esc(it.id) + '" title="' + esc(S.favRemove || '') + '" aria-label="' + esc(S.favRemove || '') + '">✕</button>' : '')
           + '</a>';
       });
@@ -316,7 +357,18 @@
     // Kaydettiklerim satırındaki ✕: favoriden kaldırır, satırı panelden siler (gezinmeyi engeller)
     resultsEl.addEventListener('click', function(e) {
       var b = e.target && e.target.closest ? e.target.closest('.search-fav-del') : null;
-      if (!b) return;
+      if (!b) {
+        var itemEl = e.target && e.target.closest ? e.target.closest('.search-item') : null;
+        if (itemEl) {
+          var rawHref = itemEl.getAttribute('href') || '';
+          if (typeof window.closeSearchModal === 'function') window.closeSearchModal();
+          if (rawHref.indexOf('#hava-durumu') !== -1 && typeof window.openWeatherModal === 'function') {
+            e.preventDefault();
+            window.openWeatherModal();
+          }
+        }
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       window.Favs.remove(b.getAttribute('data-del-type'), String(b.getAttribute('data-del-id')));
@@ -383,7 +435,7 @@
       else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
       else if (e.key === 'Enter') {
         var els = resultsEl.querySelectorAll('.search-item');
-        if (els[active]) { e.preventDefault(); window.location.href = els[active].href; }
+        if (els[active]) { e.preventDefault(); els[active].click(); }
       }
     });
     document.addEventListener('keydown', function(e) {
@@ -516,6 +568,7 @@
           <li><a href="<%= lp %>/cinarcik-hakkinda" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('about') %></a></li>
           <li><a href="<%= lp %>/gizlilik" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('privacy') %></a></li>
           <li><a href="<%= lp %>/iletisim" class="text-gray-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"><span class="text-emerald-500/50">›</span> <%= t('contact') %></a></li>
+          <li><a href="<%= lp %>/uygulama" class="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors inline-flex items-center gap-1.5"><span>📲</span> Uygulamayı İndir</a></li>
         </ul>
       </div>
     </div>
@@ -982,6 +1035,358 @@
   })();
   </script>
 
+
+  <!-- reCAPTCHA ("Ben robot değilim") Merkezi Bileşeni -->
+  <style>
+    .portal-rc-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      max-width: 304px;
+      min-height: 74px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, #18181b 0%, #111114 100%);
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+      user-select: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+    .portal-rc-box:hover {
+      border-color: #3f3f46;
+    }
+    .portal-rc-box.rc-verified {
+      border-color: rgba(16, 185, 129, 0.45);
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.12);
+    }
+    .portal-rc-box.rc-error {
+      border-color: rgba(239, 68, 68, 0.7);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+      animation: rcShake 0.35s ease;
+    }
+    @keyframes rcShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .portal-rc-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      flex: 1;
+      min-width: 0;
+    }
+    .portal-rc-check {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 2px solid #52525b;
+      background: #09090b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .portal-rc-left:hover .portal-rc-check {
+      border-color: #10b981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+    }
+    .portal-rc-box.rc-loading .portal-rc-check {
+      border-color: transparent;
+      background: transparent;
+    }
+    .portal-rc-box.rc-verified .portal-rc-check {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.14);
+    }
+    .portal-rc-spinner {
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(16, 185, 129, 0.25);
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: rcSpin 0.65s linear infinite;
+    }
+    @keyframes rcSpin {
+      to { transform: rotate(360deg); }
+    }
+    .portal-rc-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e4e4e7;
+      line-height: 1.25;
+    }
+    .portal-rc-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex-shrink: 0;
+      padding-left: 8px;
+      border-left: 1px solid rgba(255,255,255,0.06);
+    }
+    .portal-rc-brand-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #a1a1aa;
+      letter-spacing: 0.02em;
+      margin-top: 3px;
+    }
+    .portal-rc-brand-links {
+      font-size: 8.5px;
+      color: #71717a;
+      margin-top: 1px;
+    }
+    .portal-rc-brand-links a {
+      color: #71717a;
+      text-decoration: none;
+    }
+    .portal-rc-brand-links a:hover {
+      text-decoration: underline;
+    }
+    html[data-theme="light"] .portal-rc-box {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    }
+    html[data-theme="light"] .portal-rc-check {
+      background: #ffffff;
+      border-color: #94a3b8;
+    }
+    html[data-theme="light"] .portal-rc-label {
+      color: #1e293b;
+    }
+    html[data-theme="light"] .portal-rc-brand {
+      border-left-color: #e2e8f0;
+    }
+  </style>
+  <script>
+  (function() {
+    var SITE_KEY = <%- JSON.stringify(typeof recaptchaSiteKey !== 'undefined' ? recaptchaSiteKey : '') %>;
+    var LANG = <%- JSON.stringify(typeof lang !== 'undefined' ? lang : 'tr') %>;
+    var NOT_ROBOT_TXT = <%- JSON.stringify((typeof t === 'function' ? t('notRobot') : 'Ben robot değilim').replace(/^🤖\s*/, '').replace(/\s*\*$/, '')) %>;
+    var HINT_TXT = <%- JSON.stringify(typeof t === 'function' ? t('notRobotHint') : 'Lütfen "Ben robot değilim" kutusunu işaretleyin.') %>;
+    var PRIVACY_TXT = ({ tr: 'Gizlilik · Şartlar', en: 'Privacy · Terms', ru: 'Конф. · Условия', ar: 'الخصوصية · البنود', de: 'Datenschutz · Bedingungen' })[LANG] || 'Gizlilik · Şartlar';
+
+    function renderBuiltin(el) {
+      if (el.dataset.rcRendered === 'builtin') return;
+      el.dataset.rcRendered = 'builtin';
+      el.innerHTML =
+        '<div class="portal-rc-box" role="checkbox" aria-checked="false" tabindex="0">' +
+          '<input type="hidden" name="g-recaptcha-response" value="">' +
+          '<div class="portal-rc-left">' +
+            '<div class="portal-rc-check">' +
+              '<span class="portal-rc-icon"></span>' +
+            '</div>' +
+            '<span class="portal-rc-label">' + NOT_ROBOT_TXT + '</span>' +
+          '</div>' +
+          '<div class="portal-rc-brand">' +
+            '<svg width="26" height="26" viewBox="0 0 64 64" fill="none" aria-hidden="true">' +
+              '<path d="M32 8C19.8 8 9.7 16.8 7.5 28.4H16C18 21.3 24.4 16 32 16c5.3 0 10 2.5 13 6.4L39 28.4h17V11.4l-5.3 5.3C46.2 11.4 39.5 8 32 8z" fill="#4285F4"/>' +
+              '<path d="M32 56c12.2 0 22.3-8.8 24.5-20.4H48c-2 7.1-8.4 12.4-16 12.4-5.3 0-10-2.5-13-6.4l6-6H8v17l5.3-5.3C17.8 52.6 24.5 56 32 56z" fill="#10b981"/>' +
+            '</svg>' +
+            '<span class="portal-rc-brand-title">reCAPTCHA</span>' +
+            '<span class="portal-rc-brand-links"><a href="/gizlilik">' + PRIVACY_TXT + '</a></span>' +
+          '</div>' +
+        '</div>';
+
+      var box = el.querySelector('.portal-rc-box');
+      var hidden = el.querySelector('input[name="g-recaptcha-response"]');
+      var iconWrap = el.querySelector('.portal-rc-icon');
+      var busy = false;
+
+      function triggerVerify() {
+        if (busy || (hidden && hidden.value)) return;
+        busy = true;
+        box.classList.remove('rc-error');
+        box.classList.add('rc-loading');
+        iconWrap.innerHTML = '<span class="portal-rc-spinner"></span>';
+
+        setTimeout(function() {
+          fetch('/api/recaptcha-challenge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ ts: Date.now() })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            busy = false;
+            box.classList.remove('rc-loading');
+            if (data && data.success && data.token) {
+              hidden.value = data.token;
+              box.classList.add('rc-verified');
+              box.setAttribute('aria-checked', 'true');
+              iconWrap.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            } else {
+              box.classList.add('rc-error');
+              iconWrap.innerHTML = '';
+            }
+          })
+          .catch(function() {
+            busy = false;
+            box.classList.remove('rc-loading');
+            box.classList.add('rc-error');
+            iconWrap.innerHTML = '';
+          });
+        }, 280);
+      }
+
+      box.addEventListener('click', function(e) {
+        if (e.target && e.target.tagName === 'A') return;
+        triggerVerify();
+      });
+      box.addEventListener('keydown', function(e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          triggerVerify();
+        }
+      });
+    }
+
+    function renderGoogle(el) {
+      if (el.dataset.rcRendered) return;
+      try {
+        if (typeof grecaptcha !== 'undefined' && grecaptcha && typeof grecaptcha.render === 'function') {
+          el.dataset.rcRendered = 'google';
+          var wid = grecaptcha.render(el, {
+            sitekey: SITE_KEY,
+            theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
+          });
+          el.dataset.rcWidgetId = String(wid);
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function renderAll() {
+      var list = document.querySelectorAll('.portal-recaptcha');
+      if (!list.length) return;
+      list.forEach(function(el) {
+        if (SITE_KEY) {
+          if (!renderGoogle(el) && window.__rcGoogleFallback) {
+            renderBuiltin(el);
+          }
+        } else {
+          renderBuiltin(el);
+        }
+      });
+    }
+
+    function findContainers(root) {
+      if (!root) return Array.prototype.slice.call(document.querySelectorAll('.portal-recaptcha'));
+      if (root.classList && root.classList.contains('portal-recaptcha')) return [root];
+      return Array.prototype.slice.call(root.querySelectorAll('.portal-recaptcha'));
+    }
+
+    function getToken(root) {
+      var containers = findContainers(root);
+      for (var i = 0; i < containers.length; i++) {
+        var c = containers[i];
+        if (c.dataset.rcRendered === 'google' && typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+          var wid = Number(c.dataset.rcWidgetId || 0);
+          var gTok = grecaptcha.getResponse(wid);
+          if (gTok) return gTok;
+        }
+        var inp = c.querySelector('[name="g-recaptcha-response"]');
+        if (inp && inp.value) return inp.value;
+      }
+      return '';
+    }
+
+    function reset(root) {
+      var containers = findContainers(root);
+      containers.forEach(function(c) {
+        if (c.dataset.rcRendered === 'google' && typeof grecaptcha !== 'undefined' && grecaptcha.reset) {
+          try { grecaptcha.reset(Number(c.dataset.rcWidgetId || 0)); } catch (e) {}
+        } else if (c.dataset.rcRendered === 'builtin') {
+          var inp = c.querySelector('input[name="g-recaptcha-response"]');
+          var box = c.querySelector('.portal-rc-box');
+          var icon = c.querySelector('.portal-rc-icon');
+          if (inp) inp.value = '';
+          if (box) {
+            box.classList.remove('rc-verified', 'rc-loading', 'rc-error');
+            box.setAttribute('aria-checked', 'false');
+          }
+          if (icon) icon.innerHTML = '';
+        }
+      });
+    }
+
+    function highlight(root) {
+      var containers = findContainers(root);
+      containers.forEach(function(c) {
+        var box = c.querySelector('.portal-rc-box') || c;
+        box.classList.remove('rc-error');
+        void box.offsetWidth;
+        box.classList.add('rc-error');
+        if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    window.PortalRecaptcha = {
+      renderAll: renderAll,
+      getToken: getToken,
+      reset: reset,
+      highlight: highlight,
+      hintText: HINT_TXT
+    };
+
+    window.__portalRcOnload = function() {
+      renderAll();
+    };
+
+    function init() {
+      var hasWidgets = document.querySelectorAll('.portal-recaptcha').length > 0;
+      if (!hasWidgets) return;
+      if (SITE_KEY) {
+        var s = document.createElement('script');
+        s.src = 'https://www.google.com/recaptcha/api.js?onload=__portalRcOnload&render=explicit&hl=' + encodeURIComponent(LANG);
+        s.async = true;
+        s.defer = true;
+        s.onerror = function() {
+          window.__rcGoogleFallback = true;
+          renderAll();
+        };
+        document.head.appendChild(s);
+        setTimeout(function() {
+          document.querySelectorAll('.portal-recaptcha').forEach(function(el) {
+            if (!el.dataset.rcRendered) {
+              window.__rcGoogleFallback = true;
+              renderBuiltin(el);
+            }
+          });
+        }, 3500);
+      } else {
+        renderAll();
+      }
+    }
+
+    // Normal form submitlerinde (AJAX olmayan /iletisim ve /ilan-ver) otomatik kontrol
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      if (!form || !form.querySelector) return;
+      var rc = form.querySelector('.portal-recaptcha');
+      if (!rc) return;
+      if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
+      if (!getToken(form)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        highlight(form);
+        if (window.adminToast) window.adminToast(HINT_TXT, 'error');
+      }
+    }, true);
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+  </script>
+
   <!-- GA4 olaylari: sayfa bazli donusum olcumu -->
   <script>
   (function() {
@@ -995,5 +1400,62 @@
     if (qs.get('gonderildi') === '1' && p === '/duyurular') gtag('event', 'ilan_submitted');
   })();
   </script>
+<!-- 📲 PWA: Ana Ekrana Ekle -->
+<div id="pwa-install" class="hidden fixed left-3 right-3 bottom-3 sm:left-auto sm:right-5 sm:bottom-5 sm:w-96 z-[110] bg-zinc-900/95 backdrop-blur border border-emerald-500/30 rounded-2xl shadow-2xl p-4">
+  <div class="flex items-start gap-3">
+    <img src="/icons/icon-192.png" alt="Marmaraİncisi" width="48" height="48" class="w-12 h-12 rounded-xl shrink-0">
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-extrabold text-white">Marmaraİncisi'ni telefonuna ekle</p>
+      <p id="pwa-install-text" class="text-xs text-zinc-400 mt-0.5 leading-snug">Seferler, nöbetçi eczane ve haberler tek dokunuşla — uygulama gibi açılır.</p>
+    </div>
+    <button type="button" id="pwa-close" aria-label="Kapat" class="text-zinc-500 hover:text-zinc-200 text-lg leading-none px-1">×</button>
+  </div>
+  <div class="flex gap-2 mt-3">
+    <button type="button" id="pwa-install-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold rounded-xl py-2.5 transition-colors">📲 Ana Ekrana Ekle</button>
+    <button type="button" id="pwa-later" class="px-4 text-xs font-semibold text-zinc-400 hover:text-zinc-200 bg-zinc-800 rounded-xl">Sonra</button>
+  </div>
+</div>
+<script>
+(function () {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+  }
+  var KEY = 'cinarcik_pwa_dismiss';
+  var box = document.getElementById('pwa-install');
+  if (!box) return;
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (standalone) { var navApp = document.getElementById('nav-app-icon-btn'); if (navApp) navApp.style.display = 'none'; }
+  if (/\/uygulama$/.test(location.pathname)) return;
+  var dismissedAt = Number(localStorage.getItem(KEY) || 0);
+  if (standalone || (Date.now() - dismissedAt) < 7 * 86400000) return; // 7 gün sormaz
+  if (location.pathname.indexOf('/admin') === 0) return;
+
+  var deferred = null;
+  var btn = document.getElementById('pwa-install-btn');
+  function show() { setTimeout(function () { box.classList.remove('hidden'); }, 4000); }
+  function hide(remember) { box.classList.add('hidden'); if (remember) localStorage.setItem(KEY, String(Date.now())); }
+
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; show(); });
+  window.addEventListener('appinstalled', function () { hide(true); });
+
+  // iOS Safari: otomatik kurulum yok → talimat göster
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+  if (isIOS) {
+    document.getElementById('pwa-install-text').innerHTML = 'Safari\'de alttaki <b class="text-white">Paylaş ⬆️</b> simgesine, sonra <b class="text-white">“Ana Ekrana Ekle”</b>ye dokunun.';
+    btn.textContent = 'Anladım';
+    show();
+  }
+
+  btn.addEventListener('click', function () {
+    if (deferred) {
+      deferred.prompt();
+      deferred.userChoice.finally(function () { deferred = null; hide(true); });
+    } else { hide(true); }
+  });
+  document.getElementById('pwa-close').addEventListener('click', function () { hide(true); });
+  document.getElementById('pwa-later').addEventListener('click', function () { hide(true); });
+})();
+</script>
 </body>
 </html>

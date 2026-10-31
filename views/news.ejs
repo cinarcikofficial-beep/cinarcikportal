@@ -16,6 +16,12 @@
   .manset-nav-btn.active { background: #dc2626; color: #fff; box-shadow: 0 4px 12px rgba(220,38,38,0.4); }
   .manset-nav-btn:not(.active) { background: rgba(24,24,28,0.8); color: #a1a1aa; }
   .manset-nav-btn:not(.active):hover { background: rgba(39,39,42,0.9); color: #f4f4f5; }
+  @media (min-width: 1024px) {
+    .most-read-box {
+      grid-column-start: 4;
+      grid-row-start: 1;
+    }
+  }
 </style>
 
 <div class="max-w-7xl mx-auto px-4 py-6 text-zinc-100">
@@ -110,61 +116,96 @@
 
     <!-- ✍️ YAZAR ARANIYOR (tam genişlik yatay bant) -->
     <a href="/iletisim" class="block group mb-8">
-      <div class="relative overflow-hidden bg-gradient-to-r from-zinc-900 via-emerald-950/50 to-zinc-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 hover:border-emerald-400/70 hover:shadow-[0_0_35px_rgba(16,185,129,0.2)] transition-all flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div class="pointer-events-none absolute inset-0" style="background: radial-gradient(500px 130px at 18% 0%, rgba(16,185,129,0.14), transparent 70%)"></div>
-        <div class="pointer-events-none absolute top-0 bottom-0 w-24 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse" style="left: 30%"></div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="w-1.5 h-4 bg-emerald-500 rounded-full inline-block"></span>
-            <h3 class="text-white font-bold text-sm flex items-center gap-2">✍️ Yazar Aranıyor</h3>
-            <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full animate-pulse">Açık</span>
-          </div>
-          <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed">Çınarcık'ı anlatacak kalemleri arıyoruz. Sen de ekibe katıl!</p>
-        </div>
-        <div class="hidden md:flex flex-col gap-1.5 shrink-0">
-          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">🖊️ İsmin yazılarınla yayında</span>
-          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">⏱️ Kendi temponda, haftada bir</span>
-          <span class="text-[11px] text-emerald-200/90 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1">🤝 Deneyim şart değil</span>
-        </div>
-        <div class="flex items-center gap-3 shrink-0 sm:ml-2">
-          <span class="inline-flex items-center gap-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg group-hover:shadow-emerald-500/40 transition-all">Ekipte Yaz 🖋️</span>
-          <div class="flex items-center gap-2">
-              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
-                <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
-                  <circle cx="50" cy="32" r="16" fill="#27272a"/>
-                  <path d="M50 50c-18 0-30 12-33 30l-3 40h14l3-28c1-8 8-14 19-14s18 6 19 14l3 28h14l-3-40c-3-18-15-30-33-30z" fill="#27272a"/>
-                  <path d="M44 52l6 14 6-14-6-4z" fill="#fff"/>
-                  <path d="M50 66l-4 8 4 30 4-30z" fill="#52525b"/>
-                  <path d="M36 56l10 10-4 6-10-12z" fill="#3f3f46"/>
-                  <path d="M64 56l-10 10 4 6 10-12z" fill="#3f3f46"/>
-                </svg>
-                <span class="absolute bottom-1.5 left-0 right-0 text-center text-[10px] font-semibold text-zinc-600">Aday #1</span>
-              </div>
-              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-zinc-100 flex items-end justify-center group-hover:bg-white transition-colors">
-                <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
-                  <path d="M32 34c0-14 8-24 18-24s18 10 18 24c0 6-1 11-3 15l4 8c6 2 10 6 10 12v5H21v-5c0-6 4-10 10-12l4-8c-2-4-3-9-3-15z" fill="#27272a"/>
-                  <circle cx="50" cy="34" r="13" fill="#fff"/>
-                  <path d="M37 28c0-12 6-20 13-20s13 8 13 20c0 2 0 4-1 6-2-8-6-12-12-12s-10 4-12 12c-1-2-1-4-1-6z" fill="#27272a"/>
-                  <path d="M50 52c-16 0-27 11-30 28l-2 40h13l3-26c1-7 7-12 16-12s15 5 16 12l3 26h13l-2-40c-3-17-14-28-30-28z" fill="#27272a"/>
-                  <path d="M44 54l6 16 6-16-6-3z" fill="#fff"/>
-                  <path d="M40 58l10 12-3 5-9-10z" fill="#3f3f46"/>
-                  <path d="M60 58l-10 12 3 5 9-10z" fill="#3f3f46"/>
-                </svg>
-                <span class="absolute bottom-1.5 left-0 right-0 text-center text-[10px] font-semibold text-zinc-600">Aday #2</span>
-              </div>
-              <div class="relative rounded-lg overflow-hidden w-[90px] h-[110px] bg-emerald-50 flex items-end justify-center group-hover:bg-emerald-100 transition-colors">
-                <svg viewBox="0 0 100 120" class="w-full h-full" aria-hidden="true">
-                  <circle cx="50" cy="32" r="16" fill="#6ee7b7" opacity="0.5"/>
-                  <path d="M50 50c-18 0-30 12-33 30l-3 40h14l3-28c1-8 8-14 19-14s18 6 19 14l3 28h14l-3-40c-3-18-15-30-33-30z" fill="#6ee7b7" opacity="0.5"/>
-                  <circle cx="78" cy="86" r="16" fill="#059669"/>
-                  <path d="M78 78v16M70 86h16" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
-                </svg>
-                <span class="absolute bottom-1.5 left-0 right-0 text-center text-[10px] font-semibold text-emerald-700 font-bold">Sen ol →</span>
-              </div>
+      <div class="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-r from-zinc-900 via-zinc-900 to-emerald-950/40 p-5 sm:p-6 hover:border-emerald-400/60 hover:shadow-[0_0_35px_rgba(16,185,129,0.18)] transition-all duration-300">
+        <!-- Arka plan yumuşak ışıklar -->
+        <div class="pointer-events-none absolute -top-16 -left-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        <div class="pointer-events-none absolute -bottom-16 -right-16 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_0%,rgba(16,185,129,0.12),transparent)]"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <!-- Sol Kısım: Başlık, Açıklama ve Özellik Rozetleri -->
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2.5 mb-2">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-base shadow-sm">
+                ✍️
+              </span>
+              <h3 class="text-white font-extrabold text-base sm:text-lg tracking-tight">Yazar Aranıyor</h3>
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Açık Kontenjan
+              </span>
+            </div>
+
+            <p class="text-zinc-300 text-xs sm:text-sm leading-relaxed max-w-xl">
+              Çınarcık'ı anlatacak kalemleri arıyoruz. Sen de ekibe katıl!
+            </p>
+
+            <!-- Özellik Rozetleri -->
+            <div class="flex flex-wrap items-center gap-2 mt-3.5">
+              <span class="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-zinc-300 bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-2.5 py-1 backdrop-blur-sm">
+                <span class="text-emerald-400">🖋️</span> İsmin yazılarınla yayında
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-zinc-300 bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-2.5 py-1 backdrop-blur-sm">
+                <span class="text-emerald-400">⏱️</span> Kendi temponda, haftada bir
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-zinc-300 bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-2.5 py-1 backdrop-blur-sm">
+                <span class="text-emerald-400">🤝</span> Deneyim şart değil
+              </span>
             </div>
           </div>
+
+          <!-- Sağ Kısım: Aday Kartları ve Ekipte Yaz Butonu -->
+          <div class="flex flex-col sm:flex-row items-center gap-4 shrink-0 pt-3 lg:pt-0 border-t border-zinc-800/80 lg:border-t-0">
+            <!-- 3'lü Aday Kartları -->
+            <div class="flex items-center gap-2.5">
+              <!-- Aday #1 -->
+              <div class="relative rounded-xl w-[72px] sm:w-[80px] h-[92px] sm:h-[98px] bg-zinc-900/90 border border-zinc-800 flex flex-col items-center justify-center p-2 group-hover:border-zinc-700 transition-colors shadow-sm">
+                <div class="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400 mb-1.5 shadow-inner">
+                  <svg class="w-5 h-5 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                </div>
+                <span class="text-[10px] font-semibold text-zinc-400">Aday #1</span>
+                <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+              </div>
+
+              <!-- Aday #2 -->
+              <div class="relative rounded-xl w-[72px] sm:w-[80px] h-[92px] sm:h-[98px] bg-zinc-900/90 border border-zinc-800 flex flex-col items-center justify-center p-2 group-hover:border-zinc-700 transition-colors shadow-sm">
+                <div class="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400 mb-1.5 shadow-inner">
+                  <svg class="w-5 h-5 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C9.24 2 7 4.24 7 7c0 2.45 1.76 4.49 4.1 4.92C7.8 12.44 5 15.39 5 19v1h14v-1c0-3.61-2.8-6.56-6.1-7.08C15.24 11.49 17 9.45 17 7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>
+                  </svg>
+                </div>
+                <span class="text-[10px] font-semibold text-zinc-400">Aday #2</span>
+                <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+              </div>
+
+              <!-- Sen Ol Kartı (Öne Çıkan) -->
+              <div class="relative rounded-xl w-[72px] sm:w-[80px] h-[92px] sm:h-[98px] bg-gradient-to-b from-emerald-950/60 to-zinc-900 border-2 border-dashed border-emerald-500/60 flex flex-col items-center justify-center p-2 group-hover:border-emerald-400 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 font-extrabold text-lg mb-1.5 shadow-[0_0_12px_rgba(16,185,129,0.35)] group-hover:scale-110 transition-transform">
+                  +
+                </div>
+                <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 tracking-tight">
+                  Sen Ol <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+                </span>
+                <span class="absolute top-1.5 right-1.5 flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Buton -->
+            <span class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 group-hover:from-emerald-400 group-hover:to-teal-400 text-zinc-950 font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-lg shadow-emerald-500/25 group-hover:shadow-emerald-500/40 group-hover:scale-[1.02] transition-all whitespace-nowrap w-full sm:w-auto">
+              Ekipte Yaz
+              <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+              </svg>
+            </span>
+          </div>
         </div>
-      </a>
+      </div>
+    </a>
 
     <!-- 3. KATEGORİ FİLTRE BAR -->
     <div class="mb-8 overflow-x-auto">
@@ -183,120 +224,154 @@
     </div>
 
     <!-- 4. ANA İÇERİK -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-      <!-- A) Sol Kolon (8 Kolon - Haber Akışı) -->
-      <div class="lg:col-span-8">
-        <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span class="w-1 h-5 bg-red-600 rounded"></span>
-          <%= t('currentNews') %>
-        </h2>
-
-        <% const allNews = headlines.concat(regularNews); %>
-        <% if (allNews.length === 0) { %>
-          <div class="text-center py-12 text-zinc-500">
-            <p class="text-lg"><%= t('noNews') %></p>
-          </div>
-        <% } else { %>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <% allNews.slice(0, 12).forEach(n => { %>
-              <a href="/haber/<%= n.slug || n.id %>" class="group block news-card-item" data-category="<%= n.category || 'Gündem' %>">
-                <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg hover:border-zinc-700 transition-all h-full flex flex-col">
-                  <div class="relative h-48 overflow-hidden bg-zinc-900/60">
-                    <% const img = n.main_image_url || '/img/fallback.webp'; %>
-                    <img src="<%= img %>" alt="<%= n.title %>" loading="lazy" decoding="async" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300">
-                    <div class="absolute top-2 left-2 flex items-center gap-1.5">
-                      <span class="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
-                        <%= n.badge_text || t('newsBadge') %>
-                      </span>
-                      <% if (n.category) { %>
-                      <span class="bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
-                        <%= n.category %>
-                      </span>
-                      <% } %>
-                    </div>
-                  </div>
-                  <div class="p-4 flex-1 flex flex-col">
-                    <span class="text-xs text-zinc-500 mb-2">
-                      <%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long' }) %>
-                    </span>
-                    <h3 class="text-zinc-100 font-bold line-clamp-2 group-hover:text-emerald-400 transition-colors mb-2 flex-1">
-                      <%= n.title %>
-                    </h3>
-                    <% if (n.summary) { %>
-                      <p class="text-zinc-400 text-sm line-clamp-2">
-                        <%= n.summary %>
-                      </p>
-                    <% } %>
-                  </div>
-                </div>
-              </a>
-            <% }) %>
-          </div>
-        <% } %>
-
-      </div>
-
-      <!-- B) Sağ Kolon (4 Kolon - Sidebar) -->
-      <div id="news-sidebar" class="lg:col-span-4 space-y-8 flex flex-col">
-
-        <!-- 1. 🔥 En Çok Okunanlar -->
-        <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 shadow-lg">
-          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <span class="text-red-500">🔥</span> <%= t('mostRead') %>
-          </h3>
-          <div class="space-y-4">
-            <% mostRead.forEach((n, i) => { %>
-              <a href="/haber/<%= n.slug || n.id %>" class="flex items-start gap-3 group">
-                <div class="relative flex-shrink-0 w-28 h-20 rounded-lg overflow-hidden bg-zinc-800">
-                  <img src="<%= n.main_image_url || '/img/fallback.webp' %>" alt="<%= n.title %>" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
-                  <span class="absolute top-1 left-1 w-5 h-5 rounded-md bg-red-600 text-white text-[11px] font-black flex items-center justify-center"><%= i + 1 %></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-zinc-200 group-hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm"><%= n.title %></div>
-                  <div class="flex items-center gap-2 text-xs text-zinc-500 mt-1">
-                    <span>👁️ <%= n.views_count || 0 %></span>
-                    <span>•</span>
-                    <span><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short' }) %></span>
-                  </div>
-                </div>
-              </a>
-            <% }) %>
-          </div>
-        </div>
-
-        <% if (otherNews.length) { %>
-        <!-- 2. 📰 Diğer Haberler -->
-        <div class="bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 shadow-lg flex-1 flex flex-col">
-          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <span class="text-emerald-400">📰</span> <%= t('catOtherNews') %>
-          </h3>
-          <div class="space-y-4">
-            <% otherNews.forEach((n, i) => { %>
-              <a href="/haber/<%= n.slug || n.id %>" class="flex items-start gap-3 group">
-                <div class="relative flex-shrink-0 w-32 h-24 rounded-lg overflow-hidden bg-zinc-800">
-                  <img src="<%= n.main_image_url || '/img/fallback.webp' %>" alt="<%= n.title %>" loading="lazy" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
-                  <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-zinc-950/80 text-zinc-100 text-[11px] font-black"><%= i + 6 %></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-zinc-200 group-hover:text-emerald-400 transition-colors font-medium line-clamp-2 text-sm"><%= n.title %></div>
-                  <div class="flex items-center gap-2 text-xs text-zinc-500 mt-1">
-                    <span>👁️ <%= n.views_count || 0 %></span>
-                    <span>•</span>
-                    <span><%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short' }) %></span>
-                  </div>
-                </div>
-              </a>
-            <% }) %>
-          </div>
-          <div class="mt-auto pt-4 text-center border-t border-zinc-800/60">
-            <a href="/haberler" class="text-xs font-medium text-emerald-400/90 hover:text-emerald-300 transition-colors"><%= t('allNews') %></a>
-          </div>
-        </div>
-        <% } %>
-
-      </div>
+    <div class="mb-4">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="w-1 h-5 bg-red-600 rounded"></span>
+        <%= t('currentNews') %>
+      </h2>
     </div>
+
+    <% const allNews = headlines.concat(regularNews); %>
+    <% if (allNews.length === 0) { %>
+      <div class="text-center py-12 text-zinc-500">
+        <p class="text-lg"><%= t('noNews') %></p>
+      </div>
+    <% } else { %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <% allNews.slice(0, 3).forEach(n => { %>
+          <a href="/haber/<%= n.slug || n.id %>" class="group block news-card-item" data-category="<%= n.category || 'Gündem' %>">
+            <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg hover:border-zinc-700 transition-all h-full flex flex-col">
+              <div class="relative h-48 overflow-hidden bg-zinc-900/60">
+                <% const img = n.main_image_url || '/img/fallback.webp'; %>
+                <img src="<%= img %>" alt="<%= n.title %>" loading="lazy" decoding="async" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute top-2 left-2 flex items-center gap-1.5">
+                  <span class="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                    <%= n.badge_text || t('newsBadge') %>
+                  </span>
+                  <% if (n.category) { %>
+                  <span class="bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                    <%= n.category %>
+                  </span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="p-4 flex-1 flex flex-col">
+                <span class="text-xs text-zinc-500 mb-2">
+                  <%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long' }) %>
+                </span>
+                <h3 class="text-zinc-100 font-bold line-clamp-2 group-hover:text-emerald-400 transition-colors mb-2 flex-1">
+                  <%= n.title %>
+                </h3>
+                <% if (n.summary) { %>
+                  <p class="text-zinc-400 text-sm line-clamp-2">
+                    <%= n.summary %>
+                  </p>
+                <% } %>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+
+        <% if (mostRead && mostRead.length) { %>
+          <div class="most-read-box bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl p-5 shadow-lg flex flex-col justify-between h-full">
+            <h3 class="text-base font-bold text-white mb-2 pb-2.5 border-b border-zinc-800/80 flex items-center gap-2">
+              <span class="text-red-500">🔥</span> <%= t('mostRead') %>
+            </h3>
+            <div class="flex-1 flex flex-col justify-between divide-y divide-zinc-800/60">
+              <% mostRead.forEach((n, i) => { %>
+                <a href="/haber/<%= n.slug || n.id %>" class="flex items-start gap-2.5 group py-2 transition-colors">
+                  <span class="w-5 h-5 rounded-md bg-red-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5 shadow-sm"><%= i + 1 %></span>
+                  <span class="text-zinc-200 group-hover:text-red-400 transition-colors font-medium text-xs sm:text-[13px] line-clamp-2 leading-snug flex-1"><%= n.title %></span>
+                  <span class="inline-flex items-center gap-1 text-[11px] text-zinc-400 bg-zinc-800/80 border border-zinc-700/50 px-1.5 py-0.5 rounded-md shrink-0 mt-0.5 font-medium whitespace-nowrap">
+                    <span class="text-[10px]">👁️</span> <%= (n.views_count || 0).toLocaleString(t('dateLocale')) %>
+                  </span>
+                </a>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <% allNews.slice(3).forEach((n, idx) => { %>
+          <a href="/haber/<%= n.slug || n.id %>" class="group block news-card-item" data-category="<%= n.category || 'Gündem' %>" <%- idx >= 4 ? 'style="display:none;"' : '' %>>
+            <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg hover:border-zinc-700 transition-all h-full flex flex-col">
+              <div class="relative h-48 overflow-hidden bg-zinc-900/60">
+                <% const img = n.main_image_url || '/img/fallback.webp'; %>
+                <img src="<%= img %>" alt="<%= n.title %>" loading="lazy" decoding="async" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute top-2 left-2 flex items-center gap-1.5">
+                  <span class="bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                    <%= n.badge_text || t('newsBadge') %>
+                  </span>
+                  <% if (n.category) { %>
+                  <span class="bg-emerald-600 text-white font-black text-[10px] px-2 py-0.5 rounded">
+                    <%= n.category %>
+                  </span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="p-4 flex-1 flex flex-col">
+                <span class="text-xs text-zinc-500 mb-2">
+                  <%= new Date(n.created_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'long' }) %>
+                </span>
+                <h3 class="text-zinc-100 font-bold line-clamp-2 group-hover:text-emerald-400 transition-colors mb-2 flex-1">
+                  <%= n.title %>
+                </h3>
+                <% if (n.summary) { %>
+                  <p class="text-zinc-400 text-sm line-clamp-2">
+                    <%= n.summary %>
+                  </p>
+                <% } %>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+
+      </div>
+
+      <%
+        const safeLang = typeof lang !== 'undefined' ? lang : 'tr';
+        const loadMoreTxt = (typeof t === 'function' && t('loadMoreNews') && t('loadMoreNews') !== 'loadMoreNews')
+          ? t('loadMoreNews')
+          : ({ tr: 'Daha Fazla Haber Göster', en: 'Load More News', ru: 'Показать больше новостей', ar: 'عرض المزيد من الأخبار', de: 'Mehr Nachrichten anzeigen' })[safeLang] || 'Daha Fazla Haber Göster';
+        const allLoadedTxt = (typeof t === 'function' && t('allNewsLoaded') && t('allNewsLoaded') !== 'allNewsLoaded')
+          ? t('allNewsLoaded')
+          : ({ tr: 'Tüm güncel haberler görüntülendi', en: 'All latest news displayed', ru: 'Все новости показаны', ar: 'تم عرض جميع الأخبار', de: 'Alle aktuellen Nachrichten angezeigt' })[safeLang] || 'Tüm güncel haberler görüntülendi';
+        const noCatTxt = (typeof t === 'function' && t('noNewsInCategory') && t('noNewsInCategory') !== 'noNewsInCategory')
+          ? t('noNewsInCategory')
+          : ({ tr: 'Bu kategoride henüz haber bulunmuyor.', en: 'No news in this category yet.', ru: 'В этой категории пока нет новостей.', ar: 'لا توجد أخبار في هذا القسم بعد.', de: 'In dieser Kategorie gibt es noch keine Nachrichten.' })[safeLang] || 'Bu kategoride henüz haber bulunmuyor.';
+        const noCatSubTxt = ({ tr: 'Farklı bir kategori seçerek diğer haberleri inceleyebilirsiniz.', en: 'You can check other news by selecting a different category.', ru: 'Вы можете просмотреть другие новости, выбрав другую категорию.', ar: 'يمكنك الاطلاع على الأخبار الأخرى باختيار قسم آخر.', de: 'Sie können andere Nachrichten ansehen, indem Sie eine andere Kategorie wählen.' })[safeLang] || 'Farklı bir kategori seçerek diğer haberleri inceleyebilirsiniz.';
+      %>
+
+      <!-- Kategori Boş Durum Uyarısı (Sayfa diline göre otomatik Türkçe/İngilizce) -->
+      <div id="noCatNewsMessage" class="hidden text-center py-14 px-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/80 my-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-800/80 text-2xl mb-3 text-zinc-400">
+          📰
+        </div>
+        <h3 class="text-base font-semibold text-zinc-200 mb-1"><%= noCatTxt %></h3>
+        <p class="text-xs text-zinc-500"><%= noCatSubTxt %></p>
+      </div>
+
+      <% if (allNews.length > 7) { %>
+        <!-- Daha Fazla Haber Butonu ve Bitiş Bilgilendirmesi -->
+        <div class="flex flex-col items-center justify-center mt-12 mb-8 gap-3" id="loadMoreContainer">
+          <button type="button" id="loadMoreBtn"
+            class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:via-rose-500 hover:to-red-600 shadow-[0_4px_20px_rgba(220,38,38,0.35)] hover:shadow-[0_6px_28px_rgba(220,38,38,0.5)] border border-red-400/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 cursor-pointer select-none">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full bg-black/20 text-white text-xs transition-transform duration-300 group-hover:translate-y-0.5">
+              ↓
+            </span>
+            <span class="tracking-wide"><%= loadMoreTxt %></span>
+            <span class="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm group-hover:bg-white group-hover:text-red-600 transition-colors">
+              +3
+            </span>
+          </button>
+          
+          <div id="allNewsLoadedNotice" class="hidden items-center gap-2 px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-400">
+            <span class="text-emerald-400 font-bold">✓</span>
+            <span><%= allLoadedTxt %></span>
+          </div>
+        </div>
+      <% } %>
+    <% } %>
 
   </div>
 
@@ -402,30 +477,90 @@
 <script>
 (function() {
   var filterBar = document.getElementById('categoryFilter');
-  if (!filterBar) return;
-  var btns = filterBar.querySelectorAll('.cat-btn');
-  var cards = document.querySelectorAll('.news-card-item');
+  var loadMoreBtn = document.getElementById('loadMoreBtn');
+  var loadMoreContainer = document.getElementById('loadMoreContainer');
+  var allLoadedEl = document.getElementById('allNewsLoadedNotice');
+  var noCatEl = document.getElementById('noCatNewsMessage');
+  var cards = Array.from(document.querySelectorAll('.news-card-item'));
+  if (cards.length === 0) return;
 
-  btns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var cat = btn.getAttribute('data-cat');
+  var currentCat = 'Tümü';
+  var visibleLimit = 7; // İlk açılışta tam 7 haber (3 üst satır + 4 alt satır)
 
-      btns.forEach(function(b) {
-        b.classList.remove('bg-red-600', 'text-white', 'font-bold');
-        b.classList.add('bg-zinc-900/90', 'text-zinc-400');
-      });
-      btn.classList.remove('bg-zinc-900/90', 'text-zinc-400');
-      btn.classList.add('bg-red-600', 'text-white', 'font-bold');
+  function updateDisplay() {
+    var matching = cards.filter(function(card) {
+      return currentCat === 'Tümü' || card.getAttribute('data-category') === currentCat;
+    });
 
-      cards.forEach(function(card) {
-        if (cat === 'Tümü' || card.getAttribute('data-category') === cat) {
-          card.style.display = '';
-        } else {
-          card.style.display = 'none';
+    cards.forEach(function(card) {
+      var matchIdx = matching.indexOf(card);
+      if (matchIdx !== -1 && matchIdx < visibleLimit) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Kategoriye ait haber yoksa uyarıyı göster
+    if (noCatEl) {
+      if (matching.length === 0) {
+        noCatEl.classList.remove('hidden');
+      } else {
+        noCatEl.classList.add('hidden');
+      }
+    }
+
+    // Load more butonunu ve bitiş uyarısını yönet
+    if (loadMoreBtn && loadMoreContainer) {
+      if (matching.length === 0) {
+        loadMoreContainer.style.display = 'none';
+      } else if (matching.length > visibleLimit) {
+        loadMoreContainer.style.display = '';
+        loadMoreBtn.style.display = '';
+        if (allLoadedEl) {
+          allLoadedEl.classList.add('hidden');
+          allLoadedEl.style.display = 'none';
         }
+      } else {
+        loadMoreContainer.style.display = '';
+        loadMoreBtn.style.display = 'none';
+        if (allLoadedEl) {
+          allLoadedEl.classList.remove('hidden');
+          allLoadedEl.style.display = 'inline-flex';
+        }
+      }
+    }
+  }
+
+  // Kategori filtreleme
+  if (filterBar) {
+    var btns = filterBar.querySelectorAll('.cat-btn');
+    btns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        currentCat = btn.getAttribute('data-cat') || 'Tümü';
+
+        btns.forEach(function(b) {
+          b.classList.remove('bg-red-600', 'text-white', 'font-bold');
+          b.classList.add('bg-zinc-900/90', 'text-zinc-400');
+        });
+        btn.classList.remove('bg-zinc-900/90', 'text-zinc-400');
+        btn.classList.add('bg-red-600', 'text-white', 'font-bold');
+
+        visibleLimit = 7; // Kategori değiştiğinde tekrar 7 haberden başla
+        updateDisplay();
       });
     });
-  });
+  }
+
+  // Daha fazla haber yükle (3'er 3'er aç)
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', function() {
+      visibleLimit += 3;
+      updateDisplay();
+    });
+  }
+
+  updateDisplay();
 })();
 </script>
 

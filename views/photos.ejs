@@ -1,11 +1,6 @@
 <% layout('partials/layout') %>
 <% locals.pageTitle = t('photosTitle') %>
 
-<div class="page-banner">
-  <h1>📷 <%= t('photosTitle') %></h1>
-  <p><%= t('photosSub') %></p>
-</div>
-
 <style>
   #photo-captcha-img { cursor: pointer; }
   #photo-modal.show { display: flex; }
@@ -25,19 +20,20 @@
   html.light .photo-share:hover { background: #e2e8f0 !important; color: #0f172a !important; }
 </style>
 
-<section class="section">
+<section class="section pt-6 sm:pt-8">
   <div class="max-w-6xl mx-auto">
-    <% if (sent) { %>
-      <div class="bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-sm rounded-xl px-4 py-3 mb-5"><%= t('photosReceived') %></div>
-    <% } %>
-
-    <div class="flex items-center justify-end mb-6">
+    <div class="section-header">
+      <h2>📷 <%= t('photosTitle') %></h2>
       <button type="button" id="open-photo-modal-btn"
         class="photo-flash inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-950/40">
         <span>📷</span>
         <span><%= t('photosShareTitle') %></span>
       </button>
     </div>
+
+    <% if (sent) { %>
+      <div class="bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-sm rounded-xl px-4 py-3 mb-5"><%= t('photosReceived') %></div>
+    <% } %>
 
     <% if (photos && photos.length) { %>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -153,20 +149,8 @@
         <p class="text-xs text-zinc-500 mt-1"><%= t('photoHint') %></p>
       </div>
 
-      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-        <label class="block text-zinc-400 text-sm mb-2" for="captcha"><%= t('securityCode') %></label>
-        <div class="flex items-center gap-3 flex-wrap">
-          <img id="photo-captcha-img" src="<%= captchaImage %>" alt="<%= t('securityCodeAlt') %>"
-            title="<%= t('refresh') %>"
-            class="h-[54px] w-[170px] rounded-lg border border-zinc-800 select-none cursor-pointer">
-          <input id="captcha" type="text" name="captcha" required maxlength="5" autocomplete="off"
-            inputmode="text" autocapitalize="characters" spellcheck="false"
-            placeholder="<%= t('captchaPlaceholder') %>"
-            class="w-40 bg-zinc-900 text-white border border-zinc-800 rounded-xl px-4 py-3 text-sm uppercase tracking-widest placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors">
-          <button type="button" id="photo-captcha-refresh"
-            class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3.5 py-3 rounded-xl text-xs font-bold transition cursor-pointer"><%= t('refresh') %></button>
-        </div>
-        <p class="text-zinc-600 text-xs mt-2"><%= t('captchaNote') %></p>
+      <div class="pt-1">
+        <div class="portal-recaptcha" id="photo-recaptcha"></div>
       </div>
 
       <button type="submit" id="photo-submit-btn"
@@ -202,8 +186,7 @@
   if (!modal || !form) return;
 
   function refreshCaptcha() {
-    if (captchaImg) captchaImg.src = '/captcha.svg?t=' + Date.now();
-    if (captchaInput) captchaInput.value = '';
+    if (window.PortalRecaptcha) window.PortalRecaptcha.reset(form);
   }
 
   function showAlert(msg, isSuccess) {
