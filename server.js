@@ -987,8 +987,8 @@ app.get('/ulasim', (req, res) => {
 
 app.get('/uygulama', (req, res) => {
   res.render('uygulama', {
-    pageTitle: 'Uygulamayı İndir — Marmaraİncisi',
-    metaDescription: 'Marmaraİncisi uygulamasını ücretsiz indirin: Çınarcık seferleri, nöbetçi eczane, kesintiler ve haberler telefonunuzun ana ekranında.'
+    pageTitle: 'Uygulama Olarak İndir — Marmaraİncisi',
+    metaDescription: 'Marmaraİncisi uygulamasını telefonunuza indirin: Çınarcık seferleri, nöbetçi eczane, kesintiler ve haberler ana ekranınızda.'
   });
 });
 
