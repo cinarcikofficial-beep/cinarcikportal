@@ -1,186 +1,192 @@
 <% layout('partials/layout') %>
 
-<section class="section pt-6 sm:pt-8 max-w-5xl mx-auto px-4">
+<section class="section pt-4 sm:pt-8 max-w-5xl mx-auto px-3 sm:px-4">
   <!-- 🌟 Ana Hero Kartı -->
-  <div class="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-zinc-900 via-zinc-950 to-emerald-950/40 p-6 sm:p-10 shadow-2xl text-center">
+  <div class="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-zinc-900 via-zinc-950 to-emerald-950/40 p-5 sm:p-8 md:p-10 shadow-2xl text-center">
     <!-- Dekoratif Işık Efekti -->
-    <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-    <div class="relative z-10 max-w-2xl mx-auto">
-      <div class="inline-flex p-2 rounded-3xl bg-zinc-900/90 border border-emerald-500/30 shadow-xl shadow-emerald-500/10 mb-5">
-        <img src="/icons/icon-192.png" alt="Marmaraİncisi Logo" width="84" height="84" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover">
+    <div class="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
+      <!-- 🎯 Ana Sayfadaki Sol Üst Dairesel Logo (Ortalanmış & Parlayan Zümrüt Halkalı) -->
+      <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-2 sm:border-4 border-white/30 ring-4 ring-emerald-500/40 shadow-2xl shadow-black/70 bg-white mb-5 sm:mb-6 flex items-center justify-center shrink-0 transition-transform hover:scale-105 duration-300">
+        <img src="/img/logo-circle.webp" alt="Marmaraİncisi Logo" width="128" height="128" class="w-full h-full object-cover">
       </div>
 
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold mb-3">
-        <span>✨</span>
-        <span>Hızlı · Ücretsiz · Mağaza Hesabı Gerekmez</span>
+      <!-- Bilgi Rozeti -->
+      <div class="mb-3.5">
+        <span class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] sm:text-xs font-semibold shadow-sm">
+          <span>✨</span>
+          <span>Hızlı · Ücretsiz · Mağaza Hesabı Gerekmez</span>
+        </span>
       </div>
 
-      <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+      <!-- Başlık -->
+      <h1 class="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-3">
         Marmaraİncisi
       </h1>
 
-      <p class="text-zinc-300 text-sm sm:text-base leading-relaxed mb-8">
+      <!-- Açıklama -->
+      <p class="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-xl mx-auto mb-6 sm:mb-8 px-2">
         Çınarcık'a dair tüm canlı vapur &amp; otobüs sefer saatleri, nöbetçi eczaneler, elektrik/su kesintileri ve son dakika haberleri tek dokunuşla telefonunuzun ana ekranında.
       </p>
 
-      <!-- Aksiyon Butonları -->
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-        <button type="button" id="app-install-btn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-base rounded-2xl px-8 py-4 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]">
-          <span class="text-xl">📲</span>
+      <!-- Aksiyon Butonları (Mobilde Tam Genişlik, Masaüstünde Şık Boyut) -->
+      <div class="w-full max-w-md mx-auto flex flex-col sm:flex-row items-center justify-center gap-3">
+        <button type="button" id="app-install-btn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white font-black text-sm sm:text-base rounded-2xl px-7 sm:px-9 py-3.5 sm:py-4 shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <span class="text-lg sm:text-xl">📲</span>
           <span>Uygulama Olarak İndir</span>
         </button>
 
-        <div id="app-installed" class="hidden inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold rounded-2xl px-6 py-4 text-sm">
+        <div id="app-installed" class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold rounded-2xl px-6 py-3.5 text-xs sm:text-sm">
           <span>✅</span>
           <span>Uygulama bu cihazda zaten yüklü</span>
         </div>
       </div>
 
-      <p id="app-install-hint" class="text-xs text-zinc-400 mt-3.5 flex items-center justify-center gap-1.5">
+      <p id="app-install-hint" class="text-[11px] sm:text-xs text-zinc-400 mt-3.5 flex items-center justify-center gap-1.5 px-2">
         <span>💡</span>
         <span>Cihazınıza uygun yükleme adımları aşağıda yer almaktadır.</span>
       </p>
     </div>
 
-    <!-- 4 Ana Özellik Izgarası -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-10 pt-8 border-t border-zinc-800/80 text-left">
-      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 transition-colors hover:border-emerald-500/30">
-        <span class="text-2xl block mb-2">⛴️</span>
-        <h2 class="text-white font-bold text-sm">Canlı Sefer Saatleri</h2>
-        <p class="text-zinc-400 text-xs mt-1 leading-snug">İDO, Turyol ve belediye otobüslerinin sıradaki kalkış saatleri.</p>
+    <!-- 4 Ana Özellik Izgarası (Mobilde 2'li, Masaüstünde 4'lü) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-zinc-800/80 text-left">
+      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors hover:border-emerald-500/30">
+        <span class="text-xl sm:text-2xl block mb-1.5 sm:mb-2">⛴️</span>
+        <h2 class="text-white font-bold text-xs sm:text-sm">Canlı Seferler</h2>
+        <p class="text-zinc-400 text-[11px] sm:text-xs mt-1 leading-snug">İDO, Turyol ve otobüs sıradaki kalkış saatleri.</p>
       </div>
 
-      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 transition-colors hover:border-emerald-500/30">
-        <span class="text-2xl block mb-2">💊</span>
-        <h2 class="text-white font-bold text-sm">Nöbetçi Eczane</h2>
-        <p class="text-zinc-400 text-xs mt-1 leading-snug">Bugünün nöbetçi eczanesi, telefon numarası ve tek tıkla yol tarifi.</p>
+      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors hover:border-emerald-500/30">
+        <span class="text-xl sm:text-2xl block mb-1.5 sm:mb-2">💊</span>
+        <h2 class="text-white font-bold text-xs sm:text-sm">Nöbetçi Eczane</h2>
+        <p class="text-zinc-400 text-[11px] sm:text-xs mt-1 leading-snug">Günün nöbetçi eczanesi ve tek tıkla yol tarifi.</p>
       </div>
 
-      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 transition-colors hover:border-emerald-500/30">
-        <span class="text-2xl block mb-2">⚡</span>
-        <h2 class="text-white font-bold text-sm">Kesinti &amp; Uyarılar</h2>
-        <p class="text-zinc-400 text-xs mt-1 leading-snug">UEDAŞ elektrik ve su kesintileri anlık olarak bildirim bandında.</p>
+      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors hover:border-emerald-500/30">
+        <span class="text-xl sm:text-2xl block mb-1.5 sm:mb-2">⚡</span>
+        <h2 class="text-white font-bold text-xs sm:text-sm">Kesinti &amp; Uyarı</h2>
+        <p class="text-zinc-400 text-[11px] sm:text-xs mt-1 leading-snug">UEDAŞ elektrik ve su kesintileri anlık bildirimde.</p>
       </div>
 
-      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 transition-colors hover:border-emerald-500/30">
-        <span class="text-2xl block mb-2">📰</span>
-        <h2 class="text-white font-bold text-sm">Haber &amp; Yaşam</h2>
-        <p class="text-zinc-400 text-xs mt-1 leading-snug">Çınarcık'tan en güncel gelişmeler, duyurular ve etkinlikler.</p>
+      <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3.5 sm:p-4 transition-colors hover:border-emerald-500/30">
+        <span class="text-xl sm:text-2xl block mb-1.5 sm:mb-2">📰</span>
+        <h2 class="text-white font-bold text-xs sm:text-sm">Haber &amp; Yaşam</h2>
+        <p class="text-zinc-400 text-[11px] sm:text-xs mt-1 leading-snug">Çınarcık'tan en güncel gelişmeler ve duyurular.</p>
       </div>
     </div>
   </div>
 
   <!-- 📖 Nasıl Yüklenir Bölümü -->
-  <div class="section-header mt-12 mb-6">
+  <div class="section-header mt-10 sm:mt-12 mb-4 sm:mb-6">
     <h2>📖 Cihazınıza Nasıl Yüklenir?</h2>
   </div>
 
-  <div class="grid md:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
     <!-- Android -->
-    <div id="guide-android" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between transition-all">
+    <div id="guide-android" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all">
       <div>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-white font-black text-base flex items-center gap-2">
-            <span class="text-xl">🤖</span> Android
+        <div class="flex items-center justify-between mb-3.5 sm:mb-4">
+          <h3 class="text-white font-black text-sm sm:text-base flex items-center gap-2">
+            <span class="text-lg sm:text-xl">🤖</span> Android
           </h3>
-          <span class="text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Chrome / Samsung</span>
+          <span class="text-[10px] sm:text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Chrome / Samsung</span>
         </div>
-        <ol class="space-y-3 text-sm text-zinc-300 list-decimal list-inside">
+        <ol class="space-y-2.5 sm:space-y-3 text-xs sm:text-sm text-zinc-300 list-decimal list-inside leading-relaxed">
           <li>Siteyi <b class="text-white">Chrome</b> ile açın.</li>
           <li>Yukarıdaki <b class="text-emerald-400">📲 Uygulama Olarak İndir</b> butonuna dokunun.</li>
-          <li>Açılan onay kutusunda <b class="text-white">Yükle</b> seçeneğini onaylayın.</li>
+          <li>Açılan kutuda <b class="text-white">Yükle</b> seçeneğini onaylayın.</li>
         </ol>
       </div>
-      <p class="text-xs text-zinc-500 mt-5 pt-3 border-t border-zinc-800/60">
+      <p class="text-[11px] sm:text-xs text-zinc-500 mt-4 sm:mt-5 pt-3 border-t border-zinc-800/60">
         Alternatif: Sağ üstteki <b>⋮</b> menüsünden <b>"Uygulamayı yükle"</b>ye dokunabilirsiniz.
       </p>
     </div>
 
     <!-- iPhone / iPad -->
-    <div id="guide-ios" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between transition-all">
+    <div id="guide-ios" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all">
       <div>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-white font-black text-base flex items-center gap-2">
-            <span class="text-xl">🍎</span> iPhone &amp; iPad
+        <div class="flex items-center justify-between mb-3.5 sm:mb-4">
+          <h3 class="text-white font-black text-sm sm:text-base flex items-center gap-2">
+            <span class="text-lg sm:text-xl">🍎</span> iPhone &amp; iPad
           </h3>
-          <span class="text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Safari</span>
+          <span class="text-[10px] sm:text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Safari</span>
         </div>
-        <ol class="space-y-3 text-sm text-zinc-300 list-decimal list-inside">
+        <ol class="space-y-2.5 sm:space-y-3 text-xs sm:text-sm text-zinc-300 list-decimal list-inside leading-relaxed">
           <li>Siteyi <b class="text-white">Safari</b> tarayıcısında açın.</li>
           <li>Ekranın altındaki <b class="text-white">Paylaş ⬆️</b> simgesine dokunun.</li>
-          <li>Menüyü aşağı kaydırıp <b class="text-white">"Ana Ekrana Ekle"</b> seçeneğini seçin.</li>
+          <li>Menüyü aşağı kaydırıp <b class="text-white">"Ana Ekrana Ekle"</b>yi seçin.</li>
           <li>Sağ üst köşedeki <b class="text-emerald-400">Ekle</b> butonuna dokunun.</li>
         </ol>
       </div>
-      <p class="text-xs text-zinc-500 mt-5 pt-3 border-t border-zinc-800/60">
+      <p class="text-[11px] sm:text-xs text-zinc-500 mt-4 sm:mt-5 pt-3 border-t border-zinc-800/60">
         Not: Apple gereği bu işlem yalnızca Safari üzerinden yapılabilir.
       </p>
     </div>
 
     <!-- Bilgisayar -->
-    <div id="guide-desktop" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between transition-all">
+    <div id="guide-desktop" class="app-guide bg-zinc-900 border border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all">
       <div>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-white font-black text-base flex items-center gap-2">
-            <span class="text-xl">💻</span> Bilgisayar
+        <div class="flex items-center justify-between mb-3.5 sm:mb-4">
+          <h3 class="text-white font-black text-sm sm:text-base flex items-center gap-2">
+            <span class="text-lg sm:text-xl">💻</span> Bilgisayar
           </h3>
-          <span class="text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Chrome / Edge</span>
+          <span class="text-[10px] sm:text-[11px] text-zinc-500 font-semibold bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">Chrome / Edge</span>
         </div>
-        <ol class="space-y-3 text-sm text-zinc-300 list-decimal list-inside">
+        <ol class="space-y-2.5 sm:space-y-3 text-xs sm:text-sm text-zinc-300 list-decimal list-inside leading-relaxed">
           <li>Siteyi <b class="text-white">Chrome</b> veya <b class="text-white">Edge</b> ile açın.</li>
           <li>Adres çubuğunun en sağındaki <b class="text-white">⊕ Yükle</b> simgesine tıklayın.</li>
           <li>Masaüstünüzde ayrı bir pencere olarak çalışmaya başlar.</li>
         </ol>
       </div>
-      <p class="text-xs text-zinc-500 mt-5 pt-3 border-t border-zinc-800/60">
+      <p class="text-[11px] sm:text-xs text-zinc-500 mt-4 sm:mt-5 pt-3 border-t border-zinc-800/60">
         Tek tıkla masaüstü kısayolu oluşturulur.
       </p>
     </div>
   </div>
 
   <!-- ❓ Sıkça Sorulan Sorular -->
-  <div class="section-header mt-12 mb-6">
+  <div class="section-header mt-10 sm:mt-12 mb-4 sm:mb-6">
     <h2>❓ Sık Sorulan Sorular</h2>
   </div>
 
-  <div class="space-y-3 mb-10">
+  <div class="space-y-2.5 sm:space-y-3 mb-10">
     <details class="group bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 transition-colors hover:border-zinc-700">
-      <summary class="cursor-pointer font-bold text-white text-sm sm:text-base flex items-center justify-between gap-3 list-none">
+      <summary class="cursor-pointer font-bold text-white text-xs sm:text-sm md:text-base flex items-center justify-between gap-3 list-none">
         <span>App Store veya Google Play'den indirmem gerekiyor mu?</span>
         <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
       </summary>
-      <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
+      <p class="text-xs sm:text-sm text-zinc-400 mt-2.5 sm:mt-3 leading-relaxed">
         Hayır, hiçbir uygulama mağazasına veya hesap şifresine gerek yoktur. Marmaraİncisi modern bir Web Uygulamasıdır (PWA); doğrudan web sitemiz üzerinden tek tıkla cihazınızın ana ekranına eklenir.
       </p>
     </details>
 
     <details class="group bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 transition-colors hover:border-zinc-700">
-      <summary class="cursor-pointer font-bold text-white text-sm sm:text-base flex items-center justify-between gap-3 list-none">
+      <summary class="cursor-pointer font-bold text-white text-xs sm:text-sm md:text-base flex items-center justify-between gap-3 list-none">
         <span>Telefonumda çok yer kaplar mı?</span>
         <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
       </summary>
-      <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
+      <p class="text-xs sm:text-sm text-zinc-400 mt-2.5 sm:mt-3 leading-relaxed">
         Kesinlikle hayır. Klasik mağaza uygulamaları gibi 50-100 MB yer kaplamaz; 1 MB'den bile küçüktür. Telefonunuzu yormaz, pil ve hafıza dostudur.
       </p>
     </details>
 
     <details class="group bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 transition-colors hover:border-zinc-700">
-      <summary class="cursor-pointer font-bold text-white text-sm sm:text-base flex items-center justify-between gap-3 list-none">
+      <summary class="cursor-pointer font-bold text-white text-xs sm:text-sm md:text-base flex items-center justify-between gap-3 list-none">
         <span>Yeni haber ve sefer saatleri için güncelleme yapmam gerekir mi?</span>
         <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
       </summary>
-      <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
+      <p class="text-xs sm:text-sm text-zinc-400 mt-2.5 sm:mt-3 leading-relaxed">
         Hayır. Her açtığınızda portalımızdaki en son verileri (İDO, Turyol, nöbetçi eczane, kesintiler) anında otomatik günceller. Mağazadan elle güncelleme indirmenize gerek kalmaz.
       </p>
     </details>
 
     <details class="group bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 transition-colors hover:border-zinc-700">
-      <summary class="cursor-pointer font-bold text-white text-sm sm:text-base flex items-center justify-between gap-3 list-none">
+      <summary class="cursor-pointer font-bold text-white text-xs sm:text-sm md:text-base flex items-center justify-between gap-3 list-none">
         <span>Uygulamayı nasıl kaldırabilirim?</span>
         <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
       </summary>
-      <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
+      <p class="text-xs sm:text-sm text-zinc-400 mt-2.5 sm:mt-3 leading-relaxed">
         Normal bir telefon uygulaması gibi ana ekranınızdaki Marmaraİncisi ikonuna basılı tutup <b>"Kaldır"</b> veya <b>"Uygulamayı Sil"</b> demeniz yeterlidir.
       </p>
     </details>
@@ -234,10 +240,8 @@
         deferred.prompt();
         deferred.userChoice.finally(function () { deferred = null; });
       } else if (isIOS) {
-        // iPhone kullanıcılarına doğrudan Safari Paylaş adımını anlat
         alert('iPhone için: Safari ekranının altındaki Paylaş (⬆️) simgesine dokunun ve "Ana Ekrana Ekle"yi seçin.');
       } else {
-        // Android / Masaüstü fallback
         var targetGuide = document.getElementById(activeId);
         if (targetGuide) targetGuide.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
